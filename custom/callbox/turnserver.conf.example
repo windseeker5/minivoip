@@ -1,0 +1,30 @@
+# coturn for callbox: relays call audio when the two phones can't reach each other directly.
+listening-port=3478
+fingerprint
+use-auth-secret
+static-auth-secret=CHANGE-ME (same as TURN_SECRET in .env)
+realm=omt.dresdell.com
+# public/private: advertise the home IP, bind the LAN address. Update if the ISP changes the public IP.
+external-ip=75.158.253.160/192.168.1.89
+min-port=49160
+max-port=49200
+total-quota=40
+user-quota=10
+stale-nonce=600
+no-cli
+no-multicast-peers
+no-tlsv1
+no-tlsv1_1
+log-file=stdout
+simple-log
+# Never relay into the home network or loopback
+denied-peer-ip=0.0.0.0-0.255.255.255
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=100.64.0.0-100.127.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+denied-peer-ip=::1
+denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff

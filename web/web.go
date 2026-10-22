@@ -243,7 +243,12 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-	render(w, r, pages.Login(pages.AccountForm{Next: r.URL.Query().Get("next")}))
+	f := pages.AccountForm{Next: r.URL.Query().Get("next")}
+	if strings.HasPrefix(f.Next, "/app") {
+		render(w, r, pages.AppLogin(f))
+		return
+	}
+	render(w, r, pages.Login(f))
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -268,6 +273,10 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(http.StatusUnprocessableEntity)
+	if strings.HasPrefix(f.Next, "/app") {
+		render(w, r, pages.AppLogin(f))
+		return
+	}
 	render(w, r, pages.Login(f))
 }
 
@@ -276,6 +285,11 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		s.Store.DeleteSession(c.Value)
 	}
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", Expires: time.Unix(0, 0), MaxAge: -1})
+	// The phone app logs out to its own login screen.
+	if r.FormValue("next") == "/app" {
+		http.Redirect(w, r, "/login?next=/app", http.StatusSeeOther)
+		return
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 

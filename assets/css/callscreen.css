@@ -1,0 +1,149 @@
+/* Phone-style screens: the visitor's call window (/call/<line>) and the
+   owner's phone app (/app). Always dark, like a phone's call screen; one
+   warm accent from the logo's orange bar. Ported from the proof of concept's
+   widget.css and owner.css. Plain CSS (not Tailwind) so these screens keep
+   their own look. */
+
+.cs {
+  --cs-bg: #121319; --cs-raise: #1c1d26; --cs-line: #2d2f3c; --cs-fg: #f3f3f7; --cs-muted: #a9abbb;
+  --cs-accent: #f3840f; --cs-on-accent: #1d1206; --cs-ok: #2e9e5b; --cs-end: #d6402f;
+  --cs-ease: cubic-bezier(.16, 1, .3, 1);
+  color-scheme: dark;
+  min-height: 100dvh; background: #0b0c10; color: var(--cs-fg);
+  font: 400 16px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs *, .cs *::before, .cs *::after { box-sizing: border-box; }
+.cs button { font: inherit; color: inherit; cursor: pointer; }
+.cs :focus-visible { outline: 2px solid var(--cs-accent); outline-offset: 3px; }
+.cs [hidden] { display: none !important; }
+.cs ::selection { background: var(--cs-accent); color: var(--cs-on-accent); }
+
+/* ------------------------------------------------------------ call screen */
+
+.cs-stage { display: grid; place-items: center; min-height: 100dvh; }
+.cs-screen {
+  position: relative; display: flex; flex-direction: column; width: 100%; min-height: 100dvh; overflow: hidden;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(18px, env(safe-area-inset-bottom));
+  background: radial-gradient(120% 55% at 50% 0%, #2a2c3a 0%, var(--cs-bg) 62%);
+}
+@media (min-width: 560px) and (min-height: 680px) {
+  .cs-stage { padding: 24px; }
+  .cs-screen { width: 390px; min-height: 0; height: min(820px, calc(100dvh - 48px)); border-radius: 40px;
+    box-shadow: 0 0 0 1px var(--cs-line), 0 40px 90px -30px rgb(0 0 0 / .85); }
+}
+
+.cs-head { display: grid; justify-items: center; gap: 6px; padding-top: 40px; text-align: center; transition: padding .4s var(--cs-ease); }
+.cs-avatar { display: grid; place-items: center; width: 104px; height: 104px; margin-bottom: 14px; border-radius: 50%;
+  background: var(--cs-raise); box-shadow: 0 0 0 1px rgb(243 132 15 / .55); color: var(--cs-accent);
+  font: 700 38px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em;
+  transition: width .4s var(--cs-ease), height .4s var(--cs-ease), font-size .4s var(--cs-ease), margin .4s var(--cs-ease); }
+.cs-avatar svg { width: 44px; height: 44px; }
+.cs-name { margin: 0; font: 700 30px/1.1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+.cs-status { margin: 0; min-height: 1.45em; color: var(--cs-muted); }
+.cs-timer { margin: 0; min-height: 1.4em; color: var(--cs-muted); font: 500 15px/1.4 ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+/* With choices or the keypad showing, the head shrinks */
+[data-state="menu"] .cs-head { padding-top: 6px; }
+[data-state="menu"] .cs-avatar { width: 56px; height: 56px; margin-bottom: 4px; font-size: 22px; }
+[data-state="menu"] .cs-name { font-size: 24px; }
+
+/* Ringing pulses, a live call breathes */
+[data-state="ringing"] .cs-avatar, .cs-call.is-ringing .cs-avatar { animation: cs-ring 1.2s ease-in-out infinite; }
+[data-state="talking"] .cs-avatar, .cs-call.is-talking .cs-avatar { animation: cs-live 2.4s ease-in-out infinite; }
+@keyframes cs-ring { 50% { box-shadow: 0 0 0 1px rgb(243 132 15 / .55), 0 0 0 18px rgb(243 132 15 / .12); } }
+@keyframes cs-live { 50% { box-shadow: 0 0 0 1px rgb(243 132 15 / .55), 0 0 0 14px rgb(243 132 15 / .08); } }
+
+.cs-mid { display: flex; flex: 1; flex-direction: column; justify-content: flex-end; gap: 14px; min-height: 0; padding: 16px 0 4px; }
+
+/* The menu's choices, as big buttons */
+.cs-choices { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; overflow-y: auto; }
+.cs-choice { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 10px 16px; border: 0;
+  border-radius: 16px; background: var(--cs-raise); box-shadow: inset 0 0 0 1px var(--cs-line); text-align: left;
+  font-weight: 600; animation: cs-up .45s var(--cs-ease) both; }
+.cs-choice:hover { box-shadow: inset 0 0 0 1px var(--cs-accent); }
+.cs-choice:active { background: #262836; }
+.cs-choice b { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%;
+  background: rgb(243 132 15 / .14); color: var(--cs-accent); font-weight: 700; }
+.cs-choice:nth-child(2) { animation-delay: .04s; } .cs-choice:nth-child(3) { animation-delay: .08s; }
+.cs-choice:nth-child(4) { animation-delay: .12s; } .cs-choice:nth-child(n+5) { animation-delay: .16s; }
+@keyframes cs-up { from { opacity: 0; translate: 0 8px; } }
+
+/* Dial pad */
+.cs-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px 24px; justify-content: center; }
+.cs-key { display: grid; place-content: center; width: 72px; height: 72px; padding: 0; border: 0; border-radius: 50%;
+  background: rgb(243 243 247 / .09); line-height: 1; transition: background .15s; touch-action: manipulation; }
+.cs-key b { font: 400 30px/1 ui-sans-serif, system-ui, sans-serif; }
+.cs-key small { margin-top: 3px; color: var(--cs-muted); font-size: 9px; font-weight: 600; letter-spacing: .18em; }
+.cs-key:active { background: rgb(243 243 247 / .26); }
+@media (max-height: 700px) {
+  .cs-pad { grid-template-columns: repeat(3, 62px); gap: 8px 22px; }
+  .cs-key { width: 62px; height: 62px; }
+}
+
+/* Voicemail recording */
+.cs-rec { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; }
+.cs-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--cs-end); animation: cs-blink 1s steps(2) infinite; }
+@keyframes cs-blink { 50% { opacity: .2; } }
+.cs-pill { flex-basis: 100%; min-height: 48px; max-width: 260px; border: 0; border-radius: 999px; background: var(--cs-accent);
+  color: var(--cs-on-accent) !important; font-weight: 700 !important; }
+
+/* Round call buttons */
+.cs-bar { display: grid; grid-template-columns: repeat(3, 1fr); justify-items: center; padding-top: 18px; }
+.cs-bar.is-two { grid-template-columns: repeat(2, 1fr); }
+.cs-bar.is-one { grid-template-columns: 1fr; }
+.cs-btn { display: grid; justify-items: center; gap: 8px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--cs-fg); }
+.cs-btn svg { width: 64px; height: 64px; padding: 19px; border-radius: 50%; background: rgb(243 243 247 / .12); transition: background .15s, color .15s; }
+.cs-btn[aria-pressed="true"] svg { background: var(--cs-fg); color: var(--cs-bg); }
+.cs-btn.is-big svg { width: 76px; height: 76px; padding: 22px; }
+.cs-btn.is-yes svg { background: var(--cs-ok); color: #fff; }
+.cs-btn.is-yes:active svg { background: #237a46; }
+.cs-btn.is-no svg { background: var(--cs-end); color: #fff; padding: 17px; }
+.cs-btn.is-no:active svg { background: #a93225; }
+
+.cs-foot { margin: 14px 0 0; text-align: center; color: var(--cs-muted); font-size: 12px; }
+.cs-foot a { color: inherit; }
+.cs-remote { display: none; }
+
+/* ------------------------------------------------------------ phone app home */
+
+.cs-app { max-width: 520px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); }
+.cs-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cs-top img { height: 24px; width: auto; }
+.cs-online { display: flex; align-items: center; gap: 8px; color: var(--cs-muted); font-size: 14px; }
+.cs-online i { width: 9px; height: 9px; border-radius: 50%; background: var(--cs-end); }
+.cs-online i.is-on { background: var(--cs-ok); }
+.cs-title { margin: 26px 0 2px; font: 700 28px/1.15 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; }
+.cs-sub { margin: 0; color: var(--cs-muted); font-size: 15px; }
+.cs-ready { display: flex; align-items: center; gap: 14px; margin-top: 22px; padding: 18px; border-radius: 18px;
+  background: linear-gradient(180deg, #1f2130, var(--cs-raise)); box-shadow: inset 0 0 0 1px var(--cs-line); }
+.cs-ready svg { flex: none; width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: rgb(46 158 91 / .16); color: #59c584; }
+.cs-ready p { margin: 0; }
+.cs-ready .cs-sub { font-size: 14px; }
+.cs-box { margin-top: 14px; padding: 18px; border-radius: 18px; background: var(--cs-raise); box-shadow: inset 0 0 0 1px var(--cs-line); }
+.cs-box h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--cs-muted); }
+.cs-box p { margin: 0; }
+.cs-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.cs-pillbtn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 20px; border: 0;
+  border-radius: 999px; background: rgb(243 243 247 / .12); color: var(--cs-fg); font-weight: 600; text-decoration: none; }
+.cs-pillbtn.is-main { background: var(--cs-accent); color: var(--cs-on-accent); }
+.cs-link { min-height: 44px; padding: 0 6px; border: 0; background: none; color: var(--cs-muted); text-decoration: underline; text-underline-offset: 4px; }
+.cs-hint { margin-top: 10px !important; color: var(--cs-muted); font-size: 14px; }
+
+/* The incoming / live call takes over the app */
+.cs-call { position: fixed; inset: 0; z-index: 10; }
+.cs-call .cs-screen { min-height: 100dvh; height: 100dvh; width: 100%; border-radius: 0; box-shadow: none; }
+.cs-call .cs-option { margin: 2px 0 0; padding: 4px 12px; border-radius: 999px; background: rgb(243 132 15 / .14); color: var(--cs-accent); font-size: 14px; font-weight: 600; }
+.cs-call .cs-option:empty { display: none; }
+
+/* Log in, app style */
+.cs-form { display: grid; gap: 12px; margin-top: 22px; }
+.cs-form label { display: grid; gap: 6px; color: var(--cs-muted); font-size: 14px; }
+.cs-form input { min-height: 52px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--cs-raise);
+  box-shadow: inset 0 0 0 1px var(--cs-line); color: var(--cs-fg); font: inherit; font-size: 17px; }
+.cs-form input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--cs-accent); }
+.cs-err { padding: 10px 14px; border-radius: 12px; background: rgb(214 64 47 / .14); color: #ff8b7d; font-size: 15px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs *, .cs *::before { animation: none !important; transition: none !important; }
+}

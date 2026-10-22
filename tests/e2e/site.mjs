@@ -98,8 +98,14 @@ async function crawl(page, start, label) {
         if (id) check(await page.$(`[id="${id}"]`) !== null, `${label}: ${path} anchor ${href} exists`);
         continue;
       }
-      if (href.startsWith("mailto:") || /^https?:/.test(href)) continue;
-      const clean = href.split("#")[0];
+      if (href.startsWith("mailto:")) continue;
+      let target = href;
+      if (/^https?:/.test(href)) {
+        const u = new URL(href);
+        if (u.origin !== new URL(BASE).origin) continue;
+        target = u.pathname + u.search;
+      }
+      const clean = target.split("#")[0];
       if (clean && !seen.has(clean)) queue.push(clean);
     }
   }
@@ -273,6 +279,7 @@ try {
   await caller.click('[data-key="1"]');
   await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
   check(true, "the phone app rings");
+  await caller.screenshot({ path: `${SHOTS}/call-ringing.png` });
   await owner.waitForTimeout(6000);
   check(pushes.length - ringStart >= 2, `a sleeping phone gets repeated "Incoming call" notifications (${pushes.length - ringStart} in 6 s)`);
   await owner.click('[data-action="accept"]');
@@ -281,11 +288,14 @@ try {
   const direct = await caller.evaluate(() => window.minivoipCallStats());
   check(direct && direct.bytesIn > 1000, `the call connects and the caller hears the phone (${direct && direct.route}, ${direct && direct.bytesIn} bytes)`);
   await caller.screenshot({ path: `${SHOTS}/call.png` });
+  await owner.setViewportSize({ width: 390, height: 844 });
+  await owner.screenshot({ path: `${SHOTS}/phone-talking.png` });
+  await owner.setViewportSize({ width: 1280, height: 900 });
   const afterAnswer = pushes.length;
   await caller.waitForTimeout(6000);
   check(pushes.length === afterAnswer, `answering stops the notifications (${pushes.length - afterAnswer} more)`);
   await caller.click('[data-action="hangup"]');
-  await owner.waitForSelector("text=Ready for calls", { timeout: 10000 });
+  await owner.waitForSelector(".cs-call", { state: "hidden", timeout: 10000 });
   check(true, "hanging up reaches the phone");
 
   step = "relay call";
@@ -308,7 +318,7 @@ try {
     check(c && c.route === "relay>relay" && c.bytesIn > 1000 && o && o.bytesIn > 1000,
       `voice flows both ways through the relay (caller ${c && c.route}, ${c && c.bytesIn} bytes in; phone ${o && o.bytesIn} bytes in)`);
     await caller.click('[data-action="hangup"]');
-    await owner.waitForSelector("text=Ready for calls", { timeout: 10000 });
+    await owner.waitForSelector(".cs-call", { state: "hidden", timeout: 10000 });
   }
   await owner.goto(BASE + "/app");
   await owner.waitForSelector("text=Online", { timeout: 10000 });
@@ -436,9 +446,23 @@ try {
 
   // 4. Strangers and log out ----------------------------------------------
   step = "stranger";
-  const stranger = await newPage();
+  const stranger = await newPage(390, 844);
   await stranger.goto(BASE + "/app");
-  check(new URL(stranger.url()).pathname === "/login", "a stranger can't open the phone app");
+  check(new URL(stranger.url()).pathname === "/login" && await stranger.isVisible("text=Your phone app"), "a stranger can't open the phone app, and gets the app's own log in");
+  await stranger.screenshot({ path: `${SHOTS}/app-login.png` });
+
+  step = "phone app log in and out";
+  const phoneOnly = await newPage(390, 844);
+  await phoneOnly.goto(BASE + "/app");
+  await phoneOnly.fill("#email", EMAIL);
+  await phoneOnly.fill("#password", "e2e-password");
+  await phoneOnly.click("button[type=submit]");
+  await phoneOnly.waitForSelector("text=Online", { timeout: 10000 });
+  check(new URL(phoneOnly.url()).pathname === "/app", "logging in from the phone app stays in the app");
+  check(!(await phoneOnly.isVisible('a[href="/dashboard"]')), "the phone app has no dashboard links");
+  await phoneOnly.click("text=Log out");
+  await phoneOnly.waitForSelector("text=Your phone app");
+  check(true, "logging out of the phone app returns to the app's log in");
   step = "log out";
   await owner.goto(BASE + "/dashboard");
   await owner.click("header button[type=submit]");

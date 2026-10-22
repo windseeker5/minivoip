@@ -227,7 +227,7 @@ func (s *Server) phoneApp(w http.ResponseWriter, r *http.Request, u store.User) 
 	if s.Push != nil {
 		key = s.Push.PublicKey()
 	}
-	render(w, r, pages.Phone(l, list, key))
+	render(w, r, pages.Phone(l, list, key, strings.TrimPrefix(strings.TrimPrefix(baseURL(r), "https://"), "http://")+"/call/"+l.Name))
 }
 
 func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {

@@ -1,8 +1,6 @@
 package pages
 
 import (
-	"minivoip/components/button"
-	"minivoip/components/icon"
 	"minivoip/layouts"
 	"minivoip/lines"
 	"minivoip/store"
@@ -42,124 +40,222 @@ func newCallData(l lines.Line) callData {
 	return d
 }
 
-// Call is the visitor's call window: /call/<line>. call.js runs it.
+// Phone-style icons (from the proof of concept).
+templ svgPhone() {
+	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3.5h3l1.6 4-2 1.3a11 11 0 0 0 7.6 7.6l1.3-2 4 1.6v3a2 2 0 0 1-2 2A16.5 16.5 0 0 1 3 5.5a2 2 0 0 1 2-2Z"></path></svg>
+}
+
+templ svgHangup() {
+	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 14.6c4.6-4.1 12.2-4.1 16.8 0 .6.5.7 1.4.2 2l-1.3 1.6c-.4.5-1.1.6-1.7.4l-2.6-1a1.4 1.4 0 0 1-.9-1.3v-1.7a10 10 0 0 0-4.2 0v1.7c0 .6-.4 1.1-.9 1.3l-2.6 1c-.6.2-1.3.1-1.7-.4l-1.3-1.6c-.5-.6-.4-1.5.2-2Z"></path></svg>
+}
+
+templ svgMute() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M19 11a7 7 0 0 1-14 0M12 18v3"></path></svg>
+}
+
+templ svgPad() {
+	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="5" r="1.7"></circle><circle cx="12" cy="5" r="1.7"></circle><circle cx="18" cy="5" r="1.7"></circle><circle cx="6" cy="11" r="1.7"></circle><circle cx="12" cy="11" r="1.7"></circle><circle cx="18" cy="11" r="1.7"></circle><circle cx="6" cy="17" r="1.7"></circle><circle cx="12" cy="17" r="1.7"></circle><circle cx="18" cy="17" r="1.7"></circle><circle cx="12" cy="22" r="1.7"></circle></svg>
+}
+
+templ svgPerson() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+}
+
+var padKeys = []struct{ Key, Letters string }{
+	{"1", ""}, {"2", "ABC"}, {"3", "DEF"}, {"4", "GHI"}, {"5", "JKL"}, {"6", "MNO"},
+	{"7", "PQRS"}, {"8", "TUV"}, {"9", "WXYZ"}, {"*", ""}, {"0", "+"}, {"#", ""},
+}
+
+func initial(name string) string {
+	for _, r := range name {
+		return string(r)
+	}
+	return "?"
+}
+
+// Call is the visitor's call window: /call/<line>. It looks like a phone's
+// call screen (a phone-sized frame on computers). call.js runs it; data-show
+// lists the call states each part appears in.
 templ Call(l lines.Line) {
 	@layouts.Base("Call "+l.Business, "") {
-		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-8">
-			<div class="w-full max-w-sm">
-				@brand()
-			</div>
-			<div class="mt-6 flex w-full max-w-sm flex-1 flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]" data-call>
-				<span class="flex size-16 items-center justify-center rounded-full bg-muted text-xl font-semibold">{ l.Business[:1] }</span>
-				<h1 class="mt-4 text-2xl font-bold tracking-tight">{ l.Business }</h1>
-				<p class="mt-1 min-h-6 text-muted-foreground" data-status aria-live="polite">Press Call to start</p>
-				<p class="mt-1 text-sm text-muted-foreground tabular-nums" data-timer></p>
-				<div class="mt-auto flex w-full flex-col items-center gap-3 pt-10">
-					<div data-show="menu" hidden class="flex w-full flex-col gap-2.5">
-						for _, o := range l.Options {
-							<button type="button" data-key={ o.Key } class="flex items-center gap-3 rounded-xl border bg-background px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
-								<span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">{ o.Key }</span>
-								<span class="font-semibold">{ o.Label }</span>
-							</button>
-						}
+		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
+		<div class="cs">
+			<main class="cs-stage">
+				<div class="cs-screen" data-call data-state="idle">
+					<header class="cs-head">
+						<div class="cs-avatar" aria-hidden="true">{ initial(l.Business) }</div>
+						<h1 class="cs-name">{ l.Business }</h1>
+						<p class="cs-status" data-status role="status" aria-live="polite">Tap the green button to call</p>
+						<p class="cs-timer" data-timer aria-hidden="true"></p>
+					</header>
+					<div class="cs-mid">
+						<ul class="cs-choices" data-show="menu" hidden aria-label="Choices">
+							for _, o := range l.Options {
+								<li><button type="button" class="cs-choice" data-key={ o.Key }><b>{ o.Key }</b>{ o.Label }</button></li>
+							}
+						</ul>
+						<div class="cs-pad" data-pad hidden role="group" aria-label="Keypad">
+							for _, k := range padKeys {
+								<button type="button" class="cs-key" data-key={ k.Key }>
+									<b>{ k.Key }</b>
+									<small>
+										if k.Letters != "" {
+											{ k.Letters }
+										} else {
+											&nbsp;
+										}
+									</small>
+								</button>
+							}
+						</div>
+						<div class="cs-rec" data-show="recording" hidden>
+							<span class="cs-dot"></span>
+							<span>Recording your message</span>
+							<button type="button" class="cs-pill" data-action="send-message">Send my message</button>
+						</div>
 					</div>
-					<button type="button" data-action="call" data-show="idle ended" class="flex size-20 items-center justify-center rounded-full bg-emerald-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-emerald-600/30 focus-visible:outline-none active:scale-95" aria-label="Call">
-						@icon.Phone(icon.Props{Class: "size-8"})
-					</button>
-					<button type="button" data-action="send-message" data-show="recording" hidden class="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
-						<span class="size-2.5 animate-pulse rounded-full bg-red-500"></span>
-						Send my message
-					</button>
-					<button type="button" data-action="hangup" data-show="menu ringing connecting talking voicemail recording" hidden class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-red-600/30 focus-visible:outline-none active:scale-95" aria-label="Hang up">
-						@icon.PhoneOff(icon.Props{Class: "size-7"})
-					</button>
+					<div class="cs-bar is-one" data-show="idle ended">
+						<button type="button" class="cs-btn is-yes is-big" data-action="call">
+							@svgPhone()
+							<span>Call</span>
+						</button>
+					</div>
+					<div class="cs-bar" data-show="menu ringing connecting talking voicemail recording sending" hidden>
+						<button type="button" class="cs-btn" data-action="mute" aria-pressed="false">
+							@svgMute()
+							<span>Mute</span>
+						</button>
+						<button type="button" class="cs-btn" data-action="pad" aria-pressed="false">
+							@svgPad()
+							<span>Keypad</span>
+						</button>
+						<button type="button" class="cs-btn is-no" data-action="hangup">
+							@svgHangup()
+							<span>Hang up</span>
+						</button>
+					</div>
+					<p class="cs-foot">Free web call · no phone needed · <a href="/" target="_blank">minivoip</a></p>
+					<audio class="cs-remote" data-remote autoplay playsinline></audio>
 				</div>
-				<audio data-remote autoplay></audio>
-			</div>
-			<p class="mt-4 max-w-sm text-center text-xs text-muted-foreground">Test line. Your browser will ask to use the microphone when you choose to talk to { l.Owner }.</p>
-		</main>
+			</main>
+		</div>
 		@templ.JSONScript("line", newCallData(l))
 		<script src="/assets/js/call.js" defer></script>
 	}
 }
 
-// Phone is the owner's phone app: /app. phone.js keeps it connected and rings.
-templ Phone(l lines.Line, voicemails []store.Voicemail, vapidKey string) {
-	@layouts.Base("minivoip phone", "") {
-		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-8" data-phone data-line={ l.Name } data-vapid={ vapidKey }>
-			<div class="flex w-full max-w-sm items-center justify-between">
-				@brand()
-				<span class="flex items-center gap-1.5 text-sm text-muted-foreground"><span class="size-2 rounded-full bg-muted-foreground" data-dot></span><span data-conn>Connecting…</span></span>
+// Phone is the owner's phone app: /app. Its own dark app (no dashboard):
+// the line, notifications, voicemail, log out. A call takes the whole
+// screen. phone.js keeps it connected and rings.
+templ Phone(l lines.Line, voicemails []store.Voicemail, vapidKey, callURL string) {
+	@layouts.Base("minivoip", "") {
+		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
+		<div class="cs dark" data-phone data-line={ l.Name } data-vapid={ vapidKey }>
+			<main class="cs-app">
+				<div class="cs-top">
+					<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24"/>
+					<span class="cs-online"><i data-dot></i><span data-conn>Connecting…</span></span>
+				</div>
+				<h1 class="cs-title">{ l.Business }</h1>
+				<p class="cs-sub">{ callURL }</p>
+				<div class="cs-ready">
+					@svgPhone()
+					<div>
+						<p><strong>Ready for calls</strong></p>
+						<p class="cs-sub">This phone rings when a caller picks a "Ring my phone" choice.</p>
+					</div>
+				</div>
+				<section class="cs-box" data-push>
+					<h2>Ring when the app is closed</h2>
+					<p data-push-state>Checking this phone…</p>
+					<p class="cs-hint" data-push-ios hidden>On iPhone: tap Share, then "Add to Home Screen". Open minivoip from that icon and turn notifications on there.</p>
+					<div class="cs-row">
+						<button type="button" class="cs-pillbtn is-main" data-push-on hidden>Turn on notifications</button>
+						<button type="button" class="cs-pillbtn" data-push-test hidden>Send a test</button>
+						<button type="button" class="cs-link" data-push-off hidden>Turn off on this phone</button>
+					</div>
+				</section>
+				<section class="cs-box">
+					<h2>Voicemail</h2>
+					<div data-voicemail-box>
+						@VoicemailList(voicemails, "/app")
+					</div>
+				</section>
+				<form method="post" action="/logout" class="cs-row">
+					<input type="hidden" name="next" value="/app"/>
+					<button type="submit" class="cs-link">Log out</button>
+				</form>
+			</main>
+			<div class="cs-call" data-show="incoming connecting talking" hidden>
+				<div class="cs-screen">
+					<header class="cs-head">
+						<div class="cs-avatar">
+							@svgPerson()
+						</div>
+						<p class="cs-name">Website caller</p>
+						<p class="cs-status" data-status role="status" aria-live="assertive">Incoming call…</p>
+						<p class="cs-option" data-option></p>
+						<p class="cs-timer" data-timer></p>
+					</header>
+					<div class="cs-mid"></div>
+					<div class="cs-bar is-two" data-show="incoming" hidden>
+						<button type="button" class="cs-btn is-no is-big" data-action="decline">
+							@svgHangup()
+							<span>Decline</span>
+						</button>
+						<button type="button" class="cs-btn is-yes is-big" data-action="accept">
+							@svgPhone()
+							<span>Answer</span>
+						</button>
+					</div>
+					<div class="cs-bar is-two" data-show="connecting talking" hidden>
+						<button type="button" class="cs-btn" data-action="mute" aria-pressed="false">
+							@svgMute()
+							<span>Mute</span>
+						</button>
+						<button type="button" class="cs-btn is-no" data-action="hangup" aria-label="Hang up">
+							@svgHangup()
+							<span>Hang up</span>
+						</button>
+					</div>
+				</div>
 			</div>
-			<div class="mt-6 flex w-full max-w-sm min-h-[26rem] flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]">
-				<p class="text-sm text-muted-foreground">{ l.Business } line</p>
-				<div data-show="ready" class="my-auto flex flex-col items-center gap-3">
-					@icon.Smartphone(icon.Props{Class: "size-10 text-muted-foreground"})
-					<p class="text-lg font-semibold">Ready for calls</p>
-					<p class="max-w-xs text-sm text-muted-foreground">It rings when a caller picks a "Ring my phone" choice. Turn on notifications below so it rings even when the app is closed.</p>
-				</div>
-				<div data-show="incoming connecting talking" hidden class="my-auto flex flex-col items-center gap-2">
-					<p class="text-sm text-muted-foreground" data-status>Website call</p>
-					<p class="text-2xl font-bold tracking-tight">Website visitor</p>
-					<p class="text-muted-foreground" data-option></p>
-					<p class="text-sm text-muted-foreground tabular-nums" data-timer></p>
-				</div>
-				<div data-show="incoming" hidden class="flex w-full justify-around pt-6">
-					<button type="button" data-action="decline" class="flex flex-col items-center gap-2 rounded-2xl p-1 text-sm focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
-						<span class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white">
-							@icon.PhoneOff(icon.Props{Class: "size-7"})
-						</span>
-						Decline
-					</button>
-					<button type="button" data-action="accept" class="flex flex-col items-center gap-2 rounded-2xl p-1 text-sm focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
-						<span class="flex size-16 items-center justify-center rounded-full bg-emerald-600 text-white">
-							@icon.Phone(icon.Props{Class: "size-7"})
-						</span>
-						Answer
-					</button>
-				</div>
-				<div data-show="connecting talking" hidden class="pt-6">
-					<button type="button" data-action="hangup" class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white" aria-label="Hang up">
-						@icon.PhoneOff(icon.Props{Class: "size-7"})
-					</button>
-				</div>
-				<audio data-remote autoplay></audio>
-			</div>
-			<section class="mt-6 w-full max-w-sm rounded-2xl border bg-background p-5" data-push>
-				<h2 class="flex items-center gap-2 font-semibold">
-					@icon.BellRing(icon.Props{Class: "size-4"})
-					Ring when the app is closed
-				</h2>
-				<p class="mt-2 text-sm text-muted-foreground" data-push-state>Checking this phone…</p>
-				<p class="mt-2 text-sm text-muted-foreground" data-push-ios hidden>On iPhone: tap Share, then "Add to Home Screen". Open minivoip from that icon and turn notifications on there.</p>
-				<div class="mt-4 flex flex-wrap gap-2">
-					<button type="button" data-push-on hidden class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-						Turn on notifications
-					</button>
-					<button type="button" data-push-test hidden class="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-						Send a test
-					</button>
-					<button type="button" data-push-off hidden class="h-9 px-1 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
-						Turn off on this phone
-					</button>
-				</div>
-			</section>
-			<section class="mt-6 w-full max-w-sm">
-				<h2 class="mb-3 font-semibold">Voicemail</h2>
-				<div data-voicemail-box>
-					@VoicemailList(voicemails, "/app")
-				</div>
-			</section>
-			<div class="mt-4 flex flex-wrap justify-center gap-x-4">
-				@button.Button(button.Props{Href: "/dashboard", Variant: button.VariantLink, Size: button.SizeSm}) {
-					Back to my dashboard
-				}
-				@button.Button(button.Props{Href: "/call/" + l.Name, Variant: button.VariantLink, Size: button.SizeSm, Target: "_blank"}) {
-					Make a test call
-				}
-			</div>
-		</main>
+			<audio class="cs-remote" data-remote autoplay playsinline></audio>
+		</div>
 		<script src="/assets/js/voicemail.js" defer></script>
 		<script src="/assets/js/phone.js" defer></script>
+	}
+}
+
+// AppLogin is the phone app's own log in screen (the app never shows the
+// website's pages).
+templ AppLogin(f AccountForm) {
+	@layouts.Base("minivoip", "") {
+		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
+		<div class="cs">
+			<main class="cs-app">
+				<div class="cs-top">
+					<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24"/>
+				</div>
+				<h1 class="cs-title">Your phone app</h1>
+				<p class="cs-sub">Log in with your minivoip account to receive your calls on this phone.</p>
+				<form method="post" action="/login" class="cs-form">
+					if f.Error != "" {
+						<p class="cs-err" role="alert">{ f.Error }</p>
+					}
+					<input type="hidden" name="next" value={ f.Next }/>
+					<label>
+						Email
+						<input id="email" name="email" type="email" value={ f.Email } required autocomplete="email"/>
+					</label>
+					<label>
+						Password
+						<input id="password" name="password" type="password" required autocomplete="current-password"/>
+					</label>
+					<button type="submit" class="cs-pillbtn is-main">Log in</button>
+				</form>
+				<p class="cs-hint">No account yet? Sign up on a computer at the minivoip website first.</p>
+			</main>
+		</div>
 	}
 }

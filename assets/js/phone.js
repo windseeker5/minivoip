@@ -10,6 +10,11 @@
   var ringingId = null, liveId = null, wsDelay = 1000;
 
   function show(p) {
+    var call = $(".cs-call");
+    if (call) {
+      call.classList.toggle("is-ringing", p === "incoming");
+      call.classList.toggle("is-talking", p === "talking");
+    }
     root.querySelectorAll("[data-show]").forEach(function (el) {
       el.hidden = el.dataset.show.split(" ").indexOf(p) === -1;
     });
@@ -23,12 +28,12 @@
     ws = new WebSocket(proto + "//" + location.host + "/ws?role=owner&line=" + encodeURIComponent(root.dataset.line));
     ws.onopen = function () {
       wsDelay = 1000;
-      $("[data-dot]").className = "size-2 rounded-full bg-emerald-600";
+      $("[data-dot]").className = "is-on";
       $("[data-conn]").textContent = "Online";
       send({ type: "hello" });
     };
     ws.onclose = function () {
-      $("[data-dot]").className = "size-2 rounded-full bg-muted-foreground";
+      $("[data-dot]").className = "";
       $("[data-conn]").textContent = "Offline, reconnecting…";
       if (liveId) endCall();
       setTimeout(connectWs, wsDelay);
@@ -161,6 +166,8 @@
 
   function endCall() {
     clearInterval(timerIv);
+    $("[data-timer]").textContent = "";
+    $('[data-action="mute"]').setAttribute("aria-pressed", "false");
     if (pc) { pc.close(); pc = null; }
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     liveId = null;
@@ -196,6 +203,10 @@
     } else if (b.dataset.action === "hangup") {
       send({ type: "hangup", id: liveId });
       endCall();
+    } else if (b.dataset.action === "mute") {
+      var on = b.getAttribute("aria-pressed") !== "true";
+      b.setAttribute("aria-pressed", String(on));
+      if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
     }
   });
 

@@ -71,7 +71,10 @@ B&B and may become a SaaS.
   `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor with voice recorder: uploads to
   `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
   (list shared by the dashboard and the phone app), `call` + `call.js` (visitor's
-  call window `/call/{line}`) and `Phone` + `phone.js` (phone app `/app`, login required, must stay open: no push yet).
+  call window `/call/{line}`) and `Phone` + `phone.js` (phone app `/app`, login required).
+- The call window and the phone app are phone-style screens with their own plain CSS,
+  `assets/css/callscreen.css` (always dark, ported from the proof of concept's look Ken liked). The phone app
+  never links to the dashboard; logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
 - `push/`: web push (VAPID keys in the `setting` table, `webpush-go`). The hub's `OnRing` sends "Incoming call"
   every 5 s until answered (30 s max), `OnMissed` "Missed call", a new voicemail "New voicemail". The service worker
   is `assets/js/sw.js`, served at `/sw.js`; the install manifest is `assets/brand/manifest.webmanifest` at

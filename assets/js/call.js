@@ -14,11 +14,28 @@
 
   function show(p) {
     phase = p;
+    root.dataset.state = p;
+    if (p !== "menu") pad(false);
     root.querySelectorAll("[data-show]").forEach(function (el) {
       el.hidden = el.dataset.show.split(" ").indexOf(p) === -1;
     });
   }
   function status(t) { $("[data-status]").textContent = t; }
+
+  // The dial pad replaces the choice buttons while it's open.
+  function pad(open) {
+    var b = $('[data-action="pad"]');
+    $("[data-pad]").hidden = !open;
+    b.setAttribute("aria-pressed", String(open));
+    if (phase === "menu") $(".cs-choices").hidden = open;
+  }
+
+  function mute() {
+    var b = $('[data-action="mute"]');
+    var on = b.getAttribute("aria-pressed") !== "true";
+    b.setAttribute("aria-pressed", String(on));
+    if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
+  }
 
   // ----------------------------------------------------------- sound
 
@@ -304,6 +321,8 @@
     if (pc) { pc.close(); pc = null; }
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     callId = null;
+    $('[data-action="mute"]').setAttribute("aria-pressed", "false");
+    $("[data-timer]").textContent = "";
     status(why);
     show("ended");
   }
@@ -330,6 +349,8 @@
     if (!b) return;
     if (b.dataset.key) press(b.dataset.key);
     else if (b.dataset.action === "call") start();
+    else if (b.dataset.action === "pad") pad($('[data-action="pad"]').getAttribute("aria-pressed") !== "true");
+    else if (b.dataset.action === "mute") mute();
     else if (b.dataset.action === "send-message") { if (recorder && recorder.state === "recording") recorder.stop(); }
     else if (b.dataset.action === "hangup") {
       // Hanging up while recording sends the message, like a real phone.

@@ -7,8 +7,8 @@ research and proof of concept about a new way to offer voice assistance without 
 Keep this short and up to date (status, next action, last update).
 
 - Status: Working end to end and tested (go test + `tests/e2e/site.mjs`): sign up, line, menu (typed or recorded), real calls through the built-in TURN relay, voicemail, push notifications, promo admin, phone-style call window and phone app. Ken made a real call from his Android on 2026-10-21. He still finds the look ugly.
-- Next action: push to GitHub once Ken creates the repo (merge branch `go-version` into `main`). Then talk security: anyone who knows `/call/<line>` can call (spam, unwanted calls); ideas to discuss: rate limits, a check that the caller is human, allowed websites, opening hours, block list. Then a design pass on the screens.
-- Last update: 2026-10-21 (late). Added the TURN relay (calls rang but never connected without it), phone-style screens from the POC look, app-only login, real "Call us now" button on the landing page (line `ken`), simpler sign-up step 2. All committed on `go-version`; no remote yet.
+- Next action: talk security: anyone who knows `/call/<line>` can call (spam, unwanted calls); ideas: rate limits, a human check, allowed websites, opening hours, block list. Then a design pass on the screens (Ken finds them ugly).
+- Last update: 2026-10-21 (late). Added the TURN relay (calls rang but never connected without it), phone-style screens from the POC look, app-only login, real "Call us now" button on the landing page (line `ken`), simpler sign-up step 2. Pushed to https://github.com/windseeker5/minivoip (public, branch `main`). Ken's account is admin via `user.is_admin` (no admin email in the code).
 
 ## Rules
 

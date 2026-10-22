@@ -7,8 +7,8 @@ research and proof of concept about a new way to offer voice assistance without 
 Keep this short and up to date (status, next action, last update).
 
 - Status: Phase 1 landing page done (receptionist wording, mini-family logo). First real call works in Go: `/call/joesbnb` (visitor) to `/app` (phone app) on localhost, tested with two headless browsers; `go test ./...` passes. No voicemail, push, login or STUN/TURN yet.
-- Next action: test the call from Ken's real phone. That needs HTTPS for the microphone (decide: a Caddy subdomain pointing at the dev server, or a local certificate). Then voicemail.
-- Last update: 2026-10-21. Built the landing page and logo; ported the POC's call setup to Go (`calls/`, `lines/`, `pages/call.templ`, `assets/js/call.js`, `phone.js`, new dependency `github.com/coder/websocket`). Removed the old POC containers, Caddy route and OMT "Call me" button. `OLD-ARCHIVE/` was deleted outside this session; the POC stays in git commit 5b8d116. Nothing new committed yet.
+- Next action: Ken tests with his real phone: https://voip.dresdell.com/app on the phone (home Wi-Fi), call from the computer at /call/joesbnb. Then voicemail.
+- Last update: 2026-10-21. Built the landing page and logo; ported the POC's call setup to Go (`calls/`, `lines/`, `pages/call.templ`, `assets/js/call.js`, `phone.js`, new dependency `github.com/coder/websocket`). Removed the old POC containers, Caddy route and OMT "Call me" button. `OLD-ARCHIVE/` was deleted outside this session; the POC stays in git commit 5b8d116. Committed on branch `go-version` (a7b8724). Added https://voip.dresdell.com (Caddy block, DNS by Ken) pointing at the dev app; test call through it passed.
 
 ## Rules
 

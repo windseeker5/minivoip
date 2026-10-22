@@ -45,6 +45,9 @@ B&B and may become a SaaS.
 - `/app` (`pages/call.templ` `Phone` + `assets/js/phone.js`): the owner's phone app. Stays connected, rings,
   answers. No push or login yet, so the page must be open.
 - No STUN/TURN yet (`iceServers: []`): works on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.
+- Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy
+  (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs. No login: anyone with the link can
+  open `/app`, so don't leave it public once real people use it.
 
 ## Commands
 

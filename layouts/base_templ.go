@@ -67,7 +67,7 @@ func Base(title, description string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<script>\n\t\t\t\t(function () {\n\t\t\t\t\ttry {\n\t\t\t\t\t\tvar t = localStorage.getItem(\"theme\");\n\t\t\t\t\t\tvar dark = t ? t === \"dark\" : matchMedia(\"(prefers-color-scheme: dark)\").matches;\n\t\t\t\t\t\tdocument.documentElement.classList.toggle(\"dark\", dark);\n\t\t\t\t\t} catch (e) {}\n\t\t\t\t})();\n\t\t\t</script><link rel=\"stylesheet\" href=\"/assets/css/output.css\"><script src=\"https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta6/dist/htmx.min.js\"></script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<script>\n\t\t\t\t(function () {\n\t\t\t\t\ttry {\n\t\t\t\t\t\tvar t = localStorage.getItem(\"theme\");\n\t\t\t\t\t\tvar dark = t ? t === \"dark\" : matchMedia(\"(prefers-color-scheme: dark)\").matches;\n\t\t\t\t\t\tdocument.documentElement.classList.toggle(\"dark\", dark);\n\t\t\t\t\t} catch (e) {}\n\t\t\t\t})();\n\t\t\t</script><link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"><link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin><link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap\"><link rel=\"stylesheet\" href=\"/assets/css/output.css\"><script src=\"https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta6/dist/htmx.min.js\"></script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

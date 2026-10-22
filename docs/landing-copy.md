@@ -10,7 +10,7 @@ Last update: 2026-10-21 · Source of truth for the words on `/` (`pages/home.tem
 - Headline: Your website's receptionist answers every call and sends it to your cell.
 - Sub: Visitors click Call on your website. Your receptionist greets them in your voice, sends each call to the right person, the right page or voicemail, and rings your cell only when it's for you. No phone line needed.
 - CTA: Get my free line · secondary: Try the demo call
-- Microcopy: Free while in beta. No card required.
+- Microcopy (two check marks): Free while in beta · No card required
 
 ## Problem
 - Heading: Paying for a second line just to take messages?
@@ -22,10 +22,12 @@ Last update: 2026-10-21 · Source of truth for the words on `/` (`pages/home.tem
 2. **Install the app on your phone.** Open a link on your phone and add it to your home screen. Your phone number stays the same.
 3. **Add the button to your site.** Paste one line into WordPress, Wix, Squarespace or Shopify. Can't edit your site? Share your call link or a QR code.
 
-## Demo
-- Heading: This is what your callers see
-- Body: Try it. Nobody's phone will ring.
-- Widget (Joe's B&B): greeting, then menu "1 Bookings / 2 Talk to Joe", then "Ringing Joe's phone…", then "Joe is busy. Leave a message after the tone."
+## Demo (the call diagram under the hero, `callFlow` in pages/home.templ)
+- Step labels: 1 Visitor clicks Call · 2 Your greeting answers · 3 They choose · 4 Only then, your cell rings
+- Choices (Joe's B&B, sample): 1 Bookings (Opens your booking page) · 2 Talk to Joe (Rings Joe's cell) · 3 Hours and directions (Plays a message) · 0 Leave a message (Voicemail, with an alert)
+- Under the phone: Joe's own cell · Same phone, same number
+- Below: A demo with a sample business. Press Call us: nothing rings and nothing is recorded.
+- Pressing Call us plays the greeting, then "Choose an option"; 2 rings Joe's cell, then "Joe can't answer right now. Leave a message after the tone."
 
 ## Features (`features` and `aiFeature` in pages/home.templ)
 - Heading: Everything a good receptionist does · Sub: On the cell phone you already carry. Set it up once, and change your greeting and choices whenever you like.

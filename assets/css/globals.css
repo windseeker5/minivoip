@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Onest is loaded in layouts/base.templ. */
+@theme {
+  --font-sans: "Onest", ui-sans-serif, system-ui, sans-serif;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --color-background: var(--background);
@@ -137,39 +142,173 @@
   }
 }
 
-.voice-bars > span {
-  height: 30%;
-  animation: voice-bar 1.1s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+/* The call-flow demo on the landing page (pages/home.templ, landing.js):
+   a dotted canvas, cards linked by wires; the live path takes the logo's
+   colours. */
+.flow-canvas {
+  background-color: color-mix(in oklab, var(--muted) 55%, var(--background));
+  background-image: radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0);
+  background-size: 22px 22px;
 }
-@keyframes voice-bar {
-  from { height: 18%; }
-  to { height: 100%; }
+.dark .flow-canvas {
+  background-color: color-mix(in oklab, var(--muted) 30%, var(--background));
+  background-image: radial-gradient(circle at 1px 1px, oklch(1 0 0 / 9%) 1px, transparent 0);
+}
+.flow-wires {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.flow-wires path {
+  fill: none;
+  stroke: color-mix(in oklab, var(--foreground) 16%, transparent);
+  stroke-width: 1.25;
+  transition: stroke 0.35s;
+}
+.flow-wires path.on {
+  stroke: url(#flow-hot);
+  stroke-width: 2;
+}
+.flow-node {
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 9%, transparent), 0 1px 2px rgb(15 17 21 / 0.04), 0 12px 28px -16px rgb(15 17 21 / 0.24);
+}
+.flow-opt {
+  transition: box-shadow 0.3s, transform 0.2s;
+}
+.flow-opt[data-on] {
+  box-shadow: 0 0 0 1.5px #f46422, 0 0 0 5px rgb(244 100 34 / 0.12), 0 12px 28px -16px rgb(15 17 21 / 0.24);
+}
+.flow-opt[data-on] .flow-key {
+  background: #f46422;
+  color: #fff;
+  box-shadow: none;
+}
+.flow-opt[data-on] .flow-sub {
+  color: #c2410c;
+}
+.dark .flow-opt[data-on] .flow-sub {
+  color: #fb9a6b;
+}
+[data-flow][data-state="menu"] .flow-opt {
+  cursor: pointer;
+  animation: flow-pick 1.8s ease-in-out infinite;
+}
+[data-flow][data-state="menu"] .flow-opt:hover {
+  transform: translateX(3px);
+}
+@keyframes flow-pick {
+  50% { box-shadow: 0 0 0 1.5px rgb(244 100 34 / 0.45), 0 12px 28px -16px rgb(15 17 21 / 0.24); }
+}
+/* Between the steps on a phone: a short wire in the logo's colours. */
+@media (width < 64rem) {
+  .flow-col + .flow-col::before {
+    content: "";
+    display: block;
+    width: 2px;
+    height: 1.5rem;
+    margin: 0.75rem auto;
+    border-radius: 2px;
+    background: linear-gradient(#f3840f, #e31a5a);
+  }
 }
 
-.demo-ring {
-  animation: demo-ring 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+.wave > i {
+  display: block;
+  width: 3px;
+  flex: none;
+  border-radius: 3px;
+  background: var(--border);
 }
-@keyframes demo-ring {
-  0% { box-shadow: 0 0 0 0 rgb(5 150 105 / 0.45); }
-  100% { box-shadow: 0 0 0 18px rgb(5 150 105 / 0); }
+.dark .wave > i:not([style*="background"]) {
+  background: oklch(1 0 0 / 14%);
+}
+[data-state="greeting"] .wave > i,
+[data-state="hours"] .wave > i {
+  animation: wave-talk 0.7s ease-in-out infinite alternate;
+}
+.wave > i:nth-child(3n) { animation-delay: -0.25s; }
+.wave > i:nth-child(3n + 1) { animation-delay: -0.5s; }
+@keyframes wave-talk {
+  from { transform: scaleY(0.45); }
 }
 
-.demo-rec > span:first-child {
-  animation: demo-blink 1s steps(2, jump-none) infinite;
+/* Joe's phone: an Android-style frame with the minivoip app (iPhones ring
+   with a notification instead, see the FAQ). zoom sets its size. */
+.lp-phone {
+  position: relative;
+  width: 288px;
+  height: 612px;
+  flex: none;
+  border-radius: 48px;
+  background: #0d0e10;
+  box-shadow: inset 0 0 0 1.5px #34363b, inset 0 0 0 4px #0d0e10, 0 2px 4px rgb(10 12 16 / 0.12), 0 30px 50px -20px rgb(10 12 16 / 0.38), 0 80px 120px -50px rgb(10 12 16 / 0.5);
 }
-@keyframes demo-blink {
+.lp-screen {
+  position: absolute;
+  inset: 9px;
+  overflow: hidden;
+  border-radius: 39px;
+  color: #fff;
+  background: radial-gradient(130% 75% at 50% 0%, #2b3342 0%, #151820 52%, #0c0d11 100%);
+}
+.lp-screen.lite {
+  color: var(--card-foreground);
+  background: var(--muted);
+}
+.lp-cam {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: #030304;
+  box-shadow: inset 0 0 0 2px #17191d;
+}
+.lp-ring {
+  position: relative;
+}
+.lp-ring::before,
+.lp-ring::after {
+  content: "";
+  position: absolute;
+  inset: -17px;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.09);
+}
+.lp-ring::after {
+  inset: -36px;
+  border-color: rgb(255 255 255 / 0.045);
+}
+[data-state="ringing"] .lp-answer {
+  animation: lp-answer 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@keyframes lp-answer {
+  0% { box-shadow: 0 0 0 0 rgb(34 197 94 / 0.5); }
+  100% { box-shadow: 0 0 0 18px rgb(34 197 94 / 0); }
+}
+
+.rec-dot {
+  animation: rec-blink 1s steps(2, jump-none) infinite;
+}
+@keyframes rec-blink {
   50% { opacity: 0.25; }
 }
 
-.demo [data-when]:not([hidden]) {
-  animation: demo-in 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+[data-flow] [data-when]:not([hidden]) {
+  animation: flow-in 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes demo-in {
+@keyframes flow-in {
   from { opacity: 0; transform: translateY(6px); filter: blur(4px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .voice-bars > span { animation: none; height: 60%; }
-  .demo-ring, .demo-rec > span:first-child, .demo [data-when]:not([hidden]) { animation: none; }
+  [data-flow] *, [data-flow] [data-when]:not([hidden]) { animation: none !important; }
 }

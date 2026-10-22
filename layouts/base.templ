@@ -31,6 +31,10 @@ templ Base(title, description string) {
 					} catch (e) {}
 				})();
 			</script>
+			// Onest, the site's typeface (--font-sans in globals.css).
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap"/>
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 			// htmx is the stack's swap layer: blocks like dashboard-01 drive
 			// their partial updates (pagination, lazy drawers) through hx-*

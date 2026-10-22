@@ -1,6 +1,6 @@
 // Owner's phone app (/app). Stays connected to the call socket, rings on
 // "incoming" and answers with a direct WebRTC call. Ported from the Python
-// proof of concept's owner.js. No push notifications yet: the page must be open.
+// proof of concept's owner.js. Push notifications (sw.js) wake it when closed.
 (function () {
   var root = document.querySelector("[data-phone]");
   if (!root) return;
@@ -89,6 +89,16 @@
     var iv = setInterval(burst, 2500);
     return function () { stopped = true; clearInterval(iv); if (navigator.vibrate) navigator.vibrate(0); };
   }
+
+  // Chrome only lets a page make sound after a tap on it, so the ringtone is
+  // unlocked on every tap; otherwise a call on an untouched app rings silently.
+  function unlockAudio() {
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state !== "running") ac.resume();
+    } catch (e) {}
+  }
+  ["pointerdown", "keydown"].forEach(function (ev) { document.addEventListener(ev, unlockAudio, true); });
 
   function stopRinging() { if (ringStop) { ringStop(); ringStop = null; } }
 

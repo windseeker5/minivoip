@@ -8,18 +8,58 @@ self.addEventListener("activate", function (e) { e.waitUntil(self.clients.claim(
 self.addEventListener("push", function (e) {
   var n = {};
   try { n = e.data ? e.data.json() : {}; } catch (err) { n = { title: "minivoip", body: e.data && e.data.text() }; }
-  var ring = n.kind === "ring";
-  e.waitUntil(self.registration.showNotification(n.title || "minivoip", {
-    body: n.body || "",
-    tag: n.tag || "minivoip",
-    renotify: !!n.renotify,
-    requireInteraction: ring,
-    vibrate: ring ? [500, 250, 500, 250, 500] : [200],
-    icon: "/assets/brand/app-icon-192.png",
-    badge: "/assets/brand/app-icon-192.png",
-    data: { url: n.url || "/app" },
-  }));
+  e.waitUntil(handle(n));
 });
+
+// handle shows the notification, then sends the server a receipt saying
+// what this phone did with it (push/push.go, store/pushlog.go).
+function handle(n) {
+  var reg = self.registration;
+  var shownAs = n.kind || "other";
+  var data = { url: n.url || "/app" };
+  return appVisible().then(function (open) {
+    var done;
+    if (n.kind === "answered" && open) {
+      // The app on screen answered: just remove the ringing.
+      shownAs = "cleared";
+      done = reg.getNotifications({ tag: n.tag }).then(function (l) { l.forEach(function (x) { x.close(); }); });
+    } else {
+      if (n.kind === "ring" && n.until && Date.now() > n.until) {
+        // Arrived after the call stopped ringing.
+        shownAs = "late";
+        n = { title: "Missed call", body: "A website visitor called. They may leave a message.", tag: n.tag, id: n.id };
+      }
+      var ring = shownAs === "ring";
+      done = reg.showNotification(n.title || "minivoip", {
+        body: n.body || "",
+        tag: n.tag || "minivoip",
+        renotify: !!n.renotify,
+        silent: n.kind === "answered",
+        requireInteraction: ring,
+        vibrate: ring ? [500, 250, 500, 250, 500] : [200],
+        icon: "/assets/brand/app-icon-192.png",
+        badge: "/assets/brand/app-icon-192.png",
+        data: data,
+      });
+    }
+    return done.then(function () { return receipt(n.id, shownAs, open ? "app on screen" : "app not on screen"); });
+  });
+}
+
+function appVisible() {
+  return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
+    return list.some(function (c) { return c.visibilityState === "visible" && c.url.indexOf("/app") !== -1; });
+  });
+}
+
+function receipt(id, shownAs, note) {
+  if (!id) return Promise.resolve();
+  return fetch("/app/push/receipt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: id, shownAs: shownAs, note: note }),
+  }).catch(function () {});
+}
 
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();

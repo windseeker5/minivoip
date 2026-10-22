@@ -77,13 +77,13 @@ The phone app is a web app that installs from the browser (a PWA, or "progressiv
 
 | Joe's device | Steps | How ringing works |
 |---|---|---|
-| **Android** (Chrome) | Open `minivoip.example/app`, log in, tap "Install", allow notifications and microphone | Good. Notifications arrive even when the app is closed, repeated every ~5 s like a ring. |
+| **Android** (Chrome) | Open `minivoip.example/app`, log in, tap "Install", allow notifications and microphone | Good. Notifications arrive even when the app is closed, repeated every ~10 s like a ring (faster repeats make Android quiet them down). |
 | **iPhone** (iOS 16.4 or newer) | Open `minivoip.example/app` in **Safari**, tap Share, then "Add to Home Screen". Open it **from the home-screen icon**, log in, allow notifications and microphone | Weaker. A single notification sound, no ringtone, no full-screen call screen. Joe taps it, the app opens in a few seconds, and Joe answers. |
 | **Computer** (Chrome, Edge, Firefox) | Open `minivoip.example/app`, log in, allow notifications and microphone | Good while the browser is running |
 
 Several devices can be on the same line. They all ring, and the first to answer takes the call.
 
-The iPhone limit comes from Apple. Fixes for later: wrap the app as a real app (Capacitor), or use a SIP app such as Groundwire (step 2 under "Growing later").
+The iPhone limit comes from Apple. We stay a web app on every device (decided 2026-10-22, see [vision.md](vision.md)), so the fix is guidance and fallbacks, not a store app; a SIP app such as Groundwire (step 2 under "Growing later") stays an option.
 
 ## Putting the button on a website
 Joe pastes this one line into the website, just before `</body>`:
@@ -126,7 +126,7 @@ sequenceDiagram
     alt Joe's app is open
         S->>J: Ring
     else Joe's app is asleep
-        S->>J: Push notification, repeated every ~5 s
+        S->>J: Push notification, repeated every ~10 s
         J->>S: Joe taps it, app opens and reconnects (3 to 10 s)
         S->>J: Ring
     end

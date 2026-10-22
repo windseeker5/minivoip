@@ -33,6 +33,8 @@ B&B and may become a SaaS.
 ## Where things are
 
 - `docs/architecture.md`: the design and its decisions (stack, call flow, data tables, ports, "growing later").
+- `PRODUCT.md` (who it is for, brand rules, Ken's design taste) and `DESIGN.md` (how it looks: type, colours, the landing components). Read both before any screen work.
+- `docs/vision.md`: the long-term goal (calls, then meeting room, whiteboard, notes; two plans; web app only). Read before planning features.
 - `docs/plan.md`: the build phases, 0 to 6. Work follows this order.
 - `docs/research.md`: background, existing projects, competitors, Go component choice.
 - The first proof of concept (Python/Flask + coturn "callbox", and a Zadarma evaluation) lives only in git
@@ -76,7 +78,9 @@ B&B and may become a SaaS.
   `assets/css/callscreen.css` (always dark, ported from the proof of concept's look Ken liked). The phone app
   never links to the dashboard; logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
 - `push/`: web push (VAPID keys in the `setting` table, `webpush-go`). The hub's `OnRing` sends "Incoming call"
-  every 5 s until answered (30 s max), `OnMissed` "Missed call", a new voicemail "New voicemail". The service worker
+  every 10 s until answered (30 s max), `OnAnswered` clears it on other devices, `OnMissed` "Missed call", a new
+  voicemail "New voicemail". Every push is logged in `push_log` and the phone sends a receipt back
+  (`POST /app/push/receipt`), so `push_log` shows what each phone really got and how late. The service worker
   is `assets/js/sw.js`, served at `/sw.js`; the install manifest is `assets/brand/manifest.webmanifest` at
   `/manifest.webmanifest`. The phone app's notification panel is in `phone.js`.
 - Landing page "Call us now" buttons call a real line: `MINIVOIP_CALL_LINE`, default `ken` (Ken's own account);

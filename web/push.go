@@ -58,3 +58,35 @@ func (s *Server) pushTest(w http.ResponseWriter, r *http.Request, u store.User) 
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"sent":%d,"devices":%d}`, n, s.Store.DeviceCount(u.AccountID))
 }
+
+// pushReceipt is the phone's service worker saying it got a notification
+// and what it did with it (store/pushlog.go). 404 means no such notification
+// went to this account.
+func (s *Server) pushReceipt(w http.ResponseWriter, r *http.Request, u store.User) {
+	var rc struct {
+		ID      int64  `json:"id"`
+		ShownAs string `json:"shownAs"`
+		Note    string `json:"note"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&rc); err != nil || rc.ID == 0 {
+		http.Error(w, "Not a receipt.", http.StatusBadRequest)
+		return
+	}
+	ok, err := s.Store.PushShown(u.AccountID, rc.ID, clip(rc.ShownAs, 20), clip(rc.Note, 200))
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func clip(s string, n int) string {
+	if len(s) > n {
+		return s[:n]
+	}
+	return s
+}

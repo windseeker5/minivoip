@@ -53,7 +53,10 @@ func expect(t *testing.T, c *websocket.Conn, typ string) Message {
 }
 
 func TestAnsweredCall(t *testing.T) {
-	srv := httptest.NewServer(NewHub(func(string) bool { return true }))
+	h := NewHub(func(string) bool { return true })
+	answered := make(chan string, 1)
+	h.OnAnswered = func(line, callID string) { answered <- callID }
+	srv := httptest.NewServer(h)
 	defer srv.Close()
 	owner := ready(t, srv)
 	visitor := dial(t, srv, "visitor")
@@ -66,6 +69,9 @@ func TestAnsweredCall(t *testing.T) {
 
 	send(t, owner, Message{Type: "accept", ID: id})
 	expect(t, visitor, "accepted")
+	if got := <-answered; got != id {
+		t.Fatalf("OnAnswered got %q, want %q", got, id)
+	}
 
 	send(t, visitor, Message{Type: "offer", ID: id, SDP: "v=0 offer"})
 	if m := expect(t, owner, "offer"); m.SDP != "v=0 offer" {

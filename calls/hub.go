@@ -81,10 +81,12 @@ type Hub struct {
 	// for the line. Nil allows everyone (tests).
 	CanAnswer func(r *http.Request, line string) bool
 	// OnRing starts waking the owner's sleeping phones (push) and returns a
-	// function that stops it. OnMissed says a call rang out. Both are called
-	// with the hub locked, so they must not block. Nil skips them.
-	OnRing   func(line, callID, option string) (stop func())
-	OnMissed func(line, callID string)
+	// function that stops it. OnMissed says a call rang out, OnAnswered that
+	// it was picked up. All are called with the hub locked, so they must not
+	// block. Nil skips them.
+	OnRing     func(line, callID, option string) (stop func())
+	OnMissed   func(line, callID string)
+	OnAnswered func(line, callID string)
 
 	mu       sync.Mutex
 	lines    map[string]*line
@@ -193,6 +195,9 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 		c.owner = me
 		c.timer.Stop()
 		c.quiet()
+		if h.OnAnswered != nil {
+			h.OnAnswered(name, c.id)
+		}
 		log.Printf("calls: %s: call %s answered", name, c.id)
 		for o := range l.owners {
 			if o != me {

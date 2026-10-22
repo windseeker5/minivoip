@@ -184,3 +184,32 @@ func TestPromoAdmin(t *testing.T) {
 		t.Fatalf("unknown code: %v", err)
 	}
 }
+
+func TestPushLog(t *testing.T) {
+	s := open(t)
+	joe, _ := s.CreateAccount("joe@example.com", "password1", "")
+	ann, _ := s.CreateAccount("ann@example.com", "password1", "")
+	s.CreateLine(joe.AccountID, "joesbnb", "Joe's B&B")
+	s.SaveDevice(joe.AccountID, Device{Endpoint: "https://push.example/joe", P256dh: "k", Auth: "a"})
+	s.SaveDevice(ann.AccountID, Device{Endpoint: "https://push.example/ann", P256dh: "k", Auth: "a"})
+	d, _ := s.DevicesForLine("joesbnb")
+
+	id, err := s.LogPush(d[0].ID, "joesbnb", "abc", "ring")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.PushResult(id, "ok")
+	if ok, _ := s.PushShown(ann.AccountID, id, "ring", ""); ok {
+		t.Fatal("another account's phone can't sign a receipt")
+	}
+	if ok, err := s.PushShown(joe.AccountID, id, "ring", "app not on screen"); !ok || err != nil {
+		t.Fatalf("receipt: %v %v", ok, err)
+	}
+	if ok, _ := s.PushShown(joe.AccountID, id, "late", ""); ok {
+		t.Fatal("a receipt counts once")
+	}
+	log, _ := s.PushLog("joesbnb", 10)
+	if len(log) != 1 || log[0].Result != "ok" || log[0].ShownAs != "ring" || log[0].ShownAt == "" {
+		t.Fatalf("push log = %+v", log)
+	}
+}

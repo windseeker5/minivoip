@@ -104,6 +104,22 @@ A browser that gets push notifications (usually the owner's phone app). Saved wh
 | `user_agent` | text | Which browser/phone, for display |
 | `created_at` | text (UTC) | |
 
+## push_log
+Delivery receipts for push notifications, to find out whether a phone really rang and how late. The server writes a row for every notification it sends to a device; the phone's service worker (`assets/js/sw.js`) reports back through `POST /app/push/receipt`. Rows older than 14 days are deleted when new ones are written. No foreign keys: a row outlives its device.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | Sent inside the notification so the phone can report it |
+| `device_id` | integer | `device.id` it went to |
+| `line` | text | `line.name` |
+| `call_id` | text | The call it was about; '' for tests and voicemail |
+| `kind` | text | `ring`, `answered`, `missed`, `voicemail` or `test` |
+| `sent_at` | text (UTC, milliseconds) | When the server sent it |
+| `result` | text | What the push service answered: `ok`, or the error |
+| `shown_at` | text (UTC, milliseconds), null | When the phone's receipt reached the server (server clock); null if it never did |
+| `shown_as` | text | What the phone did: `ring`, `late` (arrived after the ringing stopped, shown as "Missed call"), `answered`, `cleared` (app on screen, ring removed), `missed`, `voicemail`, `test` |
+| `phone_note` | text | `app on screen` or `app not on screen` |
+
 ## setting
 Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, made on first start; never change them or every phone must turn notifications on again) and `turn_secret` (signs the relay logins; made on first start).
 
@@ -120,3 +136,4 @@ Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, mad
 | 5 | 2026-10-21 | `user.is_admin` |
 | 4 | 2026-10-21 | `device`, `setting` (push notifications) |
 | 3 | 2026-10-21 | `line.greeting_audio`, `menu_option.say_audio` (recorded prompts in `<data dir>/prompts/`, public at `/prompt/<name>`, random names; saving the menu deletes recordings it no longer uses) |
+| 6 | 2026-10-22 | `push_log` (delivery receipts) |

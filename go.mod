@@ -8,12 +8,16 @@ tool github.com/axadrn/shadcn-templ/v2/cmd/shadcn-templ
 
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.2
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/a-h/templ v0.3.1070
 	github.com/coder/websocket v1.8.15
+	github.com/pion/logging v0.2.4
+	github.com/pion/turn/v4 v4.1.4
+	golang.org/x/crypto v0.58.0
+	modernc.org/sqlite v1.61.0
 )
 
 require (
-	github.com/SherClockHolmes/webpush-go v1.4.0 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/andybalholm/brotli v1.2.6 // indirect
 	github.com/axadrn/shadcn-templ/v2 v2.0.0-beta.15 // indirect
@@ -30,15 +34,12 @@ require (
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/pion/dtls/v3 v3.0.7 // indirect
-	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/stun/v3 v3.0.1 // indirect
 	github.com/pion/transport/v3 v3.0.8 // indirect
 	github.com/pion/transport/v4 v4.0.1 // indirect
-	github.com/pion/turn/v4 v4.1.4 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
-	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
@@ -47,5 +48,4 @@ require (
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.61.0 // indirect
 )

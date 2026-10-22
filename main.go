@@ -43,6 +43,7 @@ func main() {
 	}
 	hub.OnRing = sender.Ring
 	hub.OnMissed = sender.Missed
+	hub.OnAnswered = sender.Answered
 
 	// The relay carries the voice when phones can't connect directly.
 	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins(), CallLine: callLine()}

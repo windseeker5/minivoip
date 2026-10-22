@@ -114,6 +114,22 @@ var migrations = []string{
 	`
 	ALTER TABLE user ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
 	`,
+	// 6: delivery receipts for push notifications (kept 14 days).
+	`
+	CREATE TABLE push_log (
+		id         INTEGER PRIMARY KEY,
+		device_id  INTEGER NOT NULL,
+		line       TEXT NOT NULL,
+		call_id    TEXT NOT NULL DEFAULT '',
+		kind       TEXT NOT NULL,
+		sent_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+		result     TEXT NOT NULL DEFAULT '',
+		shown_at   TEXT,
+		shown_as   TEXT NOT NULL DEFAULT '',
+		phone_note TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX push_log_sent ON push_log(sent_at);
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

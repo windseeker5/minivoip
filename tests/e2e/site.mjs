@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { createServer } from "node:http";
-import { createECDH, randomBytes } from "node:crypto";
+import { createDecipheriv, createECDH, hkdfSync, randomBytes } from "node:crypto";
 
 const BASE = process.env.BASE || "http://localhost:7331";
 const SHOTS = "tests/e2e/shots";
@@ -47,11 +47,36 @@ const EMAIL = `e2e-${stamp}@example.com`;
 const LINE = `e2e-${stamp}`;
 const failures = [];
 
-// A fake push service: the test subscribes it as one of the owner's phones
-// and counts the notifications the server sends (kinds can't be read: they
-// are encrypted, so the count and timing are what we check).
+// A fake push service: the test subscribes it as one of the owner's phones,
+// keeps the notifications the server sends, and opens them with the phone's
+// keys (RFC 8291) to read what's inside.
 const pushes = [];
-const pushService = createServer((req, res) => { pushes.push({ at: Date.now(), path: req.url }); req.resume(); res.writeHead(201).end(); });
+const pushKeys = createECDH("prime256v1");
+pushKeys.generateKeys();
+const pushAuth = randomBytes(16);
+const pushService = createServer((req, res) => {
+  const chunks = [];
+  req.on("data", (c) => chunks.push(c));
+  req.on("end", () => {
+    pushes.push({ at: Date.now(), path: req.url, topic: req.headers.topic, urgency: req.headers.urgency, body: Buffer.concat(chunks) });
+    res.writeHead(201).end();
+  });
+});
+function openPush(p) {
+  const b = p.body, salt = b.subarray(0, 16), idlen = b[20];
+  const serverKey = b.subarray(21, 21 + idlen), sealed = b.subarray(21 + idlen);
+  const info = Buffer.concat([Buffer.from("WebPush: info\0"), pushKeys.getPublicKey(), serverKey]);
+  const ikm = Buffer.from(hkdfSync("sha256", pushKeys.computeSecret(serverKey), pushAuth, info, 32));
+  const key = Buffer.from(hkdfSync("sha256", ikm, salt, Buffer.from("Content-Encoding: aes128gcm\0"), 16));
+  const nonce = Buffer.from(hkdfSync("sha256", ikm, salt, Buffer.from("Content-Encoding: nonce\0"), 12));
+  const d = createDecipheriv("aes-128-gcm", key, nonce);
+  d.setAuthTag(sealed.subarray(sealed.length - 16));
+  const plain = Buffer.concat([d.update(sealed.subarray(0, sealed.length - 16)), d.final()]);
+  let end = plain.length - 1;
+  while (end > 0 && plain[end] === 0) end--; // padding, then the 0x02 delimiter
+  return { ...JSON.parse(plain.subarray(0, end).toString()), topic: p.topic, urgency: p.urgency };
+}
+const pushesSince = (i) => pushes.slice(i).map(openPush);
 await new Promise((ok) => pushService.listen(0, "127.0.0.1", ok));
 const pushURL = `http://localhost:${pushService.address().port}/sub/${Date.now()}`;
 const consoleErrors = [];
@@ -257,15 +282,24 @@ try {
   await owner.screenshot({ path: `${SHOTS}/phone-app.png`, fullPage: true });
   await owner.setViewportSize({ width: 1280, height: 900 });
   step = "subscribe";
-  const ecdh = createECDH("prime256v1");
-  ecdh.generateKeys();
   const sub = await owner.request.post(BASE + "/app/push/subscribe", {
     headers: { Origin: BASE },
-    data: { endpoint: pushURL, keys: { p256dh: ecdh.getPublicKey("base64url"), auth: randomBytes(16).toString("base64url") } },
+    data: { endpoint: pushURL, keys: { p256dh: pushKeys.getPublicKey("base64url"), auth: pushAuth.toString("base64url") } },
   });
   check(sub.status() === 204, `a phone's push subscription is saved (${sub.status()})`);
   const test = await (await owner.request.post(BASE + "/app/push/test", { headers: { Origin: BASE } })).json();
   check(test.sent === 1 && pushes.length === 1, `"Send a test" reaches the phone (sent ${test.sent}, service got ${pushes.length})`);
+
+  step = "delivery receipt";
+  const testPush = openPush(pushes[0]);
+  check(testPush.kind === "test" && testPush.id > 0, `the test notification carries its receipt id (${JSON.stringify(testPush)})`);
+  const receipt = (id) => owner.request.post(BASE + "/app/push/receipt", { headers: { Origin: BASE }, data: { id, shownAs: "test", note: "e2e" } });
+  check((await receipt(testPush.id)).status() === 204, "the phone's receipt is accepted");
+  check((await receipt(testPush.id)).status() === 404, "a receipt counts once");
+  const logDB = new DatabaseSync(DB, { readOnly: true });
+  const logged = logDB.prepare("SELECT result, shown_as, shown_at FROM push_log WHERE id = ?").get(testPush.id);
+  logDB.close();
+  check(logged && logged.result === "ok" && logged.shown_as === "test" && logged.shown_at, `the push log has the send and the receipt (${JSON.stringify(logged)})`);
 
   // 3. A real call --------------------------------------------------------
   step = "call";
@@ -280,8 +314,12 @@ try {
   await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
   check(true, "the phone app rings");
   await caller.screenshot({ path: `${SHOTS}/call-ringing.png` });
-  await owner.waitForTimeout(6000);
-  check(pushes.length - ringStart >= 2, `a sleeping phone gets repeated "Incoming call" notifications (${pushes.length - ringStart} in 6 s)`);
+  await owner.waitForTimeout(11000);
+  const rings = pushesSince(ringStart).filter((n) => n.kind === "ring");
+  check(rings.length >= 2, `a sleeping phone gets repeated "Incoming call" notifications (${rings.length} in 11 s)`);
+  const r0 = rings[0] || {};
+  check(r0.call && r0.topic === "call-" + r0.call && r0.urgency === "high" && r0.until > Date.now(),
+    `a ring is urgent, replaceable while waiting, and says when it stops (${JSON.stringify(r0)})`);
   await owner.click('[data-action="accept"]');
   await caller.waitForSelector("text=On the line with E2E Shop", { timeout: 15000 });
   await caller.waitForTimeout(2500);
@@ -291,6 +329,8 @@ try {
   await owner.setViewportSize({ width: 390, height: 844 });
   await owner.screenshot({ path: `${SHOTS}/phone-talking.png` });
   await owner.setViewportSize({ width: 1280, height: 900 });
+  const answered = pushesSince(ringStart).filter((n) => n.kind === "answered");
+  check(answered.length === 1 && answered[0].call === r0.call, `answering clears the ringing on the owner's other devices (${answered.length} "answered")`);
   const afterAnswer = pushes.length;
   await caller.waitForTimeout(6000);
   check(pushes.length === afterAnswer, `answering stops the notifications (${pushes.length - afterAnswer} more)`);
@@ -347,7 +387,8 @@ try {
   await caller.waitForSelector("text=Message sent", { timeout: 10000 });
   check(true, "the caller's message is sent");
   await caller.waitForTimeout(1000);
-  check(pushes.length - beforeDecline >= 2, `declining sends "Missed call", the message sends "New voicemail" (${pushes.length - beforeDecline} notifications)`);
+  const afterDecline = pushesSince(beforeDecline).map((n) => n.kind);
+  check(afterDecline.includes("missed") && afterDecline.includes("voicemail"), `declining sends "Missed call", the message sends "New voicemail" (${afterDecline.join(", ")})`);
   await owner.waitForSelector("[data-voicemail]", { timeout: 10000 });
   check(true, "the phone app shows the new message without reloading");
 
@@ -487,6 +528,7 @@ try {
       WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const p of prompts) if (p.f) rmSync(join(dirname(DB), "prompts", p.f), { force: true });
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
+  db.prepare("DELETE FROM push_log WHERE line LIKE 'e2e-%'").run();
   db.prepare("DELETE FROM promo_code WHERE code LIKE 'E2E-%'").run();
   db.close();
 }

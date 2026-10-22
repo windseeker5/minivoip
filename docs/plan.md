@@ -79,7 +79,7 @@ Done 2026-10-21 (before the rest of Phase 1): SQLite with migrations (`store/`),
 - Dashboard screens read real data instead of fake data.
 
 ## Phase 3: phone app install + push
-Done 2026-10-21: manifest + service worker, VAPID keys made on first start (kept in the database, no `.env`), "Turn on notifications" and "Send a test" in the phone app, ringing pushes every 5 s, "Missed call" and "New voicemail" pushes. Still to check on Ken's real phones (Android, iPhone from the home screen).
+Done 2026-10-21: manifest + service worker, VAPID keys made on first start (kept in the database, no `.env`), "Turn on notifications" and "Send a test" in the phone app, ringing pushes every 5 s, "Missed call" and "New voicemail" pushes. 2026-10-22: rings every 10 s (was 5), ring pushes wait up to a minute for a sleeping phone and collapse into one (push `Topic`), a late ring shows as "Missed call", answering clears the ring on other devices, and every push gets a delivery receipt (`push_log`). Still to check on Ken's real phones (Android, iPhone from the home screen).
 - Web app manifest + service worker, so `/app` can be installed.
 - Generate VAPID keys once, store them in `.env` (never in git; add `.env.example`).
 - "Send test notification" button in the dashboard.
@@ -90,7 +90,7 @@ Done 2026-10-21: manifest + service worker, VAPID keys made on first start (kept
 Started early (2026-10-21) as a thin slice: one line in code (`lines/`), call setup in `calls/`, visitor window `/call/joesbnb`, phone app `/app`. Works on localhost; next is a real phone over HTTPS.
 - WebSocket call setup (`coder/websocket`): visitor ↔ server ↔ phone app.
 - Visitor's browser plays the menu, then starts a direct WebRTC call with the phone app.
-- Ring all devices of the line; first to answer wins. Push to sleeping devices every ~5 s.
+- Ring all devices of the line; first to answer wins. Push to sleeping devices every ~10 s.
 - Relay: `pion/turn` built in. Test on the same Wi-Fi, then phone on 4G.
 
 ## Phase 5: voicemail
@@ -105,5 +105,5 @@ Done 2026-10-21: no answer (30 s or Decline) or a voicemail choice → the brows
 - `task build` produces the production binary.
 
 ## Later (not planned in detail)
-- Real app wrapper (Capacitor) for proper ringing on iPhone.
+- Long-term direction (meeting room, whiteboard, notes, two plans): [vision.md](vision.md). Web app only; no store apps (decided 2026-10-22).
 - Step 2: desk phones / SIP apps. Step 3: real phone number from a SIP provider. See [architecture.md](architecture.md#growing-later).

@@ -82,7 +82,7 @@ func TestGoneDeviceIsForgotten(t *testing.T) {
 
 func TestRingRepeatsUntilStopped(t *testing.T) {
 	RingEvery, RingFor = 50*time.Millisecond, 5*time.Second
-	defer func() { RingEvery, RingFor = 5*time.Second, 30*time.Second }()
+	defer func() { RingEvery, RingFor = 10*time.Second, 30*time.Second }()
 	var got atomic.Int32
 	svc := fakeService(t, http.StatusCreated, &got)
 	defer svc.Close()
@@ -99,5 +99,30 @@ func TestRingRepeatsUntilStopped(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 	if got.Load() > n+1 {
 		t.Fatalf("ringing kept going after stop: %d then %d", n, got.Load())
+	}
+}
+
+func TestSendsAreLogged(t *testing.T) {
+	var got atomic.Int32
+	svc := fakeService(t, http.StatusCreated, &got)
+	defer svc.Close()
+	st, s := setup(t, svc.URL+"/sub/1")
+	s.ToLine("joesbnb", Notification{Kind: "missed", Call: "abc", Tag: "call-abc"}, time.Minute, false)
+	log, err := st.PushLog("joesbnb", 10)
+	if err != nil || len(log) != 1 || log[0].Kind != "missed" || log[0].CallID != "abc" || log[0].Result != "ok" || log[0].ShownAt != "" {
+		t.Fatalf("push log = %+v, %v", log, err)
+	}
+}
+
+func TestTopic(t *testing.T) {
+	for tag, want := range map[string]string{
+		"call-0123456789abcdef": "call-0123456789abcdef",
+		"voicemail":             "voicemail",
+		"has space":             "",
+		strings.Repeat("a", 33): "",
+	} {
+		if got := topic(tag); got != want {
+			t.Errorf("topic(%q) = %q, want %q", tag, got, want)
+		}
 	}
 }

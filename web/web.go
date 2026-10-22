@@ -71,6 +71,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /app/push/subscribe", s.auth(s.pushSubscribe))
 	mux.Handle("POST /app/push/unsubscribe", s.auth(s.pushUnsubscribe))
 	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
+	mux.Handle("POST /app/push/receipt", s.auth(s.pushReceipt))
 
 	mux.Handle("GET /admin/promo", s.admin(s.promoPage))
 	mux.Handle("POST /admin/promo", s.admin(s.createPromo))

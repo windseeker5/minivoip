@@ -94,6 +94,22 @@ var migrations = []string{
 	ALTER TABLE line ADD COLUMN greeting_audio TEXT NOT NULL DEFAULT '';
 	ALTER TABLE menu_option ADD COLUMN say_audio TEXT NOT NULL DEFAULT '';
 	`,
+	// 4: phones that get push notifications, and server settings (VAPID keys).
+	`
+	CREATE TABLE device (
+		id          INTEGER PRIMARY KEY,
+		account_id  INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+		endpoint    TEXT NOT NULL UNIQUE,
+		p256dh      TEXT NOT NULL,
+		auth        TEXT NOT NULL,
+		user_agent  TEXT NOT NULL DEFAULT '',
+		created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE TABLE setting (
+		key    TEXT PRIMARY KEY,
+		value  TEXT NOT NULL
+	);
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

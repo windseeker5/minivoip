@@ -16,6 +16,8 @@ import { DatabaseSync } from "node:sqlite"; // built into Node 22.5+
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { createServer } from "node:http";
+import { createECDH, randomBytes } from "node:crypto";
 
 const BASE = process.env.BASE || "http://localhost:7331";
 const SHOTS = "tests/e2e/shots";
@@ -43,6 +45,14 @@ const stamp = Date.now().toString(36);
 const EMAIL = `e2e-${stamp}@example.com`;
 const LINE = `e2e-${stamp}`;
 const failures = [];
+
+// A fake push service: the test subscribes it as one of the owner's phones
+// and counts the notifications the server sends (kinds can't be read: they
+// are encrypted, so the count and timing are what we check).
+const pushes = [];
+const pushService = createServer((req, res) => { pushes.push({ at: Date.now(), path: req.url }); req.resume(); res.writeHead(201).end(); });
+await new Promise((ok) => pushService.listen(0, "127.0.0.1", ok));
+const pushURL = `http://localhost:${pushService.address().port}/sub/${Date.now()}`;
 const consoleErrors = [];
 let step = "";
 
@@ -207,6 +217,37 @@ try {
   await phoneSize.goto(BASE + "/dashboard/menu");
   await phoneSize.screenshot({ path: `${SHOTS}/menu-phone.png`, fullPage: true });
 
+  // Notifications ---------------------------------------------------------
+  step = "install files";
+  const manifest = await owner.request.get(BASE + "/manifest.webmanifest");
+  const mf = manifest.ok() ? await manifest.json() : {};
+  check(mf.start_url === "/app" && mf.icons && mf.icons.length >= 2, "the phone app's install manifest is served");
+  const sw = await owner.request.get(BASE + "/sw.js");
+  check(sw.ok() && /javascript/.test(sw.headers()["content-type"]) && (await sw.text()).includes("showNotification"), "the service worker is served");
+  step = "push panel";
+  await owner.goto(BASE + "/app");
+  await owner.waitForFunction(() => !/Checking/.test(document.querySelector("[data-push-state]").textContent), null, { timeout: 10000 });
+  check(await owner.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => !!r)), "the phone app registers its service worker");
+  // Headless Chromium blocks notifications, so the panel must say so; a real
+  // phone shows "Off" and the Turn on button.
+  const pushText = (await owner.textContent("[data-push-state]")).trim();
+  const permission = await owner.evaluate(() => Notification.permission);
+  check(permission === "denied" ? /blocked/.test(pushText) : await owner.isVisible("[data-push-on]"),
+    `the notification panel explains this browser's state (${permission}): "${pushText}"`);
+  await owner.setViewportSize({ width: 390, height: 844 });
+  await owner.screenshot({ path: `${SHOTS}/phone-app.png`, fullPage: true });
+  await owner.setViewportSize({ width: 1280, height: 900 });
+  step = "subscribe";
+  const ecdh = createECDH("prime256v1");
+  ecdh.generateKeys();
+  const sub = await owner.request.post(BASE + "/app/push/subscribe", {
+    headers: { Origin: BASE },
+    data: { endpoint: pushURL, keys: { p256dh: ecdh.getPublicKey("base64url"), auth: randomBytes(16).toString("base64url") } },
+  });
+  check(sub.status() === 204, `a phone's push subscription is saved (${sub.status()})`);
+  const test = await (await owner.request.post(BASE + "/app/push/test", { headers: { Origin: BASE } })).json();
+  check(test.sent === 1 && pushes.length === 1, `"Send a test" reaches the phone (sent ${test.sent}, service got ${pushes.length})`);
+
   // 3. A real call --------------------------------------------------------
   step = "call";
   await owner.goto(BASE + "/app");
@@ -215,13 +256,19 @@ try {
   await caller.goto(BASE + `/call/${LINE}`);
   await caller.click('[data-action="call"]');
   await caller.waitForSelector('[data-key="3"]:visible');
+  const ringStart = pushes.length;
   await caller.click('[data-key="1"]');
   await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
   check(true, "the phone app rings");
+  await owner.waitForTimeout(6000);
+  check(pushes.length - ringStart >= 2, `a sleeping phone gets repeated "Incoming call" notifications (${pushes.length - ringStart} in 6 s)`);
   await owner.click('[data-action="accept"]');
   await caller.waitForSelector("text=On the line with Ken", { timeout: 15000 });
   check(true, "the call connects");
   await caller.screenshot({ path: `${SHOTS}/call.png` });
+  const afterAnswer = pushes.length;
+  await caller.waitForTimeout(6000);
+  check(pushes.length === afterAnswer, `answering stops the notifications (${pushes.length - afterAnswer} more)`);
   await caller.click('[data-action="hangup"]');
   await owner.waitForSelector("text=Ready for calls", { timeout: 10000 });
   check(true, "hanging up reaches the phone");
@@ -239,6 +286,7 @@ try {
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
   await owner.waitForSelector('[data-action="decline"]:visible', { timeout: 15000 });
+  const beforeDecline = pushes.length;
   await owner.click('[data-action="decline"]');
   await caller.waitForSelector('[data-action="send-message"]:visible', { timeout: 20000 });
   check(true, "declining sends the caller to voicemail");
@@ -247,6 +295,8 @@ try {
   await caller.click('[data-action="send-message"]');
   await caller.waitForSelector("text=Message sent", { timeout: 10000 });
   check(true, "the caller's message is sent");
+  await caller.waitForTimeout(1000);
+  check(pushes.length - beforeDecline >= 2, `declining sends "Missed call", the message sends "New voicemail" (${pushes.length - beforeDecline} notifications)`);
   await owner.waitForSelector("[data-voicemail]", { timeout: 10000 });
   check(true, "the phone app shows the new message without reloading");
 
@@ -296,6 +346,7 @@ try {
   console.log(`FAIL ${step}: ${err.message.split("\n")[0]}`);
 } finally {
   await browser.close();
+  pushService.close();
   // Delete the test account (cascades to its line, menu, sessions and
   // voicemail rows) and its voicemail files.
   const db = new DatabaseSync(DB);

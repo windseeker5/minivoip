@@ -213,7 +213,11 @@ func (s *Server) phoneApp(w http.ResponseWriter, r *http.Request, u store.User) 
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Phone(l, list))
+	key := ""
+	if s.Push != nil {
+		key = s.Push.PublicKey()
+	}
+	render(w, r, pages.Phone(l, list, key))
 }
 
 func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {

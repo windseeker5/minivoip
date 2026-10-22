@@ -10,6 +10,7 @@ import (
 
 	"minivoip/assets"
 	"minivoip/calls"
+	"minivoip/push"
 	"minivoip/store"
 	"minivoip/web"
 )
@@ -31,7 +32,16 @@ func main() {
 		// The dev proxy (localhost:7331) sits in front of the app.
 		hub.OriginPatterns = []string{"localhost:*", "127.0.0.1:*"}
 	}
-	site := &web.Server{Store: db, Hub: hub, Dev: isDevelopment()}
+	// Push notifications wake the owner's phone (see push/push.go).
+	sender, err := push.New(db, pushContact())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "push:", err)
+		os.Exit(1)
+	}
+	hub.OnRing = sender.Ring
+	hub.OnMissed = sender.Missed
+
+	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail}
 	site.Routes(mux)
 
 	ln, err := listen()
@@ -88,6 +98,28 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 		files.ServeHTTP(w, r)
 	})
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assetHandler))
+
+	// Two files the phone app needs at the site's root: the service worker
+	// (its scope is the folder it's served from) and the install manifest.
+	at := func(file, contentType string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", contentType)
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = "/" + file
+			assetHandler.ServeHTTP(w, r2)
+		}
+	}
+	mux.HandleFunc("GET /sw.js", at("js/sw.js", "text/javascript; charset=utf-8"))
+	mux.HandleFunc("GET /manifest.webmanifest", at("brand/manifest.webmanifest", "application/manifest+json"))
+}
+
+// pushContact is the contact the push services see: MINIVOIP_PUSH_CONTACT,
+// else the address on the landing page.
+func pushContact() string {
+	if c := os.Getenv("MINIVOIP_PUSH_CONTACT"); c != "" {
+		return c
+	}
+	return "mailto:kdresdell@minipass.me"
 }
 
 // dbPath is the SQLite file: MINIVOIP_DB, else data/minivoip.db.

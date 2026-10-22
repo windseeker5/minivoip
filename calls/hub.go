@@ -50,11 +50,18 @@ func (p *peer) send(m Message) {
 }
 
 type call struct {
-	id      string
-	option  string
-	visitor *peer
-	owner   *peer // set when answered
-	timer   *time.Timer
+	id       string
+	option   string
+	visitor  *peer
+	owner    *peer // set when answered
+	timer    *time.Timer
+	stopRing func()
+}
+
+func (c *call) quiet() {
+	if c.stopRing != nil {
+		c.stopRing()
+	}
 }
 
 type line struct {
@@ -73,6 +80,11 @@ type Hub struct {
 	// CanAnswer says whether this request (its login) may be the phone app
 	// for the line. Nil allows everyone (tests).
 	CanAnswer func(r *http.Request, line string) bool
+	// OnRing starts waking the owner's sleeping phones (push) and returns a
+	// function that stops it. OnMissed says a call rang out. Both are called
+	// with the hub locked, so they must not block. Nil skips them.
+	OnRing   func(line, callID, option string) (stop func())
+	OnMissed func(line, callID string)
 
 	mu       sync.Mutex
 	lines    map[string]*line
@@ -154,6 +166,9 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 		c = &call{id: newID(), option: m.Option, visitor: me}
 		l.current = c
 		c.timer = time.AfterFunc(h.RingTimeout, func() { h.noAnswer(name, c) })
+		if h.OnRing != nil {
+			c.stopRing = h.OnRing(name, c.id, c.option)
+		}
 		log.Printf("calls: %s: call %s (%s), %d phone app(s) open", name, c.id, c.option, len(l.owners))
 		me.send(Message{Type: "ringing", ID: c.id})
 		for o := range l.owners {
@@ -177,6 +192,7 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 		}
 		c.owner = me
 		c.timer.Stop()
+		c.quiet()
 		log.Printf("calls: %s: call %s answered", name, c.id)
 		for o := range l.owners {
 			if o != me {
@@ -233,6 +249,10 @@ func (h *Hub) noAnswer(name string, c *call) {
 func (h *Hub) endUnanswered(name string, c *call) {
 	l := h.line(name)
 	c.timer.Stop()
+	c.quiet()
+	if h.OnMissed != nil {
+		h.OnMissed(name, c.id)
+	}
 	l.current = nil
 	log.Printf("calls: %s: call %s not answered", name, c.id)
 	c.visitor.send(Message{Type: "no-answer", ID: c.id, Token: h.issueToken(name, c.option)})
@@ -246,6 +266,10 @@ func (h *Hub) endUnanswered(name string, c *call) {
 func (h *Hub) end(name string, c *call, by *peer) {
 	l := h.line(name)
 	c.timer.Stop()
+	c.quiet()
+	if c.owner == nil && h.OnMissed != nil {
+		h.OnMissed(name, c.id)
+	}
 	l.current = nil
 	log.Printf("calls: %s: call %s ended", name, c.id)
 	if by != c.visitor {

@@ -79,6 +79,7 @@ Done 2026-10-21 (before the rest of Phase 1): SQLite with migrations (`store/`),
 - Dashboard screens read real data instead of fake data.
 
 ## Phase 3: phone app install + push
+Done 2026-10-21: manifest + service worker, VAPID keys made on first start (kept in the database, no `.env`), "Turn on notifications" and "Send a test" in the phone app, ringing pushes every 5 s, "Missed call" and "New voicemail" pushes. Still to check on Ken's real phones (Android, iPhone from the home screen).
 - Web app manifest + service worker, so `/app` can be installed.
 - Generate VAPID keys once, store them in `.env` (never in git; add `.env.example`).
 - "Send test notification" button in the dashboard.

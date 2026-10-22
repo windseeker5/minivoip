@@ -10,6 +10,12 @@ templ Base(title, description string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<meta name="color-scheme" content="light dark"/>
 			<link rel="icon" type="image/png" href="/assets/brand/icon.png"/>
+			// The phone app can be installed (Add to Home Screen) and get push.
+			<link rel="manifest" href="/manifest.webmanifest"/>
+			<link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"/>
+			<meta name="theme-color" content="#ffffff"/>
+			<meta name="mobile-web-app-capable" content="yes"/>
+			<meta name="apple-mobile-web-app-capable" content="yes"/>
 			<title>{ title }</title>
 			if description != "" {
 				<meta name="description" content={ description }/>

@@ -84,9 +84,9 @@ templ Call(l lines.Line) {
 }
 
 // Phone is the owner's phone app: /app. phone.js keeps it connected and rings.
-templ Phone(l lines.Line, voicemails []store.Voicemail) {
+templ Phone(l lines.Line, voicemails []store.Voicemail, vapidKey string) {
 	@layouts.Base("minivoip phone", "") {
-		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-8" data-phone data-line={ l.Name }>
+		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-8" data-phone data-line={ l.Name } data-vapid={ vapidKey }>
 			<div class="flex w-full max-w-sm items-center justify-between">
 				@brand()
 				<span class="flex items-center gap-1.5 text-sm text-muted-foreground"><span class="size-2 rounded-full bg-muted-foreground" data-dot></span><span data-conn>Connecting…</span></span>
@@ -96,7 +96,7 @@ templ Phone(l lines.Line, voicemails []store.Voicemail) {
 				<div data-show="ready" class="my-auto flex flex-col items-center gap-3">
 					@icon.Smartphone(icon.Props{Class: "size-10 text-muted-foreground"})
 					<p class="text-lg font-semibold">Ready for calls</p>
-					<p class="max-w-xs text-sm text-muted-foreground">Keep this page open. It rings when a visitor picks "Talk to { l.Owner }".</p>
+					<p class="max-w-xs text-sm text-muted-foreground">It rings when a caller picks a "Ring my phone" choice. Turn on notifications below so it rings even when the app is closed.</p>
 				</div>
 				<div data-show="incoming connecting talking" hidden class="my-auto flex flex-col items-center gap-2">
 					<p class="text-sm text-muted-foreground" data-status>Website call</p>
@@ -125,6 +125,25 @@ templ Phone(l lines.Line, voicemails []store.Voicemail) {
 				</div>
 				<audio data-remote autoplay></audio>
 			</div>
+			<section class="mt-6 w-full max-w-sm rounded-2xl border bg-background p-5" data-push>
+				<h2 class="flex items-center gap-2 font-semibold">
+					@icon.BellRing(icon.Props{Class: "size-4"})
+					Ring when the app is closed
+				</h2>
+				<p class="mt-2 text-sm text-muted-foreground" data-push-state>Checking this phone…</p>
+				<p class="mt-2 text-sm text-muted-foreground" data-push-ios hidden>On iPhone: tap Share, then "Add to Home Screen". Open minivoip from that icon and turn notifications on there.</p>
+				<div class="mt-4 flex flex-wrap gap-2">
+					<button type="button" data-push-on hidden class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+						Turn on notifications
+					</button>
+					<button type="button" data-push-test hidden class="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+						Send a test
+					</button>
+					<button type="button" data-push-off hidden class="h-9 px-1 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+						Turn off on this phone
+					</button>
+				</div>
+			</section>
 			<section class="mt-6 w-full max-w-sm">
 				<h2 class="mb-3 font-semibold">Voicemail</h2>
 				<div data-voicemail-box>

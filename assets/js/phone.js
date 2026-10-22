@@ -105,6 +105,7 @@
     if (!ringingId) return;
     var id = ringingId;
     stopRinging();
+    clearNotifications();
     $("[data-status]").textContent = "Connecting…";
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(function (stream) {
@@ -175,6 +176,85 @@
       endCall();
     }
   });
+
+  // ----------------------------------------------------------- push
+  // Push notifications wake the phone when this page is closed or asleep.
+  var box = document.querySelector("[data-push]");
+  var reg = null;
+
+  function keyBytes(b64) {
+    var s = atob(b64.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((b64.length + 3) % 4));
+    var out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+  function pushUI(state, text) {
+    box.querySelector("[data-push-state]").textContent = text;
+    box.querySelector("[data-push-on]").hidden = state !== "off";
+    box.querySelector("[data-push-test]").hidden = state !== "on";
+    box.querySelector("[data-push-off]").hidden = state !== "on";
+  }
+  function post(url, body) {
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  }
+  function subscribe() {
+    return reg.pushManager.getSubscription().then(function (sub) {
+      return sub || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(root.dataset.vapid) });
+    }).then(function (sub) {
+      return post("/app/push/subscribe", sub.toJSON()).then(function (r) { if (!r.ok) throw new Error("save"); });
+    });
+  }
+  function pushState() {
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    var standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !window.Notification) {
+      box.querySelector("[data-push-ios]").hidden = !(ios && !standalone);
+      return pushUI("none", ios && !standalone ? "Notifications need the app on your home screen." : "This browser can't get notifications. Keep this page open to receive calls.");
+    }
+    if (Notification.permission === "denied") return pushUI("none", "Notifications are blocked for this site. Allow them in your browser settings.");
+    if (Notification.permission === "granted") {
+      // Keep the server's copy fresh: subscriptions can change.
+      return subscribe().then(function () { pushUI("on", "On. This phone rings even when the app is closed."); },
+        function () { pushUI("off", "Notifications are allowed, but turning them on failed. Try again."); });
+    }
+    pushUI("off", "Off. Calls only ring while this page is open.");
+  }
+
+  if (box && "serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").then(function (r) {
+      reg = r;
+      return navigator.serviceWorker.ready;
+    }).then(pushState, function () { pushUI("none", "Couldn't set up notifications on this browser."); });
+  } else if (box) {
+    pushState();
+  }
+
+  if (box) box.addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    if (b.hasAttribute("data-push-on")) {
+      Notification.requestPermission().then(function (p) {
+        if (p !== "granted") return pushState();
+        pushUI("busy", "Turning on…");
+        subscribe().then(pushState, function () { pushUI("off", "Turning on failed. Try again."); });
+      });
+    } else if (b.hasAttribute("data-push-test")) {
+      b.disabled = true;
+      post("/app/push/test").then(function (r) { return r.json(); }).then(function (j) {
+        pushUI("on", j.sent > 0 ? "Test sent to " + j.sent + " device(s). It should appear in a few seconds." : "The test couldn't be delivered. Turn notifications off and on again.");
+      }).finally(function () { b.disabled = false; });
+    } else if (b.hasAttribute("data-push-off")) {
+      reg.pushManager.getSubscription().then(function (sub) {
+        if (!sub) return;
+        return post("/app/push/unsubscribe", { endpoint: sub.endpoint }).then(function () { return sub.unsubscribe(); });
+      }).then(function () { pushUI("off", "Off on this phone."); });
+    }
+  });
+
+  // Answering here: clear the ringing notifications.
+  function clearNotifications() {
+    if (reg && reg.getNotifications) reg.getNotifications().then(function (l) { l.forEach(function (n) { n.close(); }); });
+  }
 
   connectWs();
 })();

@@ -90,9 +90,31 @@ A message a caller left. The audio file is `<data dir>/voicemail/<file>` (delete
 
 Note: deleting an account removes its voicemail rows but not the files; the e2e test deletes its own files.
 
+## device
+A browser that gets push notifications (usually the owner's phone app). Saved when the owner turns notifications on; deleted when they turn them off or the push service answers 404/410.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `account_id` | integer → `account.id` (delete cascades) | |
+| `endpoint` | text, unique | The push service URL from the browser's `PushSubscription` |
+| `p256dh` | text | Browser's public key (base64url) |
+| `auth` | text | Browser's auth secret (base64url) |
+| `user_agent` | text | Which browser/phone, for display |
+| `created_at` | text (UTC) | |
+
+## setting
+Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, made on first start; never change them or every phone must turn notifications on again).
+
+| Column | Type | Meaning |
+|---|---|---|
+| `key` | text, key | |
+| `value` | text | |
+
 ## Version history
 | Version (`PRAGMA user_version`) | Date | Change |
 |---|---|---|
 | 1 | 2026-10-21 | First schema: `account`, `user`, `session`, `line`, `menu_option`, `promo_code` |
 | 2 | 2026-10-21 | `voicemail` table |
+| 4 | 2026-10-21 | `device`, `setting` (push notifications) |
 | 3 | 2026-10-21 | `line.greeting_audio`, `menu_option.say_audio` (recorded prompts in `<data dir>/prompts/`, public at `/prompt/<name>`, random names; saving the menu deletes recordings it no longer uses) |

@@ -15,6 +15,7 @@ import (
 
 	"minivoip/calls"
 	"minivoip/pages"
+	"minivoip/push"
 	"minivoip/store"
 )
 
@@ -27,6 +28,8 @@ type Server struct {
 	Dev bool
 	// OnVoicemail runs after a voicemail is saved (push notifications).
 	OnVoicemail func(line string)
+	// Push sends notifications to the owner's devices (nil in tests).
+	Push *push.Sender
 }
 
 type ctxKey struct{}
@@ -49,6 +52,9 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /app", s.auth(s.phoneApp))
 	mux.Handle("GET /app/voicemails", s.auth(s.voicemailFragment))
 	mux.Handle("POST /dashboard/prompt", s.auth(s.uploadPrompt))
+	mux.Handle("POST /app/push/subscribe", s.auth(s.pushSubscribe))
+	mux.Handle("POST /app/push/unsubscribe", s.auth(s.pushUnsubscribe))
+	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
 	mux.HandleFunc("GET /prompt/{name}", s.prompt)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))

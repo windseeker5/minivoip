@@ -72,6 +72,10 @@ B&B and may become a SaaS.
   `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
   (list shared by the dashboard and the phone app), `call` + `call.js` (visitor's
   call window `/call/{line}`) and `Phone` + `phone.js` (phone app `/app`, login required, must stay open: no push yet).
+- `push/`: web push (VAPID keys in the `setting` table, `webpush-go`). The hub's `OnRing` sends "Incoming call"
+  every 5 s until answered (30 s max), `OnMissed` "Missed call", a new voicemail "New voicemail". The service worker
+  is `assets/js/sw.js`, served at `/sw.js`; the install manifest is `assets/brand/manifest.webmanifest` at
+  `/manifest.webmanifest`. The phone app's notification panel is in `phone.js`.
 - No STUN/TURN yet (`iceServers: []`): calls work on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.
 - Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy
   (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs.

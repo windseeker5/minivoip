@@ -747,7 +747,7 @@ func Dashboard(email string, l lines.Line, callURL string, newVoicemails int) te
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, " Phone app</h2><p class=\"mt-2 text-sm text-muted-foreground\">Open it on your phone and log in with this account. Keep it open: it rings when a caller picks a \"Ring my phone\" choice.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, " Phone app</h2><p class=\"mt-2 text-sm text-muted-foreground\">Open it on your phone, log in, and turn on notifications: your phone then rings even when the app is closed. On iPhone, add it to your home screen first.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

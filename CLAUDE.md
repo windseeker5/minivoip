@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Rules that come first
+
+1. **Never start, stop or restart the Go server.** Ken runs `task dev` himself. Don't run it in the background
+   either, and don't run `templ generate` or `task build` while it runs (see AGENTS.md).
+2. **Test your own work, every time, before saying it's done. Never ask Ken to do manual or routine testing.**
+   Use every tool it takes:
+   - `go vet ./...` and `go test ./...`;
+   - the browser test `node tests/e2e/site.mjs` against Ken's running server (it clicks through the real site:
+     every link, sign up, line, menu editor, a real call between two browsers, log out; then deletes its test
+     account), and extend it whenever you add a page or a flow;
+   - screenshots you actually look at (desktop and phone width).
+
+   Browsers run headless only (`playwright-core` with the cached `chromium_headless_shell`), never a visible
+   window and never the Playwright MCP. Only ask Ken for what a machine can't do, like his real phone or his ears.
+3. **Build connected features.** Every new page is linked from the pages around it (landing page, log in,
+   dashboard, phone app), and the whole path is tested from the landing page, not just the page in isolation.
+
 @AGENTS.md
 
 AGENTS.md (imported above) holds the project rules and the **Current state** section. Read Current state first and

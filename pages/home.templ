@@ -63,9 +63,10 @@ var included = []string{
 	"As many phones as you like",
 }
 
-templ Home() {
+// Home is the landing page; loggedIn swaps "Log in" for the dashboard link.
+templ Home(loggedIn bool) {
 	@layouts.Base("minivoip: a virtual receptionist for your website that rings your cell", "Your website's receptionist answers every call in your voice, sends it to the right place and rings your cell when it's for you. No phone line needed. Free while in beta.") {
-		@siteNav()
+		@siteNav(loggedIn)
 		<main>
 			@hero()
 			@demo()
@@ -89,7 +90,7 @@ templ brand() {
 	</a>
 }
 
-templ siteNav() {
+templ siteNav(loggedIn bool) {
 	<nav class="sticky top-0 z-50 border-b bg-background/95">
 		<div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
 			@brand()
@@ -116,8 +117,17 @@ templ siteNav() {
 						@icon.Moon()
 					</span>
 				}
-				@button.Button(button.Props{Href: "/signup", Size: button.SizeSm}) {
-					Get my free line
+				if loggedIn {
+					@button.Button(button.Props{Href: "/dashboard", Size: button.SizeSm}) {
+						My dashboard
+					}
+				} else {
+					@button.Button(button.Props{Href: "/login", Variant: button.VariantGhost, Size: button.SizeSm}) {
+						Log in
+					}
+					@button.Button(button.Props{Href: "/signup", Size: button.SizeSm}) {
+						Get my free line
+					}
 				}
 			</div>
 		</div>

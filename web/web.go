@@ -33,7 +33,7 @@ type ctxKey struct{}
 func (s *Server) Routes(mux *http.ServeMux) {
 	s.Hub.CanAnswer = s.canAnswer
 
-	mux.Handle("GET /", templ.Handler(pages.Home()))
+	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("GET /signup", s.signupPage)
 	mux.HandleFunc("POST /signup", s.signup)
 	mux.HandleFunc("GET /login", s.loginPage)
@@ -141,6 +141,13 @@ func render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 func serverError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("%s %s: %v", r.Method, r.URL.Path, err)
 	http.Error(w, "Something went wrong. Please try again.", http.StatusInternalServerError)
+}
+
+// ------------------------------------------------------------- pages
+
+func (s *Server) home(w http.ResponseWriter, r *http.Request) {
+	_, loggedIn := s.user(r)
+	render(w, r, pages.Home(loggedIn))
 }
 
 // ------------------------------------------------------------- sign up, log in

@@ -8,7 +8,7 @@ import (
 
 // The landing page must render without errors.
 func TestHomeRenders(t *testing.T) {
-	if err := Home().Render(context.Background(), io.Discard); err != nil {
+	if err := Home(false).Render(context.Background(), io.Discard); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -50,8 +50,9 @@ The `go` command is the whole toolbox. No pip, black, pytest or virtualenv to se
 the libraries. Lines marked `// indirect` are libraries of libraries; ignore them.
 **`go.sum`** = the lock file (fingerprints of every download). Never edit it; commit it.
 
-Go culture leans on the standard library and adds few libraries. minivoip has only three direct ones:
-templ (pages), coder/websocket (call setup), and modernc.org/sqlite (the database).
+Go culture leans on the standard library and adds few libraries. minivoip's own code uses a handful:
+templ (pages), coder/websocket (call setup), modernc.org/sqlite (the database) and golang.org/x/crypto (bcrypt,
+for passwords). Everything else in `go.mod` is pulled in by those.
 
 ---
 
@@ -130,17 +131,17 @@ socket plugs straight into the router: `mux.Handle("GET /ws", s.Hub)`, because `
 ## 4. How a request flows (Flask vs Go)
 
 ```mermaid
-flowchart LR
-    B[Browser asks for /call/joesbnb] --> M[main.go<br/>starts the server]
-    M --> R[web/web.go Routes<br/>picks the handler]
-    R --> H[web/dashboard.go callPage<br/>the handler]
-    H --> S[store/lines.go<br/>LineByName: SQL]
-    S --> DB[(data/minivoip.db)]
-    H --> P[pages/call.templ<br/>Call page]
-    P --> L[layouts/base.templ<br/>shared head and body]
-    P --> C[components/button ...]
-    P --> HTML[HTML back to the browser]
-    HTML --> JS[assets/js/call.js<br/>runs in the browser]
+flowchart TD
+    B["Browser asks for /call/joesbnb"] --> M["main.go: starts the server"]
+    M --> R["web/web.go Routes(): picks the handler"]
+    R --> H["web/dashboard.go callPage: the handler"]
+    H --> S["store/lines.go LineByName: the SQL"]
+    S --> DB[("data/minivoip.db")]
+    H --> P["pages/call.templ: the Call page"]
+    P --> L["layouts/base.templ: shared head"]
+    P --> C["components/button ..."]
+    P --> HTML["HTML back to the browser"]
+    HTML --> JS["assets/js/call.js runs in the browser"]
 ```
 
 ### Routes
@@ -282,7 +283,7 @@ The map you'll use most.
 | What a page looks like | `pages/<page>.templ` |
 | The shared `<head>`, fonts, scripts | `layouts/base.templ` |
 | A button, input, dialog... | `components/<name>/` |
-| The database tables | `store/store.go` (`migrations`) |
+| The database tables | `store/store.go` (`migrations`), explained in `docs/data-dictionary.md` |
 | A query | `store/accounts.go`, `store/lines.go` |
 | What a line and its voice menu are | `lines/lines.go` |
 | How a call is set up (ring, answer, hang up) | `calls/hub.go` (server side) |
@@ -298,11 +299,11 @@ The map you'll use most.
 ### Adding a feature: the usual path
 
 ```mermaid
-flowchart LR
-    A[1. store/<br/>new table or query] --> B[2. web/<br/>handler that calls it]
-    B --> C[3. pages/<br/>templ page it renders]
-    C --> D[4. web/web.go Routes<br/>one line for the URL]
-    D --> E[5. *_test.go<br/>a test next to it]
+flowchart TD
+    A["Step 1 · store/ : new table or query"] --> B["Step 2 · web/ : handler that calls it"]
+    B --> C["Step 3 · pages/ : templ page it renders"]
+    C --> D["Step 4 · web/web.go Routes() : one line for the URL"]
+    D --> E["Step 5 · *_test.go : a test next to it"]
 ```
 
 That's the sentence to give the AI: *"Put the SQL in `store/`, the handler in `web/`, the page in `pages/`, add the
@@ -416,3 +417,118 @@ Useful sentences:
 
 Good first reads, in this order: `main.go` → `web/web.go` → `pages/account.templ` → `store/store.go` →
 `calls/hub.go`.
+
+---
+
+## 11. Best practices you didn't ask about
+
+Things experienced Go developers do without thinking. Each one has a short "why", and where minivoip stands
+today (checked 2026-10-21).
+
+### Go's own philosophy (the "Go proverbs")
+
+- **Clear is better than clever.** Boring, obvious code is the goal. If you can't follow a change, ask the AI to
+  make it plainer, not to explain the trick.
+- **A little copying is better than a little dependency.** Ten copied lines beat a new library.
+- **Errors are values.** Handle them where they happen, and add context on the way up.
+- **Don't communicate by sharing memory; share memory by communicating.** Prefer passing messages between
+  goroutines over many of them touching the same data. When they must share, protect the data with a mutex
+  (`calls/hub.go` does).
+- **Make the zero value useful.** A struct should work, or at least not crash, when nothing is filled in.
+
+### Errors
+
+- **Wrap errors with context:** `fmt.Errorf("migration %d: %w", i+1, err)` (from `store/store.go`). The log then
+  reads like a trail: `database: migration 2: no such table`. The `%w` keeps the original error inside.
+- **Named errors for cases the caller must handle:** `store.ErrNotFound`, `store.ErrEmailTaken`, checked with
+  `errors.Is`. This replaces Python's custom exception classes. ✅ done in this repo.
+- **`panic` is for bugs, never for normal failures** like "user not found". Don't let the AI use it as `raise`.
+- **Users see a kind sentence; the log gets the details.** `serverError` in `web/web.go` does exactly this. ✅
+
+### Testing
+
+- **Table-driven tests:** one list of cases (input, expected) and one loop that checks them all. It's the
+  standard Go test shape; ask for it when a function has many cases (like line-name rules in `lines/`).
+- **Test the web layer without a browser:** the standard `net/http/httptest` package fakes a request and records
+  the answer. ⚠️ `web/` has no tests yet; sign up, log in and "not logged in → redirect" are the first to add.
+- **Run the race detector:** `go test -race ./...` finds two goroutines touching the same data at once, the
+  nastiest kind of bug in a call server. ✅ passes today. Make it the normal way to run tests.
+- **Tests use a throwaway database:** `t.TempDir()` in `store/store_test.go`. Never the real `data/` file. ✅
+- **Coverage:** `go test -cover ./...` shows what share of the code the tests run.
+
+### Concurrency (the part Go is famous for, and the easiest to get wrong)
+
+- **Every goroutine needs a way to end:** a timeout, a closed socket, a cancelled `context`. Otherwise they pile
+  up silently.
+- **Pass `context.Context` as the first argument** of anything slow (database, network). When the visitor closes
+  the page, the context is cancelled and the work stops. Handlers get one from `r.Context()`.
+- **Put a timeout on everything that goes out to the network.** `calls/hub.go` gives each send 5 seconds. ✅
+- **Keep mutex-protected sections short**, and never wait on the network while holding the lock.
+
+### Code shape
+
+- **Accept interfaces, return structs.** Define an interface where it's *used*, and only when there are two real
+  implementations (or a test needs a fake). The AI tends to invent interfaces "for later": push back.
+- **No package-level mutable globals.** Build things in `main.go` and pass them in. ✅ this repo does.
+- **Names:** short in small places (`r`, `w`, `err`, `l`), descriptive for exported things. Don't repeat the
+  package name: `store.Open`, not `store.OpenStore`.
+- **Doc comments** start with the name: `// LineByName returns a line and its menu, or ErrNotFound.` They feed
+  `go doc` and editor tooltips. ✅
+- **`internal/` folder**: code under it can't be imported by other projects. Only matters if you ever publish a
+  library; not needed for minivoip.
+- **Generics exist** (since Go 1.18) but are rarely needed in a web app. If the AI reaches for them, ask why.
+
+### Database (SQLite)
+
+- **One `*sql.DB` for the whole app.** It's a connection pool, not one connection. Open it once in `main.go`. ✅
+- **Always `defer rows.Close()`** after a `Query`, and check `rows.Err()` at the end. ✅
+- **Transactions:** `defer tx.Rollback()` right after `Begin`, `tx.Commit()` at the end. If anything returns
+  early, the rollback cleans up. ✅ (`store/lines.go`)
+- **WAL mode + busy timeout** so reads and writes don't block each other. ✅ (set in `store.Open`)
+- **Backups.** ⚠️ Not set up. The SQLite file *is* the business. Before real customers: a nightly
+  `sqlite3 data/minivoip.db "VACUUM INTO 'backup.db'"`, or **Litestream**, which streams changes to cheap storage
+  continuously. Put this on the Phase 6 list.
+
+### Security
+
+- **templ escapes everything by default.** Only `templ.Raw(...)` bypasses it; treat any use as a red flag to review.
+- **Passwords with bcrypt** ✅, **session cookies** `HttpOnly`, `SameSite=Lax`, `Secure` behind HTTPS ✅,
+  **forms from other sites refused** (`sameSite` in `web/web.go`) ✅.
+- **Limit login attempts** (slow down repeated wrong passwords). ⚠️ not yet.
+- **`govulncheck ./...`**: Go's official tool lists known security holes in the libraries *your code actually
+  calls*. Not installed yet; run it before each release
+  (`go install golang.org/x/vuln/cmd/govulncheck@latest`).
+
+### Tooling worth adding
+
+| Tool | What it does | Status |
+|---|---|---|
+| `gofmt` | formats code; your editor runs it on save | built in ✅ |
+| `go vet ./...` | catches suspicious code | clean today ✅ |
+| `staticcheck` | the most respected extra checker: dead code, misuse of the standard library | not installed |
+| `golangci-lint` | runs many checkers at once; most teams use it in CI | not installed |
+| `govulncheck` | known security holes in libraries | not installed |
+| `pprof` | built-in profiler: where CPU and memory go. Measure before optimising | available when needed |
+
+(Adding any of these is a new build step, so it's your call per project rules.)
+
+### Logging and running in production
+
+- **Structured logs with `log/slog`** (standard library): `slog.Info("call answered", "line", name)`. You get
+  `key=value` or JSON lines you can search, instead of free text. The repo uses plain `log.Printf` today; switch
+  when adding production logging.
+- **Read config once at startup and fail fast:** if a required setting is missing, refuse to start with a clear
+  message. ✅ (`main.go` stops if the database won't open.)
+- **Stamp the version into the binary** (`go build -ldflags "-X main.version=..."`) and log it at startup, so you
+  always know which build is running.
+- **Keep Go up to date.** Go promises that old code keeps building on new versions, so upgrading is cheap and
+  brings speed and security fixes. Two releases a year (February, August).
+
+### Housekeeping
+
+- **`go mod tidy` before each commit that touches libraries.** It also fixes the labels: ⚠️ today `go.mod` marks
+  `modernc.org/sqlite` and `golang.org/x/crypto` as `// indirect` although our code uses them directly. Harmless,
+  but tidy fixes it.
+- **Commit `go.sum`, and the generated `*_templ.go` files** (this repo does both), so a fresh checkout builds with
+  `go build` alone.
+- **Small commits, one idea each.** Go diffs are easy to review when each one tells one story.

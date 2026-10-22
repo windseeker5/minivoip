@@ -111,9 +111,12 @@ templ Phone(l lines.Line) {
 				</div>
 				<audio data-remote autoplay></audio>
 			</div>
-			<div class="mt-4">
+			<div class="mt-4 flex flex-wrap justify-center gap-x-4">
+				@button.Button(button.Props{Href: "/dashboard", Variant: button.VariantLink, Size: button.SizeSm}) {
+					Back to my dashboard
+				}
 				@button.Button(button.Props{Href: "/call/" + l.Name, Variant: button.VariantLink, Size: button.SizeSm, Target: "_blank"}) {
-					Open the visitor's call page to test
+					Make a test call
 				}
 			</div>
 		</main>

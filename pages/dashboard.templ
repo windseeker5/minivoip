@@ -213,7 +213,7 @@ templ choiceRow(o lines.Option) {
 				}
 			</select>
 		</label>
-		<button type="button" class="mt-5 flex size-9 items-center justify-center self-start rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" data-remove-choice aria-label="Remove this choice">
+		<button type="button" class="order-first flex size-9 items-center justify-center justify-self-end rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:order-none sm:mt-5 sm:self-start" data-remove-choice aria-label="Remove this choice">
 			@icon.Trash2(icon.Props{Class: "size-4"})
 		</button>
 		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3 sm:col-start-2">

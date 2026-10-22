@@ -1099,7 +1099,7 @@ func choiceRow(o lines.Option) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</select></label> <button type=\"button\" class=\"mt-5 flex size-9 items-center justify-center self-start rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground\" data-remove-choice aria-label=\"Remove this choice\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</select></label> <button type=\"button\" class=\"order-first flex size-9 items-center justify-center justify-self-end rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:order-none sm:mt-5 sm:self-start\" data-remove-choice aria-label=\"Remove this choice\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

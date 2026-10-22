@@ -155,16 +155,19 @@ The owner records each prompt. Every option points to one action:
 Web visitors choose by clicking buttons on screen.
 
 ## Data stored
+Exact columns: [data-dictionary.md](data-dictionary.md). Built so far: `account`, `user`, `session`, `line`, `menu_option`, `promo_code`.
+
 | Table | Holds |
 |---|---|
 | `account` | One customer (e.g. Joe's B&B): name, plan, created date |
 | `user` | A person who logs in: email, password hash, which account |
 | `line` | Line name (`joesbnb`), extension (`1001`), opening hours, first menu step |
 | `device` | A phone or computer that can ring: push subscription, last seen |
-| `menu_step` | One menu step: prompt audio file plus its options |
+| `menu_option` | One menu choice: key, name, action, message, web address (one level for now; sub-menus later) |
 | `voicemail` | Caller, time, length, audio file, listened yes/no |
 | `call_log` | Time, line, answered/missed/voicemail, length |
 | `promo_code` | Code, valid from/to, max uses, times used, revoked yes/no. A valid code makes a line free forever. Created and revoked by Ken on an admin page. |
+| `session` | A login (cookie token, expiry) |
 | *later:* `sip_login` | Username and password for a desk phone or SIP app (step 2) |
 | *later:* `phone_number` | A real number from the SIP provider, pointing to a line (step 3) |
 

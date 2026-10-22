@@ -1,0 +1,228 @@
+package pages
+
+import (
+	"minivoip/components/button"
+	"minivoip/components/icon"
+	"minivoip/components/input"
+	"minivoip/components/textarea"
+	"minivoip/layouts"
+	"minivoip/lines"
+)
+
+// LineForm is the "create your line" form shown back after an error.
+type LineForm struct {
+	Name     string
+	Business string
+	Owner    string
+	Error    string
+}
+
+// dashShell is the logged-in frame: logo, sections, email and log out.
+templ dashShell(title, email, current string) {
+	@layouts.Base(title+" · minivoip", "") {
+		<header class="border-b bg-background">
+			<div class="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+				@brand()
+				<nav class="flex items-center gap-1 text-sm">
+					@dashLink("/dashboard", "My line", current)
+					@dashLink("/dashboard/menu", "Voice menu", current)
+					@dashLink("/app", "Phone app", current)
+				</nav>
+				<form method="post" action="/logout" class="flex items-center gap-3 text-sm text-muted-foreground">
+					<span class="hidden sm:inline">{ email }</span>
+					@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeSm}) {
+						Log out
+					}
+				</form>
+			</div>
+		</header>
+		<main class="mx-auto max-w-4xl px-4 py-10">
+			{ children... }
+		</main>
+	}
+}
+
+templ dashLink(href, text, current string) {
+	if href == current {
+		<a href={ templ.SafeURL(href) } class="rounded-md bg-muted px-3 py-1.5 font-medium" aria-current="page">{ text }</a>
+	} else {
+		<a href={ templ.SafeURL(href) } class="rounded-md px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">{ text }</a>
+	}
+}
+
+templ panel() {
+	<section class="rounded-2xl border bg-background p-6 sm:p-8">
+		{ children... }
+	</section>
+}
+
+// NewLine asks a new account to pick its line name.
+templ NewLine(email string, f LineForm) {
+	@dashShell("Create your line", email, "/dashboard") {
+		<div class="mx-auto max-w-lg">
+			<h1 class="text-3xl font-bold tracking-tight">Create your line</h1>
+			<p class="mt-2 text-muted-foreground">Your line is the address your callers use. You can't change its name later, so pick a short one.</p>
+			<form method="post" action="/dashboard/line" class="mt-8 flex flex-col gap-5">
+				@formError(f.Error)
+				@formField("name", "Line name") {
+					<div class="flex items-center rounded-lg border border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+						<span class="pl-3 text-sm text-muted-foreground">…/call/</span>
+						@input.Input(input.Props{ID: "name", Name: "name", Value: f.Name, Required: true, Placeholder: "joesbnb", Class: "border-0 pl-0.5 shadow-none focus-visible:ring-0", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "none", "pattern": "[a-z0-9][a-z0-9\\-]{1,28}[a-z0-9]"}})
+					</div>
+					<p class="text-xs text-muted-foreground">3 to 30 lowercase letters, numbers or dashes.</p>
+				}
+				@formField("business", "Business name") {
+					@input.Input(input.Props{ID: "business", Name: "business", Value: f.Business, Required: true, Placeholder: "Joe's B&B"})
+				}
+				@formField("owner", "Your first name") {
+					@input.Input(input.Props{ID: "owner", Name: "owner", Value: f.Owner, Required: true, Placeholder: "Joe"})
+					<p class="text-xs text-muted-foreground">Callers hear it in "Talk to Joe".</p>
+				}
+				@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10"}) {
+					Create my line
+				}
+			</form>
+		</div>
+	}
+}
+
+// Dashboard is "My line": the call link and what to do next.
+templ Dashboard(email string, l lines.Line, callURL string) {
+	@dashShell("My line", email, "/dashboard") {
+		<h1 class="text-3xl font-bold tracking-tight">{ l.Business }</h1>
+		<p class="mt-2 text-muted-foreground">Your receptionist answers at this link. Share it, or put it behind a Call button on your website.</p>
+		<div class="mt-8 flex flex-col gap-6">
+			@panel() {
+				<h2 class="font-semibold">Your call link</h2>
+				<div class="mt-3 flex flex-col gap-2 sm:flex-row">
+					@input.Input(input.Props{ID: "call-link", Value: callURL, ReadOnly: true, Class: "font-mono text-sm"})
+					@button.Button(button.Props{Variant: button.VariantOutline, Attributes: templ.Attributes{"data-copy": "call-link"}}) {
+						@icon.Copy()
+						Copy
+					}
+					@button.Button(button.Props{Href: callURL, Target: "_blank"}) {
+						@icon.PhoneCall()
+						Test call
+					}
+				</div>
+			}
+			<div class="grid gap-6 md:grid-cols-2">
+				@panel() {
+					<h2 class="flex items-center gap-2 font-semibold">
+						@icon.ListTree(icon.Props{Class: "size-4"})
+						Voice menu
+					</h2>
+					<p class="mt-2 text-sm text-muted-foreground">"{ l.Greeting } { l.Menu() }"</p>
+					@button.Button(button.Props{Href: "/dashboard/menu", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4"}) {
+						Edit the menu
+					}
+				}
+				@panel() {
+					<h2 class="flex items-center gap-2 font-semibold">
+						@icon.Smartphone(icon.Props{Class: "size-4"})
+						Phone app
+					</h2>
+					<p class="mt-2 text-sm text-muted-foreground">Open it on your phone and log in with this account. Keep it open: it rings when a caller picks a "Ring my phone" choice.</p>
+					@button.Button(button.Props{Href: "/app", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4"}) {
+						Open the phone app
+					}
+				}
+			</div>
+		</div>
+		<script src="/assets/js/dashboard.js" defer></script>
+	}
+}
+
+// MenuEditor edits the greeting and the choices. dashboard.js adds and
+// removes choice rows and plays a preview.
+templ MenuEditor(email string, l lines.Line, saved bool, errMsg string) {
+	@dashShell("Voice menu", email, "/dashboard/menu") {
+		<h1 class="text-3xl font-bold tracking-tight">Voice menu</h1>
+		<p class="mt-2 text-muted-foreground">What your receptionist says, and where each choice sends the caller. A computer voice reads it for now; recording your own voice comes next.</p>
+		<form method="post" action="/dashboard/menu" class="mt-8 flex flex-col gap-6" data-menu-form>
+			@formError(errMsg)
+			if saved {
+				<p class="rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400" role="status">Saved. Callers hear the new menu right away.</p>
+			}
+			@panel() {
+				<div class="grid gap-5 sm:grid-cols-2">
+					@formField("business", "Business name") {
+						@input.Input(input.Props{ID: "business", Name: "business", Value: l.Business, Required: true})
+					}
+					@formField("owner", "Your first name") {
+						@input.Input(input.Props{ID: "owner", Name: "owner", Value: l.Owner, Required: true})
+					}
+				</div>
+				<div class="mt-5">
+					@formField("greeting", "Welcome message") {
+						@textarea.Textarea(textarea.Props{ID: "greeting", Name: "greeting", Value: l.Greeting, Rows: 2})
+						<p class="text-xs text-muted-foreground">Callers hear this first, then the list of choices.</p>
+					}
+				</div>
+			}
+			@panel() {
+				<div class="flex items-center justify-between gap-4">
+					<h2 class="font-semibold">Choices</h2>
+					@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeSm, Attributes: templ.Attributes{"data-add-choice": ""}}) {
+						@icon.Plus()
+						Add a choice
+					}
+				</div>
+				<div class="mt-5 flex flex-col gap-4" data-choices>
+					for _, o := range l.Options {
+						@choiceRow(o)
+					}
+				</div>
+				<template data-choice-template>
+					@choiceRow(lines.Option{Action: lines.Ring})
+				</template>
+			}
+			<div class="flex flex-wrap items-center gap-3">
+				@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "h-10"}) {
+					Save the menu
+				}
+				@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-10", Attributes: templ.Attributes{"data-preview": ""}}) {
+					@icon.Play()
+					Hear it
+				}
+				<span class="text-sm text-muted-foreground" data-preview-text></span>
+			</div>
+		</form>
+		<script src="/assets/js/dashboard.js" defer></script>
+	}
+}
+
+// selectClass matches the input component's look for a native select.
+const selectClass = "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+
+templ choiceRow(o lines.Option) {
+	<div class="grid gap-3 rounded-xl border bg-muted/30 p-4 sm:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start" data-choice>
+		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+			Key
+			@input.Input(input.Props{Name: "key", Value: o.Key, Class: "text-center font-semibold", Attributes: templ.Attributes{"maxlength": "1", "inputmode": "numeric", "aria-label": "Key the caller presses"}})
+		</label>
+		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+			Name
+			@input.Input(input.Props{Name: "label", Value: o.Label, Placeholder: "Bookings"})
+		</label>
+		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+			Does
+			<select name="action" class={ selectClass } data-action-select>
+				for _, a := range lines.Actions {
+					<option value={ string(a.Value) } selected?={ a.Value == o.Action }>{ a.Label }</option>
+				}
+			</select>
+		</label>
+		<button type="button" class="mt-5 flex size-9 items-center justify-center self-start rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" data-remove-choice aria-label="Remove this choice">
+			@icon.Trash2(icon.Props{Class: "size-4"})
+		</button>
+		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3 sm:col-start-2">
+			<span data-say-label>Message</span>
+			@input.Input(input.Props{Name: "say", Value: o.Say, Placeholder: "Please hold, I'm ringing you."})
+		</label>
+		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3 sm:col-start-2" data-url-field>
+			Web address
+			@input.Input(input.Props{Name: "url", Value: o.URL, Type: "url", Placeholder: "https://joesbnb.example/booking"})
+		</label>
+	</div>
+}

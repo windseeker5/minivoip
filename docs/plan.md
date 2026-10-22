@@ -72,6 +72,7 @@ Keep the `docs/` folder. Create `.gitignore` (covering `.env`, `bin/`, `tmp/`, `
 Done when: all 11 screens are clickable, look good on a phone and on a computer, and in light and dark mode.
 
 ## Phase 2: real accounts and data
+Done 2026-10-21 (before the rest of Phase 1): SQLite with migrations (`store/`), sign up with promo code, log in/out, create a line, menu editor (typed messages read by the browser voice), call page and phone app read the database. Still to do: recorded prompts, opening hours, an admin page for promo codes.
 - SQLite file in `data/minivoip.db` (`modernc.org/sqlite`); tables from [architecture.md](architecture.md#data-stored).
 - Real sign up, log in, log out (bcrypt + cookie).
 - Create a line, save the menu, upload/record prompts to `data/audio/`.

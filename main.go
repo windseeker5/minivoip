@@ -8,40 +8,31 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/a-h/templ"
-
 	"minivoip/assets"
 	"minivoip/calls"
-	"minivoip/lines"
-	"minivoip/pages"
+	"minivoip/store"
+	"minivoip/web"
 )
 
 func main() {
 	mux := http.NewServeMux()
 	setupAssetsRoutes(mux)
-	mux.Handle("GET /", templ.Handler(pages.Home()))
+	db, err := store.Open(dbPath())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "database:", err)
+		os.Exit(1)
+	}
+	defer db.Close()
 
-	// Calls: the visitor's call window, the owner's phone app, and the
-	// socket that sets up calls between them (see calls/hub.go).
-	hub := calls.NewHub()
+	// Calls: the socket that sets up calls between a visitor and the owner's
+	// phone app (see calls/hub.go).
+	hub := calls.NewHub(db.LineExists)
 	if isDevelopment() {
 		// The dev proxy (localhost:7331) sits in front of the app.
 		hub.OriginPatterns = []string{"localhost:*", "127.0.0.1:*"}
 	}
-	mux.Handle("GET /ws", hub)
-	mux.HandleFunc("GET /call/{line}", func(w http.ResponseWriter, r *http.Request) {
-		l, ok := lines.Get(r.PathValue("line"))
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-		templ.Handler(pages.Call(l)).ServeHTTP(w, r)
-	})
-	mux.HandleFunc("GET /app", func(w http.ResponseWriter, r *http.Request) {
-		// One test line until accounts exist (Phase 2).
-		l, _ := lines.Get("joesbnb")
-		templ.Handler(pages.Phone(l)).ServeHTTP(w, r)
-	})
+	site := &web.Server{Store: db, Hub: hub, Dev: isDevelopment()}
+	site.Routes(mux)
 
 	ln, err := listen()
 	if err != nil {
@@ -97,6 +88,14 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 		files.ServeHTTP(w, r)
 	})
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assetHandler))
+}
+
+// dbPath is the SQLite file: MINIVOIP_DB, else data/minivoip.db.
+func dbPath() string {
+	if p := os.Getenv("MINIVOIP_DB"); p != "" {
+		return p
+	}
+	return "data/minivoip.db"
 }
 
 func isDevelopment() bool {

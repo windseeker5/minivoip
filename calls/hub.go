@@ -6,7 +6,7 @@
 // Visitor -> server: call, offer, ice, hangup
 // Owner   -> server: hello, accept, decline, answer, ice, hangup
 // Server  -> visitor: ringing, busy, accepted, no-answer, answer, ice, hangup
-// Server  -> owner:   incoming, taken, missed, offer, ice, hangup
+// Server  -> owner:   ready, incoming, taken, missed, offer, ice, hangup
 package calls
 
 import (
@@ -21,8 +21,6 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
-
-	"minivoip/lines"
 )
 
 // Message is every message on the socket, in both directions.
@@ -66,13 +64,18 @@ type Hub struct {
 	// OriginPatterns lists the hosts allowed to open a socket besides the
 	// page's own host (the dev proxy on :7331 sits in front of :8090).
 	OriginPatterns []string
+	// LineExists says whether a line name is real.
+	LineExists func(name string) bool
+	// CanAnswer says whether this request (its login) may be the phone app
+	// for the line. Nil allows everyone (tests).
+	CanAnswer func(r *http.Request, line string) bool
 
 	mu    sync.Mutex
 	lines map[string]*line
 }
 
-func NewHub() *Hub {
-	return &Hub{RingTimeout: 30 * time.Second, lines: map[string]*line{}}
+func NewHub(lineExists func(name string) bool) *Hub {
+	return &Hub{RingTimeout: 30 * time.Second, LineExists: lineExists, lines: map[string]*line{}}
 }
 
 func (h *Hub) line(name string) *line {
@@ -88,8 +91,12 @@ func (h *Hub) line(name string) *line {
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("line")
 	role := r.URL.Query().Get("role")
-	if _, ok := lines.Get(name); !ok || (role != "visitor" && role != "owner") {
+	if !h.LineExists(name) || (role != "visitor" && role != "owner") {
 		http.Error(w, "unknown line or role", http.StatusBadRequest)
+		return
+	}
+	if role == "owner" && h.CanAnswer != nil && !h.CanAnswer(r, name) {
+		http.Error(w, "log in to answer this line", http.StatusForbidden)
 		return
 	}
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: h.OriginPatterns})
@@ -140,6 +147,7 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 		}
 
 	case me.owner && m.Type == "hello":
+		me.send(Message{Type: "ready"})
 		if l.current != nil && l.current.owner == nil {
 			me.send(Message{Type: "incoming", ID: l.current.id, Option: l.current.option})
 		}

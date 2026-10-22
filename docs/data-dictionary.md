@@ -1,0 +1,78 @@
+# Data dictionary
+
+Last update: 2026-10-21 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
+
+## account
+One customer (a business). Created at sign up.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `name` | text | For now the sign-up email; a business name later |
+| `promo_code` | text, nullable → `promo_code.code` | The code used at sign up. Set = free forever (while the code isn't revoked) |
+| `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
+
+## user
+A person who logs in. One per account for now (staff accounts later).
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `account_id` | integer → `account.id` (delete cascades) | |
+| `email` | text, unique, case-insensitive | Login name |
+| `password_hash` | text | bcrypt hash; the password is never stored |
+| `created_at` | text (UTC) | |
+
+## session
+A login. The token is the `mv_session` cookie (HttpOnly, SameSite=Lax). Lasts 30 days.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `token` | text, key | 64 random hex characters |
+| `user_id` | integer → `user.id` (delete cascades) | |
+| `expires_at` | text (UTC) | Ignored after this time |
+
+## line
+A phone line: the call link `/call/<name>` and its voice menu. One per account.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `account_id` | integer → `account.id` (delete cascades) | |
+| `name` | text, unique | Lowercase letters, digits, dashes, 3–30; can't be changed. Some names are reserved (`lines.CheckName`) |
+| `business` | text | Shown on the call page |
+| `owner_name` | text | First name, used in "Talk to Joe" |
+| `greeting` | text | Welcome message, read by the browser's voice (recordings later) |
+| `created_at` | text (UTC) | |
+
+## menu_option
+One choice in a line's voice menu.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `line_id` | integer → `line.id` (delete cascades) | |
+| `position` | integer | Order in the menu, from 0 |
+| `key` | text | The key the caller presses: `0`–`9`, `*` or `#`; unique per line |
+| `label` | text | Choice name, e.g. "Bookings"; spoken as "press 1 for bookings" |
+| `action` | text: `ring`, `play`, `link`, `voicemail` | What the choice does (`voicemail` says "coming soon" until voicemail is built) |
+| `say` | text | Spoken when the caller picks it (required for `play`) |
+| `url` | text | Web page for `link` (http or https) |
+
+## promo_code
+Codes that make a line free forever. No admin page yet: add codes with SQL.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `code` | text, key, case-insensitive | e.g. `FAMILY` |
+| `valid_from` | text (UTC), nullable | Not usable before this time |
+| `valid_to` | text (UTC), nullable | Not usable after this time |
+| `max_uses` | integer | 0 = unlimited |
+| `times_used` | integer | Raised by one at each sign up that uses it |
+| `revoked` | integer 0/1 | 1 = no longer accepted |
+| `created_at` | text (UTC) | |
+
+## Version history
+| Version (`PRAGMA user_version`) | Date | Change |
+|---|---|---|
+| 1 | 2026-10-21 | First schema: `account`, `user`, `session`, `line`, `menu_option`, `promo_code` |

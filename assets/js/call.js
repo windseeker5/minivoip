@@ -85,7 +85,7 @@
     status("Connected");
     $("[data-timer]").textContent = "";
     say(line.greeting).then(function () {
-      if (s === seq && phase === "menu") return say(line.menu);
+      if (s === seq && phase === "menu" && line.menu) return say(line.menu);
     });
   }
 
@@ -104,12 +104,17 @@
       say(o.say).then(function () { if (s === seq) end("Call ended"); });
     } else if (o.action === "ring") {
       ring(s, o);
+    } else if (o.action === "voicemail") {
+      status("Voicemail");
+      say(o.say || "Voicemail is coming soon. Please call again later.").then(function () {
+        if (s === seq) end("Voicemail is coming soon");
+      });
     }
   }
 
   function ring(s, o) {
     status("Please hold…");
-    var spoken = say(o.say);
+    var spoken = say(o.say || "Please hold.");
     // Asked from the key press itself: some browsers only show the microphone prompt during a tap.
     var gum = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
       ? navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })

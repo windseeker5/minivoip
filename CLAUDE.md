@@ -34,20 +34,26 @@ B&B and may become a SaaS.
 - Secrets (VAPID keys, etc.) go in `.env`, never in git; ship a `.env.example`.
 - Container comes last (phase 6). Develop locally first.
 
-## How a call works in the code
+## How the code fits together
 
-- `lines/`: the lines and their voice menus (one test line, `joesbnb`, in code until Phase 2 moves it to SQLite).
-- `calls/hub.go`: the WebSocket at `/ws?line=&role=visitor|owner`. It only passes messages (call, ringing,
-  incoming, accept, offer/answer/ice, hangup, no-answer, busy); one call per line at a time, kept in memory.
-  `calls/hub_test.go` covers answered, unanswered and busy calls.
-- `/call/{line}` (`pages/call.templ` + `assets/js/call.js`): the visitor's call window. Plays the menu with the
-  browser's voice; a "ring" choice asks for the microphone, opens the socket and makes the WebRTC offer.
-- `/app` (`pages/call.templ` `Phone` + `assets/js/phone.js`): the owner's phone app. Stays connected, rings,
-  answers. No push or login yet, so the page must be open.
-- No STUN/TURN yet (`iceServers: []`): works on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.
+- `main.go` opens the database and hands everything to `web.Server.Routes`.
+- `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, and a
+  same-site check on form posts; `dashboard.go` has "My line", line creation, the menu editor, the phone app and
+  the call page.
+- `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
+  `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
+  Passwords use bcrypt. The dev database is `data/minivoip.db` (gitignored).
+- `lines/`: the Line/Option types, menu actions (ring, play, link, voicemail), the spoken menu text and line-name
+  rules. `choicePhrase` is mirrored in `assets/js/dashboard.js`.
+- `calls/hub.go`: the WebSocket at `/ws?line=&role=visitor|owner`. Only passes messages (call, ringing, ready,
+  incoming, accept, offer/answer/ice, hangup, no-answer, busy); one call per line, kept in memory. Only the line's
+  logged-in owner may connect as `owner` (`CanAnswer`).
+- Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
+  `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor), `call` + `call.js` (visitor's
+  call window `/call/{line}`) and `Phone` + `phone.js` (phone app `/app`, login required, must stay open: no push yet).
+- No STUN/TURN yet (`iceServers: []`): calls work on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.
 - Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy
-  (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs. No login: anyone with the link can
-  open `/app`, so don't leave it public once real people use it.
+  (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs.
 
 ## Commands
 
@@ -60,7 +66,8 @@ The Go tools live in `~/go/bin` (on PATH via `~/.zshrc`). The project was scaffo
     If those are busy, run `task dev PORT=8091 PROXY_PORT=7332`.
 - `shadcn-templ add <component …>`: copy in more components (into `components/`; they are our code to edit).
 - `task build`: CSS, JS bundle, `templ generate`, then `bin/app`. Don't run it (or `templ generate`) while `task dev` is running; see AGENTS.md.
-- `go test ./...`: tests (`pages/home_test.go` checks the landing page renders). `go test ./pages -run TestHomeRenders` for one.
+- `go test ./...`: tests (`store/` accounts, promo codes, lines; `calls/` call setup; `pages/` landing page renders).
+  One test: `go test ./store -run TestPromoCodes`.
 - `templ` and `shadcn-templ` are also pinned as `tool` lines in `go.mod`; the Taskfile calls them via `go tool`.
 
 Layout: `main.go` (routes), `pages/` and `layouts/` (`.templ` screens), `components/` (shadcn-templ),

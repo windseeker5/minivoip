@@ -22,6 +22,15 @@ func dial(t *testing.T, srv *httptest.Server, role string) *websocket.Conn {
 	return c
 }
 
+// ready connects a phone app and waits until the hub has it.
+func ready(t *testing.T, srv *httptest.Server) *websocket.Conn {
+	t.Helper()
+	c := dial(t, srv, "owner")
+	send(t, c, Message{Type: "hello"})
+	expect(t, c, "ready")
+	return c
+}
+
 func send(t *testing.T, c *websocket.Conn, m Message) {
 	t.Helper()
 	if err := wsjson.Write(context.Background(), c, m); err != nil {
@@ -44,10 +53,9 @@ func expect(t *testing.T, c *websocket.Conn, typ string) Message {
 }
 
 func TestAnsweredCall(t *testing.T) {
-	srv := httptest.NewServer(NewHub())
+	srv := httptest.NewServer(NewHub(func(string) bool { return true }))
 	defer srv.Close()
-	owner := dial(t, srv, "owner")
-	send(t, owner, Message{Type: "hello"})
+	owner := ready(t, srv)
 	visitor := dial(t, srv, "visitor")
 
 	send(t, visitor, Message{Type: "call", Option: "Talk to Joe"})
@@ -71,11 +79,11 @@ func TestAnsweredCall(t *testing.T) {
 }
 
 func TestNoAnswer(t *testing.T) {
-	h := NewHub()
+	h := NewHub(func(string) bool { return true })
 	h.RingTimeout = 100 * time.Millisecond
 	srv := httptest.NewServer(h)
 	defer srv.Close()
-	owner := dial(t, srv, "owner")
+	owner := ready(t, srv)
 	visitor := dial(t, srv, "visitor")
 
 	send(t, visitor, Message{Type: "call"})
@@ -86,7 +94,7 @@ func TestNoAnswer(t *testing.T) {
 }
 
 func TestBusy(t *testing.T) {
-	srv := httptest.NewServer(NewHub())
+	srv := httptest.NewServer(NewHub(func(string) bool { return true }))
 	defer srv.Close()
 	first := dial(t, srv, "visitor")
 	send(t, first, Message{Type: "call"})

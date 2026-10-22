@@ -1,0 +1,90 @@
+package pages
+
+import (
+	"minivoip/components/button"
+	"minivoip/components/input"
+	"minivoip/components/label"
+	"minivoip/layouts"
+)
+
+// AccountForm is what the sign up and log in forms show back after an error.
+type AccountForm struct {
+	Email string
+	Promo string
+	Next  string
+	Error string
+}
+
+templ accountShell(title string) {
+	@layouts.Base(title+" · minivoip", "") {
+		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-10">
+			@brand()
+			<div class="mt-8 w-full max-w-sm rounded-2xl border bg-background p-7 shadow-[0_24px_60px_-34px_rgb(0_0_0/0.35)]">
+				{ children... }
+			</div>
+		</main>
+	}
+}
+
+templ formError(msg string) {
+	if msg != "" {
+		<p class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{ msg }</p>
+	}
+}
+
+templ formField(id, text string) {
+	<div class="flex flex-col gap-2">
+		@label.Label(label.Props{For: id}) {
+			{ text }
+		}
+		{ children... }
+	</div>
+}
+
+templ Signup(f AccountForm) {
+	@accountShell("Get your free line") {
+		<h1 class="text-2xl font-bold tracking-tight">Get your free line</h1>
+		<p class="mt-1 text-sm text-muted-foreground">Free while in beta. No card required.</p>
+		<form method="post" action="/signup" class="mt-6 flex flex-col gap-4">
+			@formError(f.Error)
+			@formField("email", "Email") {
+				@input.Input(input.Props{ID: "email", Name: "email", Type: "email", Value: f.Email, Required: true, Attributes: templ.Attributes{"autocomplete": "email"}})
+			}
+			@formField("password", "Password") {
+				@input.Input(input.Props{ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "new-password", "minlength": "8"}})
+				<p class="text-xs text-muted-foreground">At least 8 characters.</p>
+			}
+			@formField("promo", "Promo code (optional)") {
+				@input.Input(input.Props{ID: "promo", Name: "promo", Value: f.Promo, Attributes: templ.Attributes{"autocomplete": "off"}})
+			}
+			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
+				Create my account
+			}
+		</form>
+		<p class="mt-6 text-center text-sm text-muted-foreground">
+			Already have an account? <a href="/login" class="font-medium text-foreground underline underline-offset-4">Log in</a>
+		</p>
+	}
+}
+
+templ Login(f AccountForm) {
+	@accountShell("Log in") {
+		<h1 class="text-2xl font-bold tracking-tight">Log in</h1>
+		<form method="post" action="/login" class="mt-6 flex flex-col gap-4">
+			@formError(f.Error)
+			<input type="hidden" name="next" value={ f.Next }/>
+			@formField("email", "Email") {
+				@input.Input(input.Props{ID: "email", Name: "email", Type: "email", Value: f.Email, Required: true, Attributes: templ.Attributes{"autocomplete": "email"}})
+			}
+			@formField("password", "Password") {
+				@input.Input(input.Props{ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "current-password"}})
+			}
+			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
+				Log in
+			}
+		</form>
+		<p class="mt-6 text-center text-sm text-muted-foreground">
+			New here? <a href="/signup" class="font-medium text-foreground underline underline-offset-4">Get your free line</a>
+		</p>
+	}
+}

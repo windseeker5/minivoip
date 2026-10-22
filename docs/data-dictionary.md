@@ -105,7 +105,7 @@ A browser that gets push notifications (usually the owner's phone app). Saved wh
 | `created_at` | text (UTC) | |
 
 ## setting
-Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, made on first start; never change them or every phone must turn notifications on again).
+Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, made on first start; never change them or every phone must turn notifications on again) and `turn_secret` (signs the relay logins; made on first start).
 
 | Column | Type | Meaning |
 |---|---|---|

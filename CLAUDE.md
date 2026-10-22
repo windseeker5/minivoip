@@ -81,7 +81,12 @@ B&B and may become a SaaS.
 - Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
   `is_admin`, or emails in `MINIVOIP_ADMINS` (default kdresdell@gmail.com, see `main.go`). The dashboard shows each
   account's plan (`store.Plan`).
-- No STUN/TURN yet (`iceServers: []`): calls work on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.
+- `relay/`: built-in TURN relay (pion/turn) on 3478 UDP+TCP, voice on 49160-49200 UDP (the ports the router
+  forwards; the old coturn used them). Public address: `MINIVOIP_PUBLIC_IP`, else DNS of `MINIVOIP_TURN_HOST`
+  (default voip.dresdell.com). Logins: `GET /api/ice` gives STUN + a 2-hour TURN REST login (secret in the
+  `setting` table). `relay/hairpin.go` delivers relay-to-relay voice locally, because the TELUS router rewrites
+  hairpin packets. `?relay=1` on `/app` or `/call/...` forces the relay; `window.minivoipCallStats()` shows the
+  route and bytes received (the e2e test checks both). A phone needs HTTPS for the microphone.
 - Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy
   (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs.
 

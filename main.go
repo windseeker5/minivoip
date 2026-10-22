@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"minivoip/assets"
 	"minivoip/calls"
 	"minivoip/push"
+	"minivoip/relay"
 	"minivoip/store"
 	"minivoip/web"
 )
@@ -41,7 +44,9 @@ func main() {
 	hub.OnRing = sender.Ring
 	hub.OnMissed = sender.Missed
 
+	// The relay carries the voice when phones can't connect directly.
 	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins(), CallLine: callLine()}
+	site.Relay = startRelay(db)
 	site.Routes(mux)
 
 	ln, err := listen()
@@ -120,6 +125,48 @@ func admins() []string {
 		return strings.Split(a, ",")
 	}
 	return []string{"kdresdell@gmail.com"}
+}
+
+// startRelay starts the built-in TURN relay on 3478 (voice on 49160-49200),
+// reachable at MINIVOIP_PUBLIC_IP, else the address MINIVOIP_TURN_HOST
+// (default voip.dresdell.com) points to. Without it, calls fall back to
+// direct connections only.
+func startRelay(db *store.Store) web.RelayInfo {
+	secret, err := db.Setting("turn_secret")
+	if err == nil && secret == "" {
+		b := make([]byte, 24)
+		rand.Read(b)
+		secret = hex.EncodeToString(b)
+		err = db.SetSetting("turn_secret", secret)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "relay secret:", err)
+		return web.RelayInfo{}
+	}
+	host := os.Getenv("MINIVOIP_TURN_HOST")
+	if host == "" {
+		host = "voip.dresdell.com"
+	}
+	ip := net.ParseIP(os.Getenv("MINIVOIP_PUBLIC_IP"))
+	if ip == nil {
+		if ips, err := net.LookupIP(host); err == nil {
+			for _, x := range ips {
+				if x.To4() != nil {
+					ip = x
+					break
+				}
+			}
+		}
+	}
+	if ip == nil {
+		fmt.Fprintln(os.Stderr, "relay: no public address for", host, "- calls use direct connections only")
+		return web.RelayInfo{}
+	}
+	if _, err := relay.Start(relay.Config{PublicIP: ip, Port: 3478, MinPort: 49160, MaxPort: 49200, Realm: host, Secret: secret}); err != nil {
+		fmt.Fprintln(os.Stderr, "relay:", err, "- calls use direct connections only")
+		return web.RelayInfo{}
+	}
+	return web.RelayInfo{Secret: secret, Host: host, Port: 3478}
 }
 
 // callLine is the line the landing page's "Call us now" button calls:

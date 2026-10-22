@@ -4,6 +4,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"minivoip/calls"
 	"minivoip/pages"
 	"minivoip/push"
+	"minivoip/relay"
 	"minivoip/store"
 )
 
@@ -35,6 +37,15 @@ type Server struct {
 	Admins []string
 	// CallLine is the line behind the landing page's "Call us now" button.
 	CallLine string
+	// Relay is the built-in TURN relay; empty when it isn't running.
+	Relay RelayInfo
+}
+
+// RelayInfo tells browsers how to reach the relay.
+type RelayInfo struct {
+	Secret string
+	Host   string
+	Port   int
 }
 
 type ctxKey struct{}
@@ -73,6 +84,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/voicemail", s.uploadVoicemail)
 
 	mux.HandleFunc("GET /call/{line}", s.callPage)
+	mux.HandleFunc("GET /api/ice", s.iceServers)
 	mux.Handle("GET /ws", s.Hub)
 }
 
@@ -265,4 +277,16 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", Expires: time.Unix(0, 0), MaxAge: -1})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// iceServers gives a browser its connection helpers for one call: STUN and
+// a two-hour relay login. Without the relay, a public STUN server.
+func (s *Server) iceServers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if s.Relay.Secret == "" {
+		w.Write([]byte(`{"iceServers":[{"urls":["stun:stun.l.google.com:19302"]}]}`))
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"iceServers": relay.ICEServers(s.Relay.Secret, s.Relay.Host, s.Relay.Port, "call")})
 }

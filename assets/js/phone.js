@@ -107,14 +107,19 @@
     stopRinging();
     clearNotifications();
     $("[data-status]").textContent = "Connecting…";
+    var ice = fetch("/api/ice").then(function (r) { return r.json(); }).catch(function () { return { iceServers: [] }; });
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(function (stream) {
         mic = stream;
+        return ice;
+      }).then(function (cfg) {
         if (ringingId !== id) { endCall(); return; }
+        // ?relay=1 forces the relay (for testing).
+        if (/[?&]relay=1/.test(location.search)) cfg.iceTransportPolicy = "relay";
         ringingId = null;
         liveId = id;
         show("connecting");
-        pc = new RTCPeerConnection({ iceServers: [] });
+        pc = new RTCPeerConnection(cfg);
         mic.getTracks().forEach(function (t) { pc.addTrack(t, mic); });
         pc.ontrack = function (e) {
           var el = $("[data-remote]");
@@ -161,6 +166,23 @@
     liveId = null;
     show("ready");
   }
+
+  // For tests and support: how the live call is connected and how much
+  // voice came in.
+  window.minivoipCallStats = function () {
+    if (!pc) return Promise.resolve(null);
+    return pc.getStats().then(function (st) {
+      var out = { route: null, bytesIn: 0 };
+      st.forEach(function (x) {
+        if (x.type === "candidate-pair" && x.nominated && x.state === "succeeded") {
+          var l = st.get(x.localCandidateId), r = st.get(x.remoteCandidateId);
+          out.route = (l && l.candidateType) + ">" + (r && r.candidateType);
+        }
+        if (x.type === "inbound-rtp" && x.kind === "audio") out.bytesIn = x.bytesReceived;
+      });
+      return out;
+    });
+  };
 
   root.addEventListener("click", function (e) {
     var b = e.target.closest("[data-action]");

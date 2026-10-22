@@ -277,7 +277,9 @@ try {
   check(pushes.length - ringStart >= 2, `a sleeping phone gets repeated "Incoming call" notifications (${pushes.length - ringStart} in 6 s)`);
   await owner.click('[data-action="accept"]');
   await caller.waitForSelector("text=On the line with E2E Shop", { timeout: 15000 });
-  check(true, "the call connects");
+  await caller.waitForTimeout(2500);
+  const direct = await caller.evaluate(() => window.minivoipCallStats());
+  check(direct && direct.bytesIn > 1000, `the call connects and the caller hears the phone (${direct && direct.route}, ${direct && direct.bytesIn} bytes)`);
   await caller.screenshot({ path: `${SHOTS}/call.png` });
   const afterAnswer = pushes.length;
   await caller.waitForTimeout(6000);
@@ -285,6 +287,32 @@ try {
   await caller.click('[data-action="hangup"]');
   await owner.waitForSelector("text=Ready for calls", { timeout: 10000 });
   check(true, "hanging up reaches the phone");
+
+  step = "relay call";
+  // Both sides forced through the relay (TURN) at the public address: the
+  // path a phone on cellular data needs.
+  await owner.goto(BASE + "/app?relay=1");
+  await owner.waitForSelector("text=Online", { timeout: 10000 });
+  await caller.goto(BASE + `/call/${LINE}?relay=1`);
+  await caller.click('[data-action="call"]');
+  await caller.waitForSelector('[data-key="1"]:visible');
+  await caller.click('[data-key="1"]');
+  await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  await owner.click('[data-action="accept"]');
+  const relayed = await caller.waitForSelector("text=On the line with E2E Shop", { timeout: 20000 }).then(() => true, () => false);
+  check(relayed, "a call connects through the relay (TURN)");
+  if (relayed) {
+    await caller.waitForTimeout(3000);
+    const c = await caller.evaluate(() => window.minivoipCallStats());
+    const o = await owner.evaluate(() => window.minivoipCallStats());
+    check(c && c.route === "relay>relay" && c.bytesIn > 1000 && o && o.bytesIn > 1000,
+      `voice flows both ways through the relay (caller ${c && c.route}, ${c && c.bytesIn} bytes in; phone ${o && o.bytesIn} bytes in)`);
+    await caller.click('[data-action="hangup"]');
+    await owner.waitForSelector("text=Ready for calls", { timeout: 10000 });
+  }
+  await owner.goto(BASE + "/app");
+  await owner.waitForSelector("text=Online", { timeout: 10000 });
+  await caller.goto(BASE + `/call/${LINE}`);
 
   step = "play option";
   await caller.click('[data-action="call"]');

@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: Built and tested (go test + `tests/e2e/site.mjs`): accounts, lines, menu editor with recorded voice, real calls, voicemail, push notifications to wake the phone, promo code admin page. Calls work on one Wi-Fi (no TURN relay yet).
-- Next action: Ken tries on his real phones: notifications (Android; iPhone from the home screen) and a recorded greeting. Then: TURN relay for calls over cellular data.
-- Last update: 2026-10-21. While Ken walked the dog: voicemail, recorded prompts, push notifications (new dependency webpush-go), promo admin page; migrations 2-5. Branch `go-version`, all committed. Earlier the same day: Go rewrite, landing page, accounts, voip.dresdell.com via Caddy, old POC containers removed.
+- Status: Working end to end and tested (go test + `tests/e2e/site.mjs`): sign up, line, menu (typed or recorded), real calls through the built-in TURN relay, voicemail, push notifications, promo admin, phone-style call window and phone app. Ken made a real call from his Android on 2026-10-21. He still finds the look ugly.
+- Next action: push to GitHub once Ken creates the repo (merge branch `go-version` into `main`). Then talk security: anyone who knows `/call/<line>` can call (spam, unwanted calls); ideas to discuss: rate limits, a check that the caller is human, allowed websites, opening hours, block list. Then a design pass on the screens.
+- Last update: 2026-10-21 (late). Added the TURN relay (calls rang but never connected without it), phone-style screens from the POC look, app-only login, real "Call us now" button on the landing page (line `ken`), simpler sign-up step 2. All committed on `go-version`; no remote yet.
 
 ## Rules
 

@@ -91,7 +91,7 @@ func TestLineAndMenu(t *testing.T) {
 		{Key: "1", Label: "Bookings", Action: lines.Link, URL: "https://example.com/book"},
 		{Key: "2", Label: "Talk to Joe", Action: lines.Ring},
 	}
-	if err := s.SaveMenu(u.AccountID, "Joe's B&B", "Joe", "Welcome!", opts); err != nil {
+	if err := s.SaveMenu(u.AccountID, "Joe's B&B", "Joe", "Welcome!", "", opts); err != nil {
 		t.Fatal(err)
 	}
 	l, _ = s.LineForAccount(u.AccountID)

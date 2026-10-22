@@ -2,7 +2,8 @@
 // Headless only. Run from the project folder:  node tests/e2e/site.mjs
 //
 // 1. Logged out: visits every link reachable from the landing page.
-// 2. Signs up, creates a line, builds a menu, then visits every link again.
+// 2. Signs up, creates a line, builds a menu, records prompts (a caller hears
+//    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
 //    then voicemail (unanswered call and a voicemail choice), listen, delete.
 // 4. A stranger can't open the phone app; log out works.
@@ -150,6 +151,46 @@ try {
   await owner.click("main button[type=submit]");
   check(await owner.isVisible("text=needs a web address"), "menu editor explains a missing web address");
 
+  // Recordings ------------------------------------------------------------
+  step = "record greeting";
+  await rows.nth(2).locator("[name=url]").fill("https://example.com/");
+  const greetingRec = owner.locator('[data-recorder]:has([name="greeting_audio"])');
+  async function record(box, ms) {
+    await box.locator("[data-rec-start]").click();
+    await owner.waitForTimeout(ms);
+    await box.locator("[data-rec-stop]").click();
+    await box.locator("text=Recorded.").waitFor({ timeout: 10000 });
+  }
+  await record(greetingRec, 2000);
+  await record(rows.nth(1).locator("[data-recorder]"), 1500);
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector("text=Saved.");
+  const greetingFile = await owner.inputValue('[name="greeting_audio"]');
+  const hoursFile = await rows.nth(1).locator('[name="say_audio"]').inputValue();
+  check(/^prompt-/.test(greetingFile) && /^prompt-/.test(hoursFile), "recorded greeting and message are saved with the menu");
+  const promptRes = await owner.request.get(`${BASE}/prompt/${greetingFile}`);
+  check(promptRes.ok() && (await promptRes.body()).length > 1000, `a recording plays back (${(await promptRes.body()).length} bytes)`);
+  await owner.screenshot({ path: `${SHOTS}/menu-recorded.png`, fullPage: true });
+
+  step = "caller hears recordings";
+  const listener = await newPage(390, 760);
+  const heardFiles = [];
+  listener.on("request", (r) => { if (r.url().includes("/prompt/")) heardFiles.push(r.url().split("/prompt/")[1]); });
+  await listener.goto(BASE + `/call/${LINE}`);
+  await listener.click('[data-action="call"]');
+  await listener.waitForSelector('[data-key="2"]:visible');
+  await listener.click('[data-key="2"]');
+  await listener.waitForSelector('[data-action="call"]:visible', { timeout: 15000 });
+  check(heardFiles.includes(greetingFile) && heardFiles.includes(hoursFile), "the caller hears the recorded greeting and message");
+
+  step = "back to computer voice";
+  await greetingRec.locator("[data-rec-clear]").click();
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector("text=Saved.");
+  check(await owner.inputValue('[name="greeting_audio"]') === "", "the greeting can go back to the computer voice");
+  const gone = await owner.request.get(`${BASE}/prompt/${greetingFile}`);
+  check(gone.status() === 404, `the unused recording is deleted (${gone.status()})`);
+
   const pagesIn = await crawl(owner, "/", "logged in");
   for (const p of ["/dashboard", "/dashboard/menu", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
   step = "dashboard";
@@ -262,6 +303,11 @@ try {
   const files = db.prepare(`SELECT v.file FROM voicemail v JOIN line l ON l.id = v.line_id
     JOIN account a ON a.id = l.account_id WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const f of files) rmSync(join(dirname(DB), "voicemail", f.file), { force: true });
+  const prompts = db.prepare(`SELECT l.greeting_audio AS f FROM line l JOIN account a ON a.id = l.account_id
+      WHERE a.name LIKE 'e2e-%@example.com'
+    UNION SELECT o.say_audio FROM menu_option o JOIN line l ON l.id = o.line_id JOIN account a ON a.id = l.account_id
+      WHERE a.name LIKE 'e2e-%@example.com'`).all();
+  for (const p of prompts) if (p.f) rmSync(join(dirname(DB), "prompts", p.f), { force: true });
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
   db.close();
 }

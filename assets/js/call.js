@@ -28,9 +28,26 @@
     return ac;
   }
 
-  // say speaks with the browser's voice. Resolves when done, or after a
-  // time based on the text's length if the browser never says it finished.
-  function say(text) {
+  // say plays the owner's recording when there is one, else speaks the text
+  // with the browser's voice. Resolves when done, or after a time limit if
+  // the browser never says it finished.
+  var playing = null;
+  function say(text, recording) {
+    if (recording) {
+      return new Promise(function (done) {
+        var finished = false;
+        function finish() { if (!finished) { finished = true; playing = null; done(); } }
+        var a = new Audio(recording);
+        playing = a;
+        a.onended = finish;
+        a.onerror = function () { finished = true; playing = null; say(text).then(done); };
+        a.onloadedmetadata = function () {
+          if (isFinite(a.duration)) setTimeout(finish, a.duration * 1000 + 1500);
+        };
+        setTimeout(finish, 65000);
+        a.play().catch(a.onerror);
+      });
+    }
     return new Promise(function (done) {
       var finished = false;
       function finish() { if (!finished) { finished = true; done(); } }
@@ -44,7 +61,10 @@
       speechSynthesis.speak(u);
     });
   }
-  function hush() { if (window.speechSynthesis) speechSynthesis.cancel(); }
+  function hush() {
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    if (playing) { playing.onended = null; playing.onerror = null; playing.pause(); playing = null; }
+  }
 
   function tone(freqs, ms, level) {
     var a = audio(), t = a.currentTime, g = a.createGain();
@@ -85,6 +105,7 @@
     show("menu");
     status("Connected");
     $("[data-timer]").textContent = "";
+    if (line.greetingAudio) { say(line.greeting, line.greetingAudio); return; }
     say(line.greeting).then(function () {
       if (s === seq && phase === "menu" && line.menu) return say(line.menu);
     });
@@ -99,10 +120,10 @@
     hush();
     if (o.action === "link") {
       status("Opening the page…");
-      say(o.say).then(function () { if (s === seq) { end("Page opened"); window.open(o.url, "_blank"); } });
+      say(o.say, o.sayAudio).then(function () { if (s === seq) { end("Page opened"); window.open(o.url, "_blank"); } });
     } else if (o.action === "play") {
       status(o.label);
-      say(o.say).then(function () { if (s === seq) end("Call ended"); });
+      say(o.say, o.sayAudio).then(function () { if (s === seq) end("Call ended"); });
     } else if (o.action === "ring") {
       ring(s, o);
     } else if (o.action === "voicemail") {
@@ -112,7 +133,7 @@
 
   function ring(s, o) {
     status("Please hold…");
-    var spoken = say(o.say || "Please hold.");
+    var spoken = say(o.say || "Please hold.", o.sayAudio);
     // Asked from the key press itself: some browsers only show the microphone prompt during a tap.
     var gum = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
       ? navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
@@ -168,7 +189,7 @@
       ws.onopen = function () { send({ type: "voicemail", option: o.label }); };
       ws.onmessage = function (e) {
         var m = JSON.parse(e.data);
-        if (s === seq && m.type === "voicemail") voicemail(s, m.token, o.say || "Please leave a message after the tone.");
+        if (s === seq && m.type === "voicemail") voicemail(s, m.token, o.say || "Please leave a message after the tone.", o.sayAudio);
       };
     }, function () {
       if (s !== seq) return;
@@ -178,13 +199,13 @@
   }
 
   // voicemail plays the prompt, beeps, records up to two minutes and sends it.
-  function voicemail(s, token, prompt) {
+  function voicemail(s, token, prompt, recording) {
     if (stopRing) { stopRing(); stopRing = null; }
     if (ws) { ws.onclose = null; ws.close(); ws = null; }
     if (!mic || !window.MediaRecorder) return end(line.owner + " can't answer right now. Please call again later.");
     show("voicemail");
     status("Voicemail");
-    say(prompt).then(function () {
+    say(prompt, recording).then(function () {
       if (s !== seq) return;
       tone([1000], 400, 0.12);
       var type = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"].filter(function (t) {

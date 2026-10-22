@@ -68,7 +68,8 @@ B&B and may become a SaaS.
   "no-answer" or a voicemail choice; `web/voicemail.go` takes the upload (`POST /api/voicemail`) and tells the
   phone app (`NotifyOwners`).
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
-  `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor), `voicemail` + `voicemail.js`
+  `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor with voice recorder: uploads to
+  `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
   (list shared by the dashboard and the phone app), `call` + `call.js` (visitor's
   call window `/call/{line}`) and `Phone` + `phone.js` (phone app `/app`, login required, must stay open: no push yet).
 - No STUN/TURN yet (`iceServers: []`): calls work on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.

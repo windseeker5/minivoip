@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"os"
 	"strings"
 
 	"minivoip/lines"
@@ -57,22 +58,22 @@ func (s *Store) LineExists(name string) bool {
 func (s *Store) line(where string, arg any) (lines.Line, error) {
 	var l lines.Line
 	var id int64
-	err := s.db.QueryRow("SELECT id, name, business, owner_name, greeting FROM line WHERE "+where, arg).
-		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting)
+	err := s.db.QueryRow("SELECT id, name, business, owner_name, greeting, greeting_audio FROM line WHERE "+where, arg).
+		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio)
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, ErrNotFound
 	}
 	if err != nil {
 		return l, err
 	}
-	rows, err := s.db.Query("SELECT key, label, action, say, url FROM menu_option WHERE line_id = ? ORDER BY position", id)
+	rows, err := s.db.Query("SELECT key, label, action, say, url, say_audio FROM menu_option WHERE line_id = ? ORDER BY position", id)
 	if err != nil {
 		return l, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var o lines.Option
-		if err := rows.Scan(&o.Key, &o.Label, &o.Action, &o.Say, &o.URL); err != nil {
+		if err := rows.Scan(&o.Key, &o.Label, &o.Action, &o.Say, &o.URL, &o.SayAudio); err != nil {
 			return l, err
 		}
 		l.Options = append(l.Options, o)
@@ -81,7 +82,12 @@ func (s *Store) line(where string, arg any) (lines.Line, error) {
 }
 
 // SaveMenu replaces the account's line details, greeting and menu options.
-func (s *Store) SaveMenu(accountID int64, business, owner, greeting string, opts []lines.Option) error {
+// Recordings the menu no longer uses are deleted.
+func (s *Store) SaveMenu(accountID int64, business, owner, greeting, greetingAudio string, opts []lines.Option) error {
+	old, err := s.LineForAccount(accountID)
+	if err != nil {
+		return err
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -95,18 +101,38 @@ func (s *Store) SaveMenu(accountID int64, business, owner, greeting string, opts
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec("UPDATE line SET business = ?, owner_name = ?, greeting = ? WHERE id = ?",
-		strings.TrimSpace(business), strings.TrimSpace(owner), strings.TrimSpace(greeting), lineID); err != nil {
+	if _, err := tx.Exec("UPDATE line SET business = ?, owner_name = ?, greeting = ?, greeting_audio = ? WHERE id = ?",
+		strings.TrimSpace(business), strings.TrimSpace(owner), strings.TrimSpace(greeting), greetingAudio, lineID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec("DELETE FROM menu_option WHERE line_id = ?", lineID); err != nil {
 		return err
 	}
 	for i, o := range opts {
-		if _, err := tx.Exec("INSERT INTO menu_option (line_id, position, key, label, action, say, url) VALUES (?, ?, ?, ?, ?, ?, ?)",
-			lineID, i, o.Key, o.Label, string(o.Action), o.Say, o.URL); err != nil {
+		if _, err := tx.Exec("INSERT INTO menu_option (line_id, position, key, label, action, say, url, say_audio) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			lineID, i, o.Key, o.Label, string(o.Action), o.Say, o.URL, o.SayAudio); err != nil {
 			return err
 		}
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	keep := map[string]bool{greetingAudio: true}
+	for _, o := range opts {
+		keep[o.SayAudio] = true
+	}
+	for _, f := range append([]string{old.GreetingAudio}, sayAudios(old.Options)...) {
+		if f != "" && !keep[f] {
+			os.Remove(s.PromptPath(f))
+		}
+	}
+	return nil
+}
+
+func sayAudios(opts []lines.Option) []string {
+	var out []string
+	for _, o := range opts {
+		out = append(out, o.SayAudio)
+	}
+	return out
 }

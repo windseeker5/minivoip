@@ -42,7 +42,8 @@ A phone line: the call link `/call/<name>` and its voice menu. One per account.
 | `name` | text, unique | Lowercase letters, digits, dashes, 3–30; can't be changed. Some names are reserved (`lines.CheckName`) |
 | `business` | text | Shown on the call page |
 | `owner_name` | text | First name, used in "Talk to Joe" |
-| `greeting` | text | Welcome message, read by the browser's voice (recordings later) |
+| `greeting` | text | Welcome message, read by the browser's voice |
+| `greeting_audio` | text | The owner's recorded welcome (file under `prompts/`), or empty. When set, callers hear it instead of `greeting` and the spoken menu |
 | `created_at` | text (UTC) | |
 
 ## menu_option
@@ -58,6 +59,7 @@ One choice in a line's voice menu.
 | `action` | text: `ring`, `play`, `link`, `voicemail` | What the choice does |
 | `say` | text | Spoken when the caller picks it (required for `play`) |
 | `url` | text | Web page for `link` (http or https) |
+| `say_audio` | text | The owner's recording of `say` (file under `prompts/`), or empty |
 
 ## promo_code
 Codes that make a line free forever. No admin page yet: add codes with SQL.
@@ -93,3 +95,4 @@ Note: deleting an account removes its voicemail rows but not the files; the e2e 
 |---|---|---|
 | 1 | 2026-10-21 | First schema: `account`, `user`, `session`, `line`, `menu_option`, `promo_code` |
 | 2 | 2026-10-21 | `voicemail` table |
+| 3 | 2026-10-21 | `line.greeting_audio`, `menu_option.say_audio` (recorded prompts in `<data dir>/prompts/`, public at `/prompt/<name>`, random names; saving the menu deletes recordings it no longer uses) |

@@ -48,6 +48,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /dashboard/menu", s.auth(s.saveMenu))
 	mux.Handle("GET /app", s.auth(s.phoneApp))
 	mux.Handle("GET /app/voicemails", s.auth(s.voicemailFragment))
+	mux.Handle("POST /dashboard/prompt", s.auth(s.uploadPrompt))
+	mux.HandleFunc("GET /prompt/{name}", s.prompt)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))
 	mux.Handle("GET /voicemail/{id}/audio", s.auth(s.voicemailAudio))

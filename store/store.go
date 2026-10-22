@@ -89,6 +89,11 @@ var migrations = []string{
 	);
 	CREATE INDEX voicemail_line ON voicemail(line_id, created_at);
 	`,
+	// 3: recorded prompts (files live in <data dir>/prompts/).
+	`
+	ALTER TABLE line ADD COLUMN greeting_audio TEXT NOT NULL DEFAULT '';
+	ALTER TABLE menu_option ADD COLUMN say_audio TEXT NOT NULL DEFAULT '';
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

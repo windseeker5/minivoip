@@ -159,7 +159,7 @@ templ Dashboard(email string, l lines.Line, callURL string, newVoicemails int) {
 templ MenuEditor(email string, l lines.Line, saved bool, errMsg string) {
 	@dashShell("Voice menu", email, "/dashboard/menu") {
 		<h1 class="text-3xl font-bold tracking-tight">Voice menu</h1>
-		<p class="mt-2 text-muted-foreground">What your receptionist says, and where each choice sends the caller. A computer voice reads it for now; recording your own voice comes next.</p>
+		<p class="mt-2 text-muted-foreground">What your receptionist says, and where each choice sends the caller. Type it for a computer voice to read, or record it in your own voice.</p>
 		<form method="post" action="/dashboard/menu" class="mt-8 flex flex-col gap-6" data-menu-form>
 			@formError(errMsg)
 			if saved {
@@ -177,7 +177,8 @@ templ MenuEditor(email string, l lines.Line, saved bool, errMsg string) {
 				<div class="mt-5">
 					@formField("greeting", "Welcome message") {
 						@textarea.Textarea(textarea.Props{ID: "greeting", Name: "greeting", Value: l.Greeting, Rows: 2})
-						<p class="text-xs text-muted-foreground">Callers hear this first, then the list of choices.</p>
+						<p class="text-xs text-muted-foreground">Callers hear this first, then the list of choices, read by a computer voice.</p>
+						@recorder("greeting_audio", l.GreetingAudio, "Or record it in your own voice. Say your choices in it too (\"press 1 for bookings\"): callers hear your recording instead of the text and the list.")
 					}
 				</div>
 			}
@@ -213,6 +214,45 @@ templ MenuEditor(email string, l lines.Line, saved bool, errMsg string) {
 	}
 }
 
+// recorder records a prompt in the owner's voice (dashboard.js). The hidden
+// field carries the recording's name when the menu is saved; empty means
+// the computer voice reads the text.
+templ recorder(name, value, hint string) {
+	<div class="flex flex-col gap-2" data-recorder>
+		<input type="hidden" name={ name } value={ value } data-rec-value/>
+		<div class="flex flex-wrap items-center gap-2">
+			<button type="button" data-rec-start class="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-2.5 text-xs font-medium hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+				@icon.Mic(icon.Props{Class: "size-3.5"})
+				if value == "" {
+					<span data-rec-start-label>Record my voice</span>
+				} else {
+					<span data-rec-start-label>Record again</span>
+				}
+			</button>
+			<button type="button" data-rec-stop hidden class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-600 px-2.5 text-xs font-medium text-white hover:bg-red-700 focus-visible:ring-3 focus-visible:ring-red-600/30 focus-visible:outline-none">
+				@icon.Square(icon.Props{Class: "size-3"})
+				Stop <span class="tabular-nums" data-rec-timer>0:00</span>
+			</button>
+			<audio controls preload="none" class="h-8 max-w-full" data-rec-audio
+				if value != "" {
+					src={ "/prompt/" + value }
+				} else {
+					hidden
+				}
+			></audio>
+			<button type="button" data-rec-clear class="h-8 px-1 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+				if value == "" {
+					hidden
+				}
+			>Use the computer voice instead</button>
+			<span class="text-xs text-muted-foreground" data-rec-status role="status"></span>
+		</div>
+		if hint != "" {
+			<p class="text-xs text-muted-foreground">{ hint }</p>
+		}
+	</div>
+}
+
 // selectClass matches the input component's look for a native select.
 const selectClass = "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 
@@ -241,6 +281,9 @@ templ choiceRow(o lines.Option) {
 			<span data-say-label>Message</span>
 			@input.Input(input.Props{Name: "say", Value: o.Say, Placeholder: "Please hold, I'm ringing you."})
 		</label>
+		<div class="sm:col-span-3 sm:col-start-2">
+			@recorder("say_audio", o.SayAudio, "")
+		</div>
 		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3 sm:col-start-2" data-url-field>
 			Web address
 			@input.Input(input.Props{Name: "url", Value: o.URL, Type: "url", Placeholder: "https://joesbnb.example/booking"})

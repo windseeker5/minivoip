@@ -44,6 +44,9 @@ type Option struct {
 	Action Action
 	Say    string // spoken when the caller picks this option
 	URL    string // for Link
+	// SayAudio is the owner's recording of Say (a prompt file name), played
+	// instead of the computer voice when set.
+	SayAudio string
 }
 
 type Line struct {
@@ -51,7 +54,11 @@ type Line struct {
 	Business string
 	Owner    string // first name, used in "Talk to Joe"
 	Greeting string
-	Options  []Option
+	// GreetingAudio is the owner's recorded welcome (a prompt file name).
+	// When set, callers hear it instead of the greeting and the spoken menu,
+	// so the owner says the choices in it.
+	GreetingAudio string
+	Options       []Option
 }
 
 // Menu is the spoken menu: "Press 1 for bookings, press 2 ...".

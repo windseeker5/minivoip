@@ -41,7 +41,7 @@ func main() {
 	hub.OnRing = sender.Ring
 	hub.OnMissed = sender.Missed
 
-	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins()}
+	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins(), CallLine: callLine()}
 	site.Routes(mux)
 
 	ln, err := listen()
@@ -120,6 +120,15 @@ func admins() []string {
 		return strings.Split(a, ",")
 	}
 	return []string{"kdresdell@gmail.com"}
+}
+
+// callLine is the line the landing page's "Call us now" button calls:
+// MINIVOIP_CALL_LINE, else Ken's line.
+func callLine() string {
+	if l := os.Getenv("MINIVOIP_CALL_LINE"); l != "" {
+		return l
+	}
+	return "ken"
 }
 
 // pushContact is the contact the push services see: MINIVOIP_PUSH_CONTACT,

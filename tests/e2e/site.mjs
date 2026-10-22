@@ -114,6 +114,14 @@ try {
   step = "landing";
   await visitorSite.goto(BASE + "/");
   await visitorSite.screenshot({ path: `${SHOTS}/landing.png` });
+  // "Call us now" calls a real line (Ken's): open its page, never press Call.
+  const callUs = await visitorSite.getAttribute("[data-call-us]", "href").catch(() => null);
+  if (callUs) {
+    const res = await visitorSite.request.get(BASE + callUs);
+    check(res.ok() && (await res.text()).includes('data-action="call"'), `"Call us now" opens a working call page (${callUs})`);
+  } else {
+    check(await visitorSite.isVisible('a[href="#demo"]'), "without a real line, the hero offers the demo call");
+  }
   await visitorSite.goto(BASE + "/dashboard");
   check(new URL(visitorSite.url()).pathname === "/login", "dashboard sends logged-out visitors to log in");
 

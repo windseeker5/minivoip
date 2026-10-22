@@ -33,6 +33,8 @@ type Server struct {
 	// Admins are emails that can manage promo codes (besides users marked
 	// is_admin in the database).
 	Admins []string
+	// CallLine is the line behind the landing page's "Call us now" button.
+	CallLine string
 }
 
 type ctxKey struct{}
@@ -173,7 +175,11 @@ func serverError(w http.ResponseWriter, r *http.Request, err error) {
 
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	_, loggedIn := s.user(r)
-	render(w, r, pages.Home(loggedIn))
+	line := ""
+	if s.CallLine != "" && s.Store.LineExists(s.CallLine) {
+		line = s.CallLine
+	}
+	render(w, r, pages.Home(loggedIn, line))
 }
 
 // ------------------------------------------------------------- sign up, log in

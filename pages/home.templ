@@ -64,12 +64,14 @@ var included = []string{
 }
 
 // Home is the landing page; loggedIn swaps "Log in" for the dashboard link.
-templ Home(loggedIn bool) {
+// callLine is a real line visitors can call to try minivoip ("" hides the
+// "Call us now" buttons).
+templ Home(loggedIn bool, callLine string) {
 	@layouts.Base("minivoip: a virtual receptionist for your website that rings your cell", "Your website's receptionist answers every call in your voice, sends it to the right place and rings your cell when it's for you. No phone line needed. Free while in beta.") {
 		@siteNav(loggedIn)
 		<main>
-			@hero()
-			@demo()
+			@hero(callLine)
+			@demo(callLine)
 			@featureGrid()
 			@howItWorks()
 			@pricing()
@@ -134,7 +136,7 @@ templ siteNav(loggedIn bool) {
 	</nav>
 }
 
-templ hero() {
+templ hero(callLine string) {
 	<section class="mx-auto max-w-4xl px-4 pt-20 pb-14 text-center sm:pt-28">
 		<h1 class="text-4xl font-bold tracking-tight text-balance sm:text-6xl">
 			Your website's receptionist answers every call and sends it to your cell.
@@ -146,18 +148,30 @@ templ hero() {
 			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "h-11 px-6 text-base"}) {
 				Get my free line
 			}
-			@button.Button(button.Props{Href: "#demo", Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-11 px-6 text-base"}) {
-				@icon.Play()
-				Try the demo call
+			if callLine != "" {
+				@button.Button(button.Props{Href: "/call/" + callLine, Target: "_blank", Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-11 px-6 text-base", Attributes: templ.Attributes{"data-call-us": ""}}) {
+					@icon.Phone()
+					Call us now
+				}
+			} else {
+				@button.Button(button.Props{Href: "#demo", Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-11 px-6 text-base"}) {
+					@icon.Play()
+					Try the demo call
+				}
 			}
 		</div>
-		<p class="mt-4 text-sm text-muted-foreground">Free while in beta. No card required.</p>
+		<p class="mt-4 text-sm text-muted-foreground">
+			Free while in beta. No card required.
+			if callLine != "" {
+				"Call us now" is a real call, answered by our own minivoip line.
+			}
+		</p>
 	</section>
 }
 
 // demo is a fake call: landing.js walks it through its states. Nothing rings
 // and nothing is recorded.
-templ demo() {
+templ demo(callLine string) {
 	<section id="demo" class="mx-auto max-w-5xl px-4 pb-24">
 		<div class="demo grid overflow-hidden rounded-2xl border bg-card shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)] md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" data-demo data-state="idle">
 			<div class="flex flex-col border-b md:border-r md:border-b-0">
@@ -285,6 +299,14 @@ templ demo() {
 			</div>
 		</div>
 		<p class="mt-4 text-center text-sm text-muted-foreground">A demo with a sample business. Nothing rings and nothing is recorded.</p>
+		if callLine != "" {
+			<div class="mt-6 flex justify-center">
+				@button.Button(button.Props{Href: "/call/" + callLine, Target: "_blank", Size: button.SizeLg, Class: "h-11 px-6 text-base"}) {
+					@icon.Phone()
+					Make a real call to us
+				}
+			</div>
+		}
 	</section>
 }
 

@@ -1,0 +1,122 @@
+package pages
+
+import (
+	"minivoip/components/button"
+	"minivoip/components/icon"
+	"minivoip/layouts"
+	"minivoip/lines"
+)
+
+// callData is what call.js needs to play the menu.
+type callData struct {
+	Line     string       `json:"line"`
+	Owner    string       `json:"owner"`
+	Greeting string       `json:"greeting"`
+	Menu     string       `json:"menu"`
+	Options  []callOption `json:"options"`
+}
+
+type callOption struct {
+	Key    string `json:"key"`
+	Label  string `json:"label"`
+	Action string `json:"action"`
+	Say    string `json:"say"`
+	URL    string `json:"url,omitempty"`
+}
+
+func newCallData(l lines.Line) callData {
+	d := callData{Line: l.Name, Owner: l.Owner, Greeting: l.Greeting, Menu: l.Menu()}
+	for _, o := range l.Options {
+		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, URL: o.URL})
+	}
+	return d
+}
+
+// Call is the visitor's call window: /call/<line>. call.js runs it.
+templ Call(l lines.Line) {
+	@layouts.Base("Call "+l.Business, "") {
+		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-8">
+			<div class="w-full max-w-sm">
+				@brand()
+			</div>
+			<div class="mt-6 flex w-full max-w-sm flex-1 flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]" data-call>
+				<span class="flex size-16 items-center justify-center rounded-full bg-muted text-xl font-semibold">{ l.Business[:1] }</span>
+				<h1 class="mt-4 text-2xl font-bold tracking-tight">{ l.Business }</h1>
+				<p class="mt-1 min-h-6 text-muted-foreground" data-status aria-live="polite">Press Call to start</p>
+				<p class="mt-1 text-sm text-muted-foreground tabular-nums" data-timer></p>
+				<div class="mt-auto flex w-full flex-col items-center gap-3 pt-10">
+					<div data-show="menu" hidden class="flex w-full flex-col gap-2.5">
+						for _, o := range l.Options {
+							<button type="button" data-key={ o.Key } class="flex items-center gap-3 rounded-xl border bg-background px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
+								<span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">{ o.Key }</span>
+								<span class="font-semibold">{ o.Label }</span>
+							</button>
+						}
+					</div>
+					<button type="button" data-action="call" data-show="idle ended" class="flex size-20 items-center justify-center rounded-full bg-emerald-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-emerald-600/30 focus-visible:outline-none active:scale-95" aria-label="Call">
+						@icon.Phone(icon.Props{Class: "size-8"})
+					</button>
+					<button type="button" data-action="hangup" data-show="menu ringing connecting talking" hidden class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-red-600/30 focus-visible:outline-none active:scale-95" aria-label="Hang up">
+						@icon.PhoneOff(icon.Props{Class: "size-7"})
+					</button>
+				</div>
+				<audio data-remote autoplay></audio>
+			</div>
+			<p class="mt-4 max-w-sm text-center text-xs text-muted-foreground">Test line. Your browser will ask to use the microphone when you choose to talk to { l.Owner }.</p>
+		</main>
+		@templ.JSONScript("line", newCallData(l))
+		<script src="/assets/js/call.js" defer></script>
+	}
+}
+
+// Phone is the owner's phone app: /app. phone.js keeps it connected and rings.
+templ Phone(l lines.Line) {
+	@layouts.Base("minivoip phone", "") {
+		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-8" data-phone data-line={ l.Name }>
+			<div class="flex w-full max-w-sm items-center justify-between">
+				@brand()
+				<span class="flex items-center gap-1.5 text-sm text-muted-foreground"><span class="size-2 rounded-full bg-muted-foreground" data-dot></span><span data-conn>Connecting…</span></span>
+			</div>
+			<div class="mt-6 flex w-full max-w-sm flex-1 flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]">
+				<p class="text-sm text-muted-foreground">{ l.Business } line</p>
+				<div data-show="ready" class="my-auto flex flex-col items-center gap-3">
+					@icon.Smartphone(icon.Props{Class: "size-10 text-muted-foreground"})
+					<p class="text-lg font-semibold">Ready for calls</p>
+					<p class="max-w-xs text-sm text-muted-foreground">Keep this page open. It rings when a visitor picks "Talk to { l.Owner }".</p>
+				</div>
+				<div data-show="incoming connecting talking" hidden class="my-auto flex flex-col items-center gap-2">
+					<p class="text-sm text-muted-foreground" data-status>Website call</p>
+					<p class="text-2xl font-bold tracking-tight">Website visitor</p>
+					<p class="text-muted-foreground" data-option></p>
+					<p class="text-sm text-muted-foreground tabular-nums" data-timer></p>
+				</div>
+				<div data-show="incoming" hidden class="flex w-full justify-around pt-6">
+					<button type="button" data-action="decline" class="flex flex-col items-center gap-2 rounded-2xl p-1 text-sm focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
+						<span class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white">
+							@icon.PhoneOff(icon.Props{Class: "size-7"})
+						</span>
+						Decline
+					</button>
+					<button type="button" data-action="accept" class="flex flex-col items-center gap-2 rounded-2xl p-1 text-sm focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
+						<span class="flex size-16 items-center justify-center rounded-full bg-emerald-600 text-white">
+							@icon.Phone(icon.Props{Class: "size-7"})
+						</span>
+						Answer
+					</button>
+				</div>
+				<div data-show="connecting talking" hidden class="pt-6">
+					<button type="button" data-action="hangup" class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white" aria-label="Hang up">
+						@icon.PhoneOff(icon.Props{Class: "size-7"})
+					</button>
+				</div>
+				<audio data-remote autoplay></audio>
+			</div>
+			<div class="mt-4">
+				@button.Button(button.Props{Href: "/call/" + l.Name, Variant: button.VariantLink, Size: button.SizeSm, Target: "_blank"}) {
+					Open the visitor's call page to test
+				}
+			</div>
+		</main>
+		<script src="/assets/js/phone.js" defer></script>
+	}
+}

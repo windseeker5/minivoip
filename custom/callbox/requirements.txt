@@ -1,4 +1,0 @@
-flask==3.1.2
-flask-sock==0.7.0
-pywebpush==2.0.3
-gunicorn==23.0.0

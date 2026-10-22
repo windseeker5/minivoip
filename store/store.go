@@ -18,6 +18,8 @@ var ErrNotFound = errors.New("not found")
 
 type Store struct {
 	db *sql.DB
+	// Dir is the folder holding the database; audio files go under it.
+	Dir string
 }
 
 // migrations run in order; PRAGMA user_version remembers how many ran.
@@ -73,6 +75,20 @@ var migrations = []string{
 		created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 	);
 	`,
+	// 2: voicemail messages (audio files live in <data dir>/voicemail/).
+	`
+	CREATE TABLE voicemail (
+		id           INTEGER PRIMARY KEY,
+		line_id      INTEGER NOT NULL REFERENCES line(id) ON DELETE CASCADE,
+		option       TEXT NOT NULL DEFAULT '',
+		duration_ms  INTEGER NOT NULL DEFAULT 0,
+		file         TEXT NOT NULL,
+		content_type TEXT NOT NULL,
+		listened     INTEGER NOT NULL DEFAULT 0,
+		created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE INDEX voicemail_line ON voicemail(line_id, created_at);
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.
@@ -85,7 +101,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Store{db: db}
+	s := &Store{db: db, Dir: filepath.Dir(path)}
 	if err := s.migrate(); err != nil {
 		db.Close()
 		return nil, err

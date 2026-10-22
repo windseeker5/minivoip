@@ -13,6 +13,7 @@ import (
 	"minivoip/components/icon"
 	"minivoip/layouts"
 	"minivoip/lines"
+	"minivoip/store"
 )
 
 // callData is what call.js needs to play the menu.
@@ -89,7 +90,7 @@ func Call(l lines.Line) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business[:1])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 43, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 44, Col: 119}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -102,7 +103,7 @@ func Call(l lines.Line) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 44, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 45, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -120,7 +121,7 @@ func Call(l lines.Line) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.Key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 50, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 51, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {
@@ -133,7 +134,7 @@ func Call(l lines.Line) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(o.Key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 51, Col: 134}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 52, Col: 134}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -146,7 +147,7 @@ func Call(l lines.Line) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(o.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 52, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 53, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -165,7 +166,7 @@ func Call(l lines.Line) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button> <button type=\"button\" data-action=\"hangup\" data-show=\"menu ringing connecting talking\" hidden class=\"flex size-16 items-center justify-center rounded-full bg-red-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-red-600/30 focus-visible:outline-none active:scale-95\" aria-label=\"Hang up\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button> <button type=\"button\" data-action=\"send-message\" data-show=\"recording\" hidden class=\"inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none\"><span class=\"size-2.5 animate-pulse rounded-full bg-red-500\"></span> Send my message</button> <button type=\"button\" data-action=\"hangup\" data-show=\"menu ringing connecting talking voicemail recording\" hidden class=\"flex size-16 items-center justify-center rounded-full bg-red-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-red-600/30 focus-visible:outline-none active:scale-95\" aria-label=\"Hang up\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -180,7 +181,7 @@ func Call(l lines.Line) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(l.Owner)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 65, Col: 161}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 70, Col: 161}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -209,7 +210,7 @@ func Call(l lines.Line) templ.Component {
 }
 
 // Phone is the owner's phone app: /app. phone.js keeps it connected and rings.
-func Phone(l lines.Line) templ.Component {
+func Phone(l lines.Line, voicemails []store.Voicemail) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -249,7 +250,7 @@ func Phone(l lines.Line) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 75, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 80, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -263,14 +264,14 @@ func Phone(l lines.Line) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"flex items-center gap-1.5 text-sm text-muted-foreground\"><span class=\"size-2 rounded-full bg-muted-foreground\" data-dot></span><span data-conn>Connecting…</span></span></div><div class=\"mt-6 flex w-full max-w-sm flex-1 flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]\"><p class=\"text-sm text-muted-foreground\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"flex items-center gap-1.5 text-sm text-muted-foreground\"><span class=\"size-2 rounded-full bg-muted-foreground\" data-dot></span><span data-conn>Connecting…</span></span></div><div class=\"mt-6 flex w-full max-w-sm min-h-[26rem] flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]\"><p class=\"text-sm text-muted-foreground\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 81, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 86, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -291,7 +292,7 @@ func Phone(l lines.Line) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(l.Owner)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 85, Col: 124}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 90, Col: 124}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -321,7 +322,15 @@ func Phone(l lines.Line) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</button></div><audio data-remote autoplay></audio></div><div class=\"mt-4 flex flex-wrap justify-center gap-x-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</button></div><audio data-remote autoplay></audio></div><section class=\"mt-6 w-full max-w-sm\"><h2 class=\"mb-3 font-semibold\">Voicemail</h2><div data-voicemail-box>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = VoicemailList(voicemails, "/app").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</div></section><div class=\"mt-4 flex flex-wrap justify-center gap-x-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -337,7 +346,7 @@ func Phone(l lines.Line) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "Back to my dashboard")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "Back to my dashboard")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -359,7 +368,7 @@ func Phone(l lines.Line) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "Make a test call")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "Make a test call")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -369,7 +378,7 @@ func Phone(l lines.Line) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div></main><script src=\"/assets/js/phone.js\" defer></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div></main><script src=\"/assets/js/voicemail.js\" defer></script> <script src=\"/assets/js/phone.js\" defer></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

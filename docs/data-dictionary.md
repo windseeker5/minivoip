@@ -55,7 +55,7 @@ One choice in a line's voice menu.
 | `position` | integer | Order in the menu, from 0 |
 | `key` | text | The key the caller presses: `0`–`9`, `*` or `#`; unique per line |
 | `label` | text | Choice name, e.g. "Bookings"; spoken as "press 1 for bookings" |
-| `action` | text: `ring`, `play`, `link`, `voicemail` | What the choice does (`voicemail` says "coming soon" until voicemail is built) |
+| `action` | text: `ring`, `play`, `link`, `voicemail` | What the choice does |
 | `say` | text | Spoken when the caller picks it (required for `play`) |
 | `url` | text | Web page for `link` (http or https) |
 
@@ -72,7 +72,24 @@ Codes that make a line free forever. No admin page yet: add codes with SQL.
 | `revoked` | integer 0/1 | 1 = no longer accepted |
 | `created_at` | text (UTC) | |
 
+## voicemail
+A message a caller left. The audio file is `<data dir>/voicemail/<file>` (deleted with the row). Uploads need a one-time token from the call socket (5 minutes), given when nobody answers or when the caller picks a voicemail choice.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `line_id` | integer → `line.id` (delete cascades; the file stays, see note) | |
+| `option` | text | Menu choice the caller picked ("Talk to Joe", "Leave a message") |
+| `duration_ms` | integer | Length measured by the caller's browser |
+| `file` | text | File name under `voicemail/` (`msg-*.webm`, `.m4a` or `.ogg`) |
+| `content_type` | text | e.g. `audio/webm` |
+| `listened` | integer 0/1 | 1 once the owner pressed play |
+| `created_at` | text (UTC) | |
+
+Note: deleting an account removes its voicemail rows but not the files; the e2e test deletes its own files.
+
 ## Version history
 | Version (`PRAGMA user_version`) | Date | Change |
 |---|---|---|
 | 1 | 2026-10-21 | First schema: `account`, `user`, `session`, `line`, `menu_option`, `promo_code` |
+| 2 | 2026-10-21 | `voicemail` table |

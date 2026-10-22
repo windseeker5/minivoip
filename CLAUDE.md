@@ -64,9 +64,12 @@ B&B and may become a SaaS.
   rules. `choicePhrase` is mirrored in `assets/js/dashboard.js`.
 - `calls/hub.go`: the WebSocket at `/ws?line=&role=visitor|owner`. Only passes messages (call, ringing, ready,
   incoming, accept, offer/answer/ice, hangup, no-answer, busy); one call per line, kept in memory. Only the line's
-  logged-in owner may connect as `owner` (`CanAnswer`).
+  logged-in owner may connect as `owner` (`CanAnswer`). It hands the caller a one-time voicemail token on
+  "no-answer" or a voicemail choice; `web/voicemail.go` takes the upload (`POST /api/voicemail`) and tells the
+  phone app (`NotifyOwners`).
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
-  `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor), `call` + `call.js` (visitor's
+  `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor), `voicemail` + `voicemail.js`
+  (list shared by the dashboard and the phone app), `call` + `call.js` (visitor's
   call window `/call/{line}`) and `Phone` + `phone.js` (phone app `/app`, login required, must stay open: no push yet).
 - No STUN/TURN yet (`iceServers: []`): calls work on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.
 - Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy

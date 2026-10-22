@@ -9,7 +9,8 @@
 
   var phase = "idle"; // idle, menu, ringing, connecting, talking, ended
   var seq = 0;        // bumps on every new call or hang-up, so old callbacks stop
-  var ws, pc, mic, callId, stopRing, timerIv, ac;
+  var ws, pc, mic, callId, stopRing, timerIv, ac, recorder;
+  var MAX_MESSAGE_MS = 120000;
 
   function show(p) {
     phase = p;
@@ -105,10 +106,7 @@
     } else if (o.action === "ring") {
       ring(s, o);
     } else if (o.action === "voicemail") {
-      status("Voicemail");
-      say(o.say || "Voicemail is coming soon. Please call again later.").then(function () {
-        if (s === seq) end("Voicemail is coming soon");
-      });
+      askVoicemail(s, o);
     }
   }
 
@@ -146,13 +144,83 @@
       else if (m.type === "accepted") connect(s);
       else if (m.type === "answer" && pc) pc.setRemoteDescription({ type: "answer", sdp: m.sdp });
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
-      else if (m.type === "no-answer") end(line.owner + " can't answer right now. Voicemail is coming soon.");
+      else if (m.type === "no-answer") voicemail(s, m.token, line.owner + " can't answer right now. Please leave a message after the tone.");
       else if (m.type === "busy") end(line.owner + " is on another call. Try again soon.");
       else if (m.type === "hangup") end("Call ended");
     };
     ws.onclose = function () {
       if (s === seq && (phase === "ringing" || phase === "connecting" || phase === "talking")) end("Line dropped");
     };
+  }
+
+  // A "take a voicemail" choice: get the microphone and a voicemail pass.
+  function askVoicemail(s, o) {
+    status("Voicemail");
+    var gum = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+      ? navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      : Promise.reject(new Error("no microphone"));
+    gum.then(function (stream) {
+      if (s !== seq) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+      mic = stream;
+      audio();
+      var proto = location.protocol === "https:" ? "wss:" : "ws:";
+      ws = new WebSocket(proto + "//" + location.host + "/ws?role=visitor&line=" + encodeURIComponent(line.line));
+      ws.onopen = function () { send({ type: "voicemail", option: o.label }); };
+      ws.onmessage = function (e) {
+        var m = JSON.parse(e.data);
+        if (s === seq && m.type === "voicemail") voicemail(s, m.token, o.say || "Please leave a message after the tone.");
+      };
+    }, function () {
+      if (s !== seq) return;
+      status("Microphone blocked. Allow it to leave a message.");
+      show("menu");
+    });
+  }
+
+  // voicemail plays the prompt, beeps, records up to two minutes and sends it.
+  function voicemail(s, token, prompt) {
+    if (stopRing) { stopRing(); stopRing = null; }
+    if (ws) { ws.onclose = null; ws.close(); ws = null; }
+    if (!mic || !window.MediaRecorder) return end(line.owner + " can't answer right now. Please call again later.");
+    show("voicemail");
+    status("Voicemail");
+    say(prompt).then(function () {
+      if (s !== seq) return;
+      tone([1000], 400, 0.12);
+      var type = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"].filter(function (t) {
+        return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t);
+      })[0];
+      try { recorder = new MediaRecorder(mic, type ? { mimeType: type } : undefined); }
+      catch (e) { return end("Couldn't record a message on this browser"); }
+      var chunks = [], began = Date.now();
+      recorder.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+      recorder.onstop = function () {
+        clearInterval(timerIv);
+        var blob = new Blob(chunks, { type: (recorder.mimeType || type || "audio/webm").split(";")[0] });
+        recorder = null;
+        upload(s, token, blob, Date.now() - began);
+      };
+      recorder.start(1000);
+      show("recording");
+      status("Recording your message…");
+      startTimer();
+      setTimeout(function () { if (recorder && recorder.state === "recording") recorder.stop(); }, MAX_MESSAGE_MS);
+    });
+  }
+
+  function upload(s, token, blob, ms) {
+    show("sending");
+    status("Sending your message…");
+    var form = new FormData();
+    form.append("token", token);
+    form.append("duration_ms", String(ms));
+    form.append("audio", blob, "message" + (/mp4/.test(blob.type) ? ".m4a" : /ogg/.test(blob.type) ? ".ogg" : ".webm"));
+    fetch("/api/voicemail", { method: "POST", body: form }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      if (s === seq) end("Message sent. Thanks for calling!");
+    }).catch(function () {
+      if (s === seq) end("Your message couldn't be sent. Please call again.");
+    });
   }
 
   function send(m) {
@@ -192,6 +260,8 @@
 
   function end(why) {
     seq++;
+    if (recorder && recorder.state === "recording") { recorder.onstop = null; recorder.stop(); }
+    recorder = null;
     hush();
     if (stopRing) { stopRing(); stopRing = null; }
     clearInterval(timerIv);
@@ -208,7 +278,13 @@
     if (!b) return;
     if (b.dataset.key) press(b.dataset.key);
     else if (b.dataset.action === "call") start();
-    else if (b.dataset.action === "hangup") { send({ type: "hangup" }); end("Call ended"); }
+    else if (b.dataset.action === "send-message") { if (recorder && recorder.state === "recording") recorder.stop(); }
+    else if (b.dataset.action === "hangup") {
+      // Hanging up while recording sends the message, like a real phone.
+      if (phase === "recording" && recorder && recorder.state === "recording") return recorder.stop();
+      send({ type: "hangup" });
+      end("Call ended");
+    }
   });
   document.addEventListener("keydown", function (e) {
     if (/^[0-9*#]$/.test(e.key)) press(e.key);

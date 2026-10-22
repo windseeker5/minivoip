@@ -42,10 +42,18 @@
       } else if (m.type === "offer") answer(m);
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
       else if (m.type === "hangup" && m.id === liveId) endCall();
+      else if (m.type === "voicemail") refreshVoicemail();
     };
   }
 
   function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+
+  // A caller left a message: reload the list under the call card.
+  function refreshVoicemail() {
+    fetch("/app/voicemails").then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
+      if (html) document.querySelector("[data-voicemail-box]").innerHTML = html;
+    });
+  }
 
   // ----------------------------------------------------------- ringing
 

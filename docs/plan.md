@@ -93,6 +93,7 @@ Started early (2026-10-21) as a thin slice: one line in code (`lines/`), call se
 - Relay: `pion/turn` built in. Test on the same Wi-Fi, then phone on 4G.
 
 ## Phase 5: voicemail
+Done 2026-10-21: no answer (30 s or Decline) or a voicemail choice → the browser records up to 2 minutes and uploads it; listed on the dashboard and in the phone app, play marks it heard, delete. Push "New voicemail" comes with Phase 3.
 - After 30 s with no answer, the visitor's browser records a message and uploads it.
 - Push "New voicemail" to the owner; play it in the phone app and dashboard.
 

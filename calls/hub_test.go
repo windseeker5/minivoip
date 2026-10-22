@@ -89,8 +89,27 @@ func TestNoAnswer(t *testing.T) {
 	send(t, visitor, Message{Type: "call"})
 	expect(t, visitor, "ringing")
 	expect(t, owner, "incoming")
-	expect(t, visitor, "no-answer")
+	token := expect(t, visitor, "no-answer").Token
 	expect(t, owner, "missed")
+
+	if line, _, ok := h.UseVoicemailToken(token); !ok || line != "joesbnb" {
+		t.Fatalf("voicemail token: %q %v", line, ok)
+	}
+	if _, _, ok := h.UseVoicemailToken(token); ok {
+		t.Fatal("a voicemail token works only once")
+	}
+}
+
+func TestVoicemailChoice(t *testing.T) {
+	h := NewHub(func(string) bool { return true })
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	visitor := dial(t, srv, "visitor")
+	send(t, visitor, Message{Type: "voicemail", Option: "Leave a message"})
+	token := expect(t, visitor, "voicemail").Token
+	if _, option, ok := h.UseVoicemailToken(token); !ok || option != "Leave a message" {
+		t.Fatalf("token: %q %v", option, ok)
+	}
 }
 
 func TestBusy(t *testing.T) {

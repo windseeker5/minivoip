@@ -3,10 +3,13 @@
 // the two browsers (WebRTC). Ported from the Python proof of concept, with
 // the same message types.
 //
-// Visitor -> server: call, offer, ice, hangup
+// Visitor -> server: call, voicemail, offer, ice, hangup
 // Owner   -> server: hello, accept, decline, answer, ice, hangup
-// Server  -> visitor: ringing, busy, accepted, no-answer, answer, ice, hangup
-// Server  -> owner:   ready, incoming, taken, missed, offer, ice, hangup
+// Server  -> visitor: ringing, busy, accepted, no-answer, voicemail, answer, ice, hangup
+// Server  -> owner:   ready, incoming, taken, missed, voicemail, offer, ice, hangup
+//
+// "no-answer" and "voicemail" to the visitor carry a one-time token that lets
+// the browser upload one voicemail (UseVoicemailToken).
 package calls
 
 import (
@@ -29,6 +32,7 @@ type Message struct {
 	ID        string          `json:"id,omitempty"`
 	Option    string          `json:"option,omitempty"` // menu choice the visitor picked, shown on the phone
 	SDP       string          `json:"sdp,omitempty"`
+	Token     string          `json:"token,omitempty"` // voicemail upload pass
 	Candidate json.RawMessage `json:"candidate,omitempty"`
 }
 
@@ -70,12 +74,22 @@ type Hub struct {
 	// for the line. Nil allows everyone (tests).
 	CanAnswer func(r *http.Request, line string) bool
 
-	mu    sync.Mutex
-	lines map[string]*line
+	mu       sync.Mutex
+	lines    map[string]*line
+	vmTokens map[string]vmToken
 }
 
+type vmToken struct {
+	line    string
+	option  string
+	expires time.Time
+}
+
+// voicemailWindow is how long a caller has to record and send a message.
+const voicemailWindow = 5 * time.Minute
+
 func NewHub(lineExists func(name string) bool) *Hub {
-	return &Hub{RingTimeout: 30 * time.Second, LineExists: lineExists, lines: map[string]*line{}}
+	return &Hub{RingTimeout: 30 * time.Second, LineExists: lineExists, lines: map[string]*line{}, vmTokens: map[string]vmToken{}}
 }
 
 func (h *Hub) line(name string) *line {
@@ -145,6 +159,10 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 		for o := range l.owners {
 			o.send(Message{Type: "incoming", ID: c.id, Option: c.option})
 		}
+
+	case !me.owner && m.Type == "voicemail":
+		// The caller picked a "take a voicemail" choice.
+		me.send(Message{Type: "voicemail", Token: h.issueToken(name, m.Option)})
 
 	case me.owner && m.Type == "hello":
 		me.send(Message{Type: "ready"})
@@ -217,7 +235,7 @@ func (h *Hub) endUnanswered(name string, c *call) {
 	c.timer.Stop()
 	l.current = nil
 	log.Printf("calls: %s: call %s not answered", name, c.id)
-	c.visitor.send(Message{Type: "no-answer", ID: c.id})
+	c.visitor.send(Message{Type: "no-answer", ID: c.id, Token: h.issueToken(name, c.option)})
 	for o := range l.owners {
 		o.send(Message{Type: "missed", ID: c.id})
 	}
@@ -240,6 +258,41 @@ func (h *Hub) end(name string, c *call, by *peer) {
 		for o := range l.owners {
 			o.send(Message{Type: "missed", ID: c.id})
 		}
+	}
+}
+
+// issueToken makes a one-time voicemail pass. Caller holds h.mu.
+func (h *Hub) issueToken(line, option string) string {
+	now := time.Now()
+	for t, v := range h.vmTokens {
+		if now.After(v.expires) {
+			delete(h.vmTokens, t)
+		}
+	}
+	t := newID() + newID()
+	h.vmTokens[t] = vmToken{line: line, option: option, expires: now.Add(voicemailWindow)}
+	return t
+}
+
+// UseVoicemailToken spends a voicemail pass and says which line (and menu
+// choice) it was for.
+func (h *Hub) UseVoicemailToken(token string) (line, option string, ok bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	v, found := h.vmTokens[token]
+	delete(h.vmTokens, token)
+	if !found || time.Now().After(v.expires) {
+		return "", "", false
+	}
+	return v.line, v.option, true
+}
+
+// NotifyOwners sends a message to every open phone app of a line.
+func (h *Hub) NotifyOwners(line string, m Message) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for o := range h.line(line).owners {
+		o.send(m)
 	}
 }
 

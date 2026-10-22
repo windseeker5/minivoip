@@ -25,6 +25,8 @@ type Server struct {
 	Hub   *calls.Hub
 	// Dev relaxes the same-site check for the dev proxy on localhost:7331.
 	Dev bool
+	// OnVoicemail runs after a voicemail is saved (push notifications).
+	OnVoicemail func(line string)
 }
 
 type ctxKey struct{}
@@ -45,6 +47,13 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /dashboard/menu", s.auth(s.menuPage))
 	mux.Handle("POST /dashboard/menu", s.auth(s.saveMenu))
 	mux.Handle("GET /app", s.auth(s.phoneApp))
+	mux.Handle("GET /app/voicemails", s.auth(s.voicemailFragment))
+
+	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))
+	mux.Handle("GET /voicemail/{id}/audio", s.auth(s.voicemailAudio))
+	mux.Handle("POST /voicemail/{id}/listened", s.auth(s.voicemailListened))
+	mux.Handle("POST /voicemail/{id}/delete", s.auth(s.voicemailDelete))
+	mux.HandleFunc("POST /api/voicemail", s.uploadVoicemail)
 
 	mux.HandleFunc("GET /call/{line}", s.callPage)
 	mux.Handle("GET /ws", s.Hub)

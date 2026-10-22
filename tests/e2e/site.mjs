@@ -3,7 +3,8 @@
 //
 // 1. Logged out: visits every link reachable from the landing page.
 // 2. Signs up, creates a line, builds a menu, then visits every link again.
-// 3. A real call: phone app online, a visitor calls, the phone answers, hang up.
+// 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
+//    then voicemail (unanswered call and a voicemail choice), listen, delete.
 // 4. A stranger can't open the phone app; log out works.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
 //
@@ -11,9 +12,9 @@
 
 import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite"; // built into Node 22.5+
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const BASE = process.env.BASE || "http://localhost:7331";
 const SHOTS = "tests/e2e/shots";
@@ -133,6 +134,9 @@ try {
   await rows.nth(2).locator("[name=label]").fill("Our website");
   await rows.nth(2).locator("[data-action-select]").selectOption("link");
   await rows.nth(2).locator("[name=url]").fill("https://example.com/");
+  await owner.click("[data-add-choice]");
+  await rows.nth(3).locator("[name=label]").fill("Leave a message");
+  await rows.nth(3).locator("[data-action-select]").selectOption("voicemail");
   await owner.click("[data-preview]");
   const heard = await owner.textContent("[data-preview-text]");
   check(/press 1 to talk to Ken/i.test(heard) && /press 2 for opening hours/i.test(heard), `"Hear it" reads the menu: ${heard.trim()}`);
@@ -188,6 +192,54 @@ try {
   await caller.waitForSelector('[data-action="call"]:visible', { timeout: 15000 });
   check(true, "a 'play a message' choice ends the call by itself");
 
+  // Voicemail ---------------------------------------------------------------
+  step = "voicemail after no answer";
+  await caller.click('[data-action="call"]');
+  await caller.waitForSelector('[data-key="1"]:visible');
+  await caller.click('[data-key="1"]');
+  await owner.waitForSelector('[data-action="decline"]:visible', { timeout: 15000 });
+  await owner.click('[data-action="decline"]');
+  await caller.waitForSelector('[data-action="send-message"]:visible', { timeout: 20000 });
+  check(true, "declining sends the caller to voicemail");
+  await caller.waitForTimeout(2500);
+  await caller.screenshot({ path: `${SHOTS}/voicemail-recording.png` });
+  await caller.click('[data-action="send-message"]');
+  await caller.waitForSelector("text=Message sent", { timeout: 10000 });
+  check(true, "the caller's message is sent");
+  await owner.waitForSelector("[data-voicemail]", { timeout: 10000 });
+  check(true, "the phone app shows the new message without reloading");
+
+  step = "voicemail choice";
+  await caller.click('[data-action="call"]');
+  await caller.waitForSelector('[data-key="4"]:visible');
+  await caller.click('[data-key="4"]');
+  await caller.waitForSelector('[data-action="send-message"]:visible', { timeout: 20000 });
+  await caller.waitForTimeout(1500);
+  await caller.click('[data-action="hangup"]');
+  await caller.waitForSelector("text=Message sent", { timeout: 10000 });
+  check(true, "a 'take a voicemail' choice records, and hanging up sends it");
+
+  step = "voicemail page";
+  await owner.goto(BASE + "/dashboard");
+  check(await owner.isVisible("text=2 new messages"), "the dashboard counts 2 new messages");
+  await owner.click('a[href="/dashboard/voicemail"] >> nth=0');
+  await owner.waitForSelector("[data-voicemail]");
+  const items = owner.locator("[data-voicemail]");
+  check(await items.count() === 2, `the voicemail page lists 2 messages (${await items.count()})`);
+  const src = await items.first().locator("audio").getAttribute("src");
+  const audioRes = await owner.request.get(BASE + src);
+  const audioBytes = (await audioRes.body()).length;
+  check(audioRes.ok() && audioBytes > 1000 && /audio/.test(audioRes.headers()["content-type"]), `a message plays back as audio (${audioBytes} bytes, ${audioRes.headers()["content-type"]})`);
+  const strangerAudio = await (await newPage()).request.get(BASE + src, { maxRedirects: 0 });
+  check(strangerAudio.status() === 303, `a stranger can't download a message (${strangerAudio.status()})`);
+  await items.first().locator("audio").evaluate((a) => a.dispatchEvent(new Event("play")));
+  await owner.waitForFunction(() => document.querySelectorAll("[data-voicemail] [data-new]").length === 1, null, { timeout: 5000 });
+  check(true, "playing a message clears its New badge");
+  await owner.screenshot({ path: `${SHOTS}/voicemail.png`, fullPage: true });
+  await items.first().locator('button[aria-label="Delete this message"]').click();
+  await owner.waitForFunction(() => document.querySelectorAll("[data-voicemail]").length === 1, null, { timeout: 5000 });
+  check(true, "deleting a message removes it");
+
   // 4. Strangers and log out ----------------------------------------------
   step = "stranger";
   const stranger = await newPage();
@@ -203,9 +255,13 @@ try {
   console.log(`FAIL ${step}: ${err.message.split("\n")[0]}`);
 } finally {
   await browser.close();
-  // Delete the test account (cascades to its line, menu and sessions).
+  // Delete the test account (cascades to its line, menu, sessions and
+  // voicemail rows) and its voicemail files.
   const db = new DatabaseSync(DB);
   db.exec("PRAGMA foreign_keys = ON");
+  const files = db.prepare(`SELECT v.file FROM voicemail v JOIN line l ON l.id = v.line_id
+    JOIN account a ON a.id = l.account_id WHERE a.name LIKE 'e2e-%@example.com'`).all();
+  for (const f of files) rmSync(join(dirname(DB), "voicemail", f.file), { force: true });
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
   db.close();
 }

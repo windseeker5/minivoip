@@ -2,7 +2,9 @@ package store
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"minivoip/lines"
@@ -98,5 +100,40 @@ func TestLineAndMenu(t *testing.T) {
 	}
 	if !s.LineExists("joesbnb") || s.LineExists("nobody") {
 		t.Fatal("LineExists")
+	}
+}
+
+func TestVoicemail(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B", "Joe")
+	other, _ := s.CreateAccount("sam@example.com", "password1", "")
+
+	v, err := s.AddVoicemail("joesbnb", "Talk to Joe", "audio/webm", 4200, strings.NewReader("fake opus"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AddVoicemail("joesbnb", "", "audio/webm", 0, strings.NewReader("")); err == nil {
+		t.Fatal("an empty recording should be refused")
+	}
+	if s.NewVoicemails(u.AccountID) != 1 {
+		t.Fatal("one new message")
+	}
+	if _, _, err := s.VoicemailFile(other.AccountID, v.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatal("another account can't read it")
+	}
+	path, ct, err := s.VoicemailFile(u.AccountID, v.ID)
+	if b, _ := os.ReadFile(path); err != nil || ct != "audio/webm" || string(b) != "fake opus" {
+		t.Fatalf("file: %s %s %v", path, ct, err)
+	}
+	s.MarkListened(u.AccountID, v.ID)
+	if list, _ := s.Voicemails(u.AccountID); len(list) != 1 || !list[0].Listened || list[0].Seconds() != 5 {
+		t.Fatalf("list: %+v", list)
+	}
+	if err := s.DeleteVoicemail(u.AccountID, v.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("the audio file should be deleted")
 	}
 }

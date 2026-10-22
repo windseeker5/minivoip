@@ -29,7 +29,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request, u store.User)
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name))
+	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, s.Store.NewVoicemails(u.AccountID)))
 }
 
 func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -162,7 +162,12 @@ func (s *Server) phoneApp(w http.ResponseWriter, r *http.Request, u store.User) 
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Phone(l))
+	list, err := s.Store.Voicemails(u.AccountID)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	render(w, r, pages.Phone(l, list))
 }
 
 func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {

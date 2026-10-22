@@ -377,6 +377,8 @@ CSS, JS and logos are inside the binary (`//go:embed`), so nothing else needs co
 
 Go reads the container's CPU limit and sizes itself to it, so there's nothing to tune there.
 
+For running it on a real server (a VPS), robustness and "5,000 users at once", see section 12.
+
 Bonus: Go builds for another machine from yours. `GOOS=linux GOARCH=arm64 go build` produces a binary for an
 ARM server or a Raspberry Pi, no container needed.
 
@@ -532,3 +534,137 @@ today (checked 2026-10-21).
 - **Commit `go.sum`, and the generated `*_templ.go` files** (this repo does both), so a fresh checkout builds with
   `go build` alone.
 - **Small commits, one idea each.** Go diffs are easy to review when each one tells one story.
+
+---
+
+## 12. Production on a VPS: robust, and 5,000 users at once
+
+### The short answer
+
+**One Go program on one small VPS, with Caddy in front for HTTPS.** No gunicorn, no worker count, no Redis, no
+cluster. For minivoip, 5,000 people connected at the same time is very likely well within what one small server
+(2 CPUs, 4 GB of memory, a few dollars a month) can handle. The numbers below are estimates; a load test before
+launch (see the end of this section) turns them into facts.
+
+### Why Flask finds this hard and Go doesn't
+
+| | Flask | Go |
+|---|---|---|
+| One request | takes a whole gunicorn worker until it ends | takes one goroutine (a few KB) |
+| 5,000 phone apps holding a connection open | 5,000 busy workers (impossible), so you switch to gevent/eventlet async workers | 5,000 goroutines in one process: normal |
+| "Who is online", "which call is ringing" | lives in one worker, so you add Redis to share it between workers | lives in memory, in one process (`calls/hub.go`) |
+| Using 4 CPU cores | start 4+ processes | automatic |
+| Pieces on the server | nginx + gunicorn + Redis + the app | Caddy + the app |
+
+### What "5,000 users at once" means for minivoip
+
+There are four kinds of load, and they don't cost the same:
+
+| Kind of load | What it costs the server | 5,000 at once |
+|---|---|---|
+| **Pages** (landing, dashboard, call page) | a few milliseconds of CPU each | easy; Go serves thousands of pages a second on one core |
+| **Phone apps waiting for a call** (one open connection each) | memory only, roughly 10 to 30 KB each, almost no CPU while idle | about 50 to 150 MB of memory |
+| **Calls in progress, direct** (most calls) | **nothing**: the voice goes phone to browser, not through us | free, whatever the number |
+| **Calls in progress through the relay** (TURN, maybe 10 to 20% of calls) | **bandwidth**: about 0.2 Mbit/s per call through the server | 100 relayed calls ≈ 20 Mbit/s. The real limit to watch |
+
+So the server's job stays small because of a design choice already made: **the server never carries the voice**,
+except for relayed calls. If relay traffic ever becomes the bottleneck, it moves to its own server or a hosted
+relay service (`docs/architecture.md` lists both options). The app itself doesn't change.
+
+Also worth knowing:
+- **SQLite** with WAL handles thousands of reads a second, and writes are rare here (sign-ups, menu edits,
+  voicemails). It doesn't limit this app at 5,000 users.
+- **Open connections need "file handles"** from Linux. Go raises the process's limit to the maximum on its own at
+  startup. Just don't set a low `LimitNOFILE` (systemd) or `nofile` (Docker).
+
+### The picture on the VPS
+
+```mermaid
+flowchart TD
+    V["Visitors' browsers"] -->|"HTTPS 443"| C["Caddy: HTTPS certificates, compression"]
+    P["Owners' phone apps"] -->|"HTTPS 443 + WebSocket"| C
+    C -->|"plain HTTP, 127.0.0.1:8090"| A["minivoip: one Go program"]
+    A --> D[("SQLite file on disk")]
+    D -->|"continuous copy (Litestream)"| B["Backup storage, off the server"]
+    V -.->|"relayed calls only: UDP 3478 + a port range"| A
+    P -.->|"relayed calls only"| A
+    V ==>|"voice, direct, most calls"| P
+```
+
+Caddy is the same tool already in front of https://voip.dresdell.com. The relay ports go straight to the app,
+not through Caddy.
+
+### How to run it: two good ways
+
+| | systemd service | Docker Compose |
+|---|---|---|
+| What you copy to the VPS | the one `bin/app` file | an image built by the `Dockerfile` |
+| Restart if it crashes | `Restart=always` | `restart: unless-stopped` |
+| Settings and secrets | `EnvironmentFile=/srv/minivoip/.env` | `env_file: .env` |
+| Database survives updates | it's just a folder (`/srv/minivoip/data`) | needs a volume for `data/` |
+| Logs | `journalctl -u minivoip` | `docker logs`; turn on log size limits, or the disk fills |
+| Relay ports (UDP range) | nothing special | use host networking; mapping a big UDP range through Docker is slow |
+
+**Recommendation:** Docker Compose (app + Caddy), because the plan already ends with a container (Phase 6) and it
+moves to another VPS in one command. systemd is equally fine and has even fewer moving parts. Pick one, not both.
+
+A service crash isn't a disaster: the phone app already reconnects on its own (`assets/js/phone.js`), and calls
+in progress keep talking because the voice doesn't go through the server. Only relayed calls drop.
+
+### Robustness checklist (code)
+
+| Item | Why | State today |
+|---|---|---|
+| `http.Server` with timeouts (`ReadHeaderTimeout`, `IdleTimeout`) | a slow or malicious client can't hold connections forever. No global `WriteTimeout`: WebSockets stay open on purpose | ⚠️ `main.go` uses plain `http.Serve` |
+| Size limit on uploads (`http.MaxBytesReader`) | nobody can fill the disk with a 2 GB "voicemail" | ⚠️ needed when voicemail lands |
+| Graceful shutdown on stop | finish current requests, close sockets cleanly, then exit | ⚠️ exits right away |
+| Rate limits per IP | stops password guessing on log in, mass sign-ups, and someone ringing Joe 1,000 times | ⚠️ none |
+| Auto restart | a crash inside a background timer (e.g. ring timeout) stops the whole program, unlike a crash in a page request | ⚠️ depends on systemd/Docker, set it |
+| Phone app reconnects | a restart is a short blip, not an outage | ✅ |
+| SQLite WAL + busy timeout | reads and writes don't block each other | ✅ |
+
+### Robustness checklist (server)
+
+| Item | Why |
+|---|---|
+| Backups with **Litestream** to off-server storage | the SQLite file is the business; a dead VPS must not mean lost customers |
+| A `/healthz` URL + an outside uptime checker | you learn it's down before Joe does |
+| Alert on disk space | voicemails and logs grow quietly |
+| SSH with keys only, automatic security updates, fail2ban | the usual VPS hygiene |
+| Firewall: only the ports below | everything else closed |
+
+Firewall rules for the VPS (you apply them; the relay lines only once the built-in relay exists, and its port range
+is a choice we make then):
+
+```
+sudo ufw default deny incoming
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 443/udp           # HTTP/3 through Caddy (optional)
+sudo ufw allow 3478              # relay (TURN), later
+sudo ufw allow 49160:49200/udp   # relay voice ports, later
+sudo ufw enable
+```
+
+### Updating the live app
+
+Build, copy, restart: a few seconds. Phone apps reconnect by themselves, so do it at a quiet hour and nobody
+notices. "Zero-downtime" tricks (two copies swapping) aren't worth it here, because the call hub lives in memory.
+
+### Prove it: the load test
+
+Before real customers, write a small Go program that opens 5,000 phone-app connections, then rings and answers a
+few hundred test calls, while you watch memory and CPU on the VPS. It takes an afternoon to write, and it replaces
+every estimate above with a real number. Ask for it as: *"a load test in `cmd/loadtest/` that opens N owner sockets
+and runs M calls through `/ws`, and prints memory and timing."*
+
+### When one VPS isn't enough (far beyond 5,000)
+
+In this order, cheapest first:
+
+1. **Bigger VPS.** Go uses the extra cores on its own; nothing to configure.
+2. **Move the relay out** to its own server or a hosted service. Relay bandwidth is the first real limit.
+3. **Several app servers.** This one is a redesign: calls for one line must meet on the same server (send each
+   line to a fixed server, or add a message bus like NATS or Redis), and SQLite gives way to Postgres. Not
+   needed for a long time; don't let the AI build it early.

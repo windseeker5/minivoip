@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"strconv"
+
 	"minivoip/components/button"
 	"minivoip/components/icon"
 	"minivoip/components/input"
@@ -26,6 +28,7 @@ templ dashShell(title, email, current string) {
 				<nav class="flex items-center gap-1 text-sm">
 					@dashLink("/dashboard", "My line", current)
 					@dashLink("/dashboard/menu", "Voice menu", current)
+					@dashLink("/dashboard/voicemail", "Voicemail", current)
 					@dashLink("/app", "Phone app", current)
 				</nav>
 				<form method="post" action="/logout" class="flex items-center gap-3 text-sm text-muted-foreground">
@@ -87,7 +90,7 @@ templ NewLine(email string, f LineForm) {
 }
 
 // Dashboard is "My line": the call link and what to do next.
-templ Dashboard(email string, l lines.Line, callURL string) {
+templ Dashboard(email string, l lines.Line, callURL string, newVoicemails int) {
 	@dashShell("My line", email, "/dashboard") {
 		<h1 class="text-3xl font-bold tracking-tight">{ l.Business }</h1>
 		<p class="mt-2 text-muted-foreground">Your receptionist answers at this link. Share it, or put it behind a Call button on your website.</p>
@@ -106,7 +109,25 @@ templ Dashboard(email string, l lines.Line, callURL string) {
 					}
 				</div>
 			}
-			<div class="grid gap-6 md:grid-cols-2">
+			<div class="grid gap-6 md:grid-cols-3">
+				@panel() {
+					<h2 class="flex items-center gap-2 font-semibold">
+						@icon.Voicemail(icon.Props{Class: "size-4"})
+						Voicemail
+					</h2>
+					<p class="mt-2 text-sm text-muted-foreground" data-new-voicemails>
+						if newVoicemails == 1 {
+							1 new message.
+						} else if newVoicemails > 1 {
+							{ strconv.Itoa(newVoicemails) } new messages.
+						} else {
+							No new messages.
+						}
+					</p>
+					@button.Button(button.Props{Href: "/dashboard/voicemail", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4"}) {
+						Listen
+					}
+				}
 				@panel() {
 					<h2 class="flex items-center gap-2 font-semibold">
 						@icon.ListTree(icon.Props{Class: "size-4"})

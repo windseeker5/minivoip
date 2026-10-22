@@ -5,6 +5,7 @@ import (
 	"minivoip/components/icon"
 	"minivoip/layouts"
 	"minivoip/lines"
+	"minivoip/store"
 )
 
 // callData is what call.js needs to play the menu.
@@ -56,7 +57,11 @@ templ Call(l lines.Line) {
 					<button type="button" data-action="call" data-show="idle ended" class="flex size-20 items-center justify-center rounded-full bg-emerald-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-emerald-600/30 focus-visible:outline-none active:scale-95" aria-label="Call">
 						@icon.Phone(icon.Props{Class: "size-8"})
 					</button>
-					<button type="button" data-action="hangup" data-show="menu ringing connecting talking" hidden class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-red-600/30 focus-visible:outline-none active:scale-95" aria-label="Hang up">
+					<button type="button" data-action="send-message" data-show="recording" hidden class="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-4 focus-visible:ring-ring/50 focus-visible:outline-none">
+						<span class="size-2.5 animate-pulse rounded-full bg-red-500"></span>
+						Send my message
+					</button>
+					<button type="button" data-action="hangup" data-show="menu ringing connecting talking voicemail recording" hidden class="flex size-16 items-center justify-center rounded-full bg-red-600 text-white transition-transform hover:scale-[1.04] focus-visible:ring-4 focus-visible:ring-red-600/30 focus-visible:outline-none active:scale-95" aria-label="Hang up">
 						@icon.PhoneOff(icon.Props{Class: "size-7"})
 					</button>
 				</div>
@@ -70,14 +75,14 @@ templ Call(l lines.Line) {
 }
 
 // Phone is the owner's phone app: /app. phone.js keeps it connected and rings.
-templ Phone(l lines.Line) {
+templ Phone(l lines.Line, voicemails []store.Voicemail) {
 	@layouts.Base("minivoip phone", "") {
 		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-8" data-phone data-line={ l.Name }>
 			<div class="flex w-full max-w-sm items-center justify-between">
 				@brand()
 				<span class="flex items-center gap-1.5 text-sm text-muted-foreground"><span class="size-2 rounded-full bg-muted-foreground" data-dot></span><span data-conn>Connecting…</span></span>
 			</div>
-			<div class="mt-6 flex w-full max-w-sm flex-1 flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]">
+			<div class="mt-6 flex w-full max-w-sm min-h-[26rem] flex-col items-center rounded-3xl border bg-background px-6 py-10 text-center shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)]">
 				<p class="text-sm text-muted-foreground">{ l.Business } line</p>
 				<div data-show="ready" class="my-auto flex flex-col items-center gap-3">
 					@icon.Smartphone(icon.Props{Class: "size-10 text-muted-foreground"})
@@ -111,6 +116,12 @@ templ Phone(l lines.Line) {
 				</div>
 				<audio data-remote autoplay></audio>
 			</div>
+			<section class="mt-6 w-full max-w-sm">
+				<h2 class="mb-3 font-semibold">Voicemail</h2>
+				<div data-voicemail-box>
+					@VoicemailList(voicemails, "/app")
+				</div>
+			</section>
 			<div class="mt-4 flex flex-wrap justify-center gap-x-4">
 				@button.Button(button.Props{Href: "/dashboard", Variant: button.VariantLink, Size: button.SizeSm}) {
 					Back to my dashboard
@@ -120,6 +131,7 @@ templ Phone(l lines.Line) {
 				}
 			</div>
 		</main>
+		<script src="/assets/js/voicemail.js" defer></script>
 		<script src="/assets/js/phone.js" defer></script>
 	}
 }

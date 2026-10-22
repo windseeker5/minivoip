@@ -118,13 +118,13 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /manifest.webmanifest", at("brand/manifest.webmanifest", "application/manifest+json"))
 }
 
-// admins can manage promo codes: MINIVOIP_ADMINS (comma-separated emails),
-// else Ken's account.
+// admins can manage promo codes: MINIVOIP_ADMINS (comma-separated emails).
+// Users marked is_admin in the database are admins too.
 func admins() []string {
 	if a := os.Getenv("MINIVOIP_ADMINS"); a != "" {
 		return strings.Split(a, ",")
 	}
-	return []string{"kdresdell@gmail.com"}
+	return nil
 }
 
 // startRelay starts the built-in TURN relay on 3478 (voice on 49160-49200),

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>minivoip · Category standard</title>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+:root{--bg:#ffffff;--ink:#0f1115;--ink2:#2a2e36;--mute:#5d6470;--faint:#98a0ac;--line:#e7e9ee;--soft:#f6f7f9;--accent:#5a2692;--acc-bg:#f3eefa;--green:#16a34a}
+html,body{background:var(--bg)}
+body{font-family:Onest,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.wrap{width:1200px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;height:76px}
+.top .logo{height:25px}
+.links{display:flex;gap:34px;font-size:14.5px;color:var(--mute);font-weight:450}
+.right{display:flex;gap:22px;align-items:center;font-size:14.5px;font-weight:500}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 16px;border-radius:10px;font-weight:550;font-size:14.5px;white-space:nowrap}
+.btn svg{font-size:16px}
+.dark{background:var(--ink);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 1px 2px rgba(15,17,21,.25)}
+.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line),0 1px 2px rgba(15,17,21,.05)}
+.lg{height:48px;padding:0 22px;border-radius:12px;font-size:15.5px}
+.menu{display:none}
+
+.hero{text-align:center;padding-top:96px}
+h1{font-size:66px;line-height:1.04;letter-spacing:-.035em;font-weight:600;max-width:940px;margin:0 auto;text-wrap:balance}
+.sub{max-width:620px;margin:26px auto 0;font-size:18px;line-height:1.6;color:var(--mute);text-wrap:pretty}
+.ctas{display:flex;gap:10px;justify-content:center;margin-top:34px}
+.micro{margin-top:18px;font-size:13.5px;color:var(--mute);display:flex;justify-content:center;gap:20px}
+.micro span{display:flex;align-items:center;gap:6px}
+.micro svg{color:var(--green);stroke-width:2.2}
+
+.product{position:relative;width:1140px;margin:76px auto 0}
+.win{border-radius:16px;background:#fff;overflow:hidden;box-shadow:0 0 0 1px rgba(15,17,21,.07),0 2px 4px rgba(15,17,21,.04),0 40px 80px -36px rgba(15,17,21,.32)}
+.tb{height:44px;background:#fafbfc;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 16px;position:relative}
+.tb .dots{display:flex;gap:7px}.tb .dots i{width:11px;height:11px;border-radius:50%;background:#e3e5ea}
+.addr{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;height:28px;padding:0 14px;border-radius:8px;background:#f0f2f5;font-size:12.5px;color:var(--mute)}
+.dash{display:grid;grid-template-columns:212px 1fr 292px;height:604px;font-size:13.5px}
+.snav{background:#fbfbfc;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column}
+.snav .lg2{height:18px;margin:2px 8px 22px}
+.nav a{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:8px;color:var(--mute);font-weight:500}
+.nav a svg{font-size:16px}
+.nav a.on{background:#eef0f4;color:var(--ink)}
+.nav a em{margin-left:auto;font-style:normal;font-size:11.5px;font-weight:600;color:#fff;background:var(--accent);border-radius:999px;padding:1px 7px}
+.acct{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;box-shadow:inset 0 0 0 1px var(--line);background:#fff}
+.acct .j{width:30px;height:30px;border-radius:8px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px}
+.acct b{display:block;font-size:13px;font-weight:600}.acct small{display:block;font-size:11.5px;color:var(--faint)}
+.main{padding:24px 28px;overflow:hidden}
+.mh{display:flex;justify-content:space-between;align-items:flex-start}
+.mh h2{font-size:20px;font-weight:600;letter-spacing:-.015em}
+.mh p{margin-top:3px;color:var(--mute);font-size:13px}
+.mh .b{display:flex;gap:8px}
+.mh .btn{height:34px;padding:0 12px;font-size:13px;border-radius:9px}
+.card{margin-top:18px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--line);padding:16px 18px}
+.ch{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.ch b{font-weight:600}.ch span{color:var(--faint)}
+.ch a{color:var(--accent);font-weight:500;display:flex;align-items:center;gap:5px}
+.gr{display:flex;align-items:center;gap:14px;margin-top:14px}
+.pl{width:34px;height:34px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:13px;flex:none}
+.pl svg{fill:#fff;stroke-width:0;margin-left:2px}
+.gr .wave{flex:1;min-width:0;height:34px;justify-content:space-between;overflow:hidden}
+.rr{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);font-size:12.5px;font-weight:500;flex:none}
+.tr{margin-top:12px;color:var(--ink2);font-size:13.5px}
+.rows{margin-top:6px}
+.r{display:grid;grid-template-columns:30px 1.1fr 1.15fr 1.2fr 16px;align-items:center;gap:12px;height:50px;border-top:1px solid var(--line)}
+.r:first-child{border-top:0}
+.r kbd{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-family:inherit;font-weight:600;font-size:12.5px;background:var(--soft);box-shadow:inset 0 0 0 1px var(--line)}
+.r .l{font-weight:500}
+.r .act{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:7px;background:var(--soft);font-size:12.5px;color:var(--ink2);width:max-content}
+.r .act svg{font-size:13px}
+.r .t{color:var(--faint);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r>svg{color:#c3c8d0}
+.r.hot .act{background:var(--acc-bg);color:var(--accent)}
+.side{border-left:1px solid var(--line);padding:22px 20px;overflow:hidden}
+.side h3{font-size:13.5px;font-weight:600;display:flex;justify-content:space-between}
+.side h3 a{color:var(--faint);font-weight:500}
+.call{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}
+.call .ic{width:32px;height:32px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:15px;color:var(--mute);flex:none}
+.call .ic.vm{background:var(--acc-bg);color:var(--accent)}
+.call div{min-width:0;flex:1}
+.call b{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.call b em{font-style:normal;font-weight:400;color:var(--faint);font-size:12px;font-variant-numeric:tabular-nums}
+.call small{display:block;margin-top:2px;font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp{margin-top:8px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:8px;background:var(--soft);font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.vmp .wave{height:16px;gap:2px;flex:1}.vmp .wave i{width:2px}
+.ph2{margin-top:18px}
+.dev{display:flex;align-items:center;gap:9px;height:34px;font-size:13px}
+.dev svg{color:var(--mute);font-size:15px}
+.dev em{margin-left:auto;font-style:normal;font-size:12px;color:var(--green);display:flex;align-items:center;gap:6px}
+.dev em i{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.pwrap{position:absolute;right:-64px;top:318px;zoom:.8}
+
+@media (max-width:600px){
+  .wrap{width:auto;margin:0 20px}
+  .top{height:64px}.top .logo{height:22px}
+  .links,.right .login,.right .btn{display:none}
+  .menu{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;font-size:20px;box-shadow:inset 0 0 0 1px var(--line)}
+  .hero{padding-top:40px}
+  h1{font-size:40px;line-height:1.06}
+  .sub{font-size:16.5px;margin-top:20px}
+  .ctas{flex-direction:column;margin-top:26px}.ctas .btn{width:100%}
+  .micro{flex-wrap:wrap}
+  .micro span:last-child{display:none}
+  .product{width:auto;margin:44px 0 0;display:flex;justify-content:center}
+  .win{display:none}
+  .pwrap{position:static;zoom:.92}
+}
+</style>
+</head>
+<body>
+<nav class="top wrap">
+  <img class="logo" src="logo-minivoip.svg" alt="minivoip">
+  <div class="links"><span>Features</span><span>How it works</span><span>Pricing</span><span>Questions</span></div>
+  <div class="right"><span class="login">Log in</span><span class="btn dark">Get my free line</span><span class="menu"><i data-lucide="menu"></i></span></div>
+</nav>
+
+<header class="hero wrap">
+  <h1>Your website’s receptionist answers every call and sends it to your cell.</h1>
+  <p class="sub">Visitors click Call on your website. Your receptionist greets them in your voice, sends each call to the right place, and rings your cell only when it’s for you. No phone line needed.</p>
+  <div class="ctas"><span class="btn dark lg">Get my free line <i data-lucide="arrow-right"></i></span><span class="btn ghost lg"><i data-lucide="play"></i> Try the demo call</span></div>
+  <p class="micro"><span><i data-lucide="check"></i>Free while in beta</span><span><i data-lucide="check"></i>No card required</span><span><i data-lucide="check"></i>No phone line</span></p>
+</header>
+
+<section class="product">
+  <div class="win">
+    <div class="tb"><span class="dots"><i></i><i></i><i></i></span><span class="addr"><i data-lucide="lock"></i>minivoip · Voice menu</span></div>
+    <div class="dash">
+      <aside class="snav">
+        <img class="lg2" src="logo-minivoip.svg" alt="">
+        <nav class="nav">
+          <a><i data-lucide="house"></i>My line</a>
+          <a class="on"><i data-lucide="list-tree"></i>Voice menu</a>
+          <a><i data-lucide="phone"></i>Calls</a>
+          <a><i data-lucide="voicemail"></i>Voicemail<em>1</em></a>
+          <a><i data-lucide="smartphone"></i>Phones</a>
+          <a><i data-lucide="clock"></i>Hours</a>
+          <a><i data-lucide="settings"></i>Settings</a>
+        </nav>
+        <div class="acct"><span class="j">J</span><div><b>Joe’s B&amp;B</b><small>Free during beta</small></div></div>
+      </aside>
+      <main class="main">
+        <div class="mh"><div><h2>Voice menu</h2><p>What callers hear when they click Call on joesbnb.example</p></div><div class="b"><span class="btn ghost"><i data-lucide="play"></i>Preview call</span><span class="btn dark">Save changes</span></div></div>
+        <div class="card">
+          <div class="ch"><b>Greeting</b><span>Recorded in your voice · 0:09</span></div>
+          <div class="gr"><span class="pl"><i data-lucide="play"></i></span><div class="wave" data-wave="54" data-played="1" data-h="30" data-seed="31"></div><span class="rr"><i data-lucide="mic"></i>Re-record</span></div>
+          <p class="tr">“Hi, you’ve reached Joe’s B&amp;B. Press 1 for bookings, press 2 to talk to Joe.”</p>
+        </div>
+        <div class="card">
+          <div class="ch"><b>Choices</b><a><i data-lucide="plus"></i>Add a choice</a></div>
+          <div class="rows">
+            <div class="r"><kbd>1</kbd><span class="l">Bookings</span><span class="act"><i data-lucide="link"></i>Opens a web page</span><span class="t">joesbnb.example/book</span><i data-lucide="grip-vertical"></i></div>
+            <div class="r hot"><kbd>2</kbd><span class="l">Talk to Joe</span><span class="act"><i data-lucide="phone"></i>Rings my phones</span><span class="t">Joe’s cell, laptop</span><i data-lucide="grip-vertical"></i></div>
+            <div class="r"><kbd>3</kbd><span class="l">Hours and directions</span><span class="act"><i data-lucide="volume-2"></i>Plays a message</span><span class="t">“We’re open every day from 8 to 8…”</span><i data-lucide="grip-vertical"></i></div>
+            <div class="r"><kbd>0</kbd><span class="l">Leave a message</span><span class="act"><i data-lucide="voicemail"></i>Takes a voicemail</span><span class="t">Alert on my phones</span><i data-lucide="grip-vertical"></i></div>
+          </div>
+        </div>
+      </main>
+      <aside class="side">
+        <h3>Recent calls<a>See all</a></h3>
+        <div class="call"><span class="ic"><i data-lucide="globe"></i></span><div><b>Website caller<em>9:41</em></b><small>Pressed 2 · Answered on Joe’s cell · 3:12</small></div></div>
+        <div class="call"><span class="ic vm"><i data-lucide="voicemail"></i></span><div><b>Voicemail from Marie<em>8:15</em></b><small>“Hi, it’s Marie, about the room for Friday…”</small><div class="vmp"><i data-lucide="play"></i><div class="wave" data-wave="34" data-played=".35" data-h="14" data-seed="9"></div>0:42</div></div></div>
+        <div class="call"><span class="ic"><i data-lucide="globe"></i></span><div><b>Website caller<em>Yesterday</em></b><small>Pressed 1 · Opened the booking page</small></div></div>
+        <div class="call"><span class="ic"><i data-lucide="moon"></i></span><div><b>After hours<em>Yesterday</em></b><small>Heard the closed message, left a voicemail</small></div></div>
+        <div class="ph2"><h3>Your phones</h3>
+          <div class="dev"><i data-lucide="smartphone"></i>Joe’s cell<em><i></i>Ready</em></div>
+          <div class="dev"><i data-lucide="laptop"></i>Laptop<em><i></i>Ready</em></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <div class="pwrap">
+    <div class="phone"><div class="scr">
+      <div class="sb"><span>9:41</span><span class="ic"><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="app"><img src="icon.png" alt="">minivoip · Joe’s B&amp;B</div>
+      <div class="who"><div class="av"><i data-lucide="globe"></i></div><b>Website caller</b><span>Pressed 2 · Talk to Joe</span><small>from joesbnb.example</small></div>
+      <div class="acts"><div><span class="dec"><i data-lucide="phone-off"></i></span>Decline</div><div><span class="ans"><i data-lucide="phone"></i></span>Answer</div></div>
+      <div class="home"></div>
+    </div><div class="cam"></div></div>
+  </div>
+</section>
+<script src="shared.js"></script>
+</body>
+</html>

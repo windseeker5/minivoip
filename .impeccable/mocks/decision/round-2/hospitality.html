@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>minivoip · Hospitality</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:ital,wght@0,300..500;1,300..500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+:root{--bg:#ffffff;--ink:#17160f;--ink2:#2d2b25;--mute:#67645c;--faint:#9c988e;--line:#ebe8e1;--blue:#143495;--blue2:#0f2a7c;--green:#16a34a}
+html,body{background:var(--bg)}
+body{font-family:"Hanken Grotesk",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.serif{font-family:"Noto Serif Display",Georgia,serif}
+.wrap{width:1200px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;height:84px}
+.top .logo{height:25px}
+.links{display:flex;gap:34px;font-size:15px;color:var(--mute)}
+.right{display:flex;gap:22px;align-items:center;font-size:15px;font-weight:500}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:40px;padding:0 18px;border-radius:999px;font-weight:600;font-size:14.5px;white-space:nowrap}
+.btn svg{font-size:17px}
+.blue{background:var(--blue);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 1px 2px rgba(20,52,149,.3)}
+.ink{background:var(--ink);color:#fff}
+.lg{height:52px;padding:0 26px;font-size:16px}
+.textlink{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:16px;color:var(--ink)}
+.textlink svg{font-size:22px;stroke-width:1.5}
+.menu{display:none}
+
+.hero{position:relative;height:812px}
+.photo{position:absolute;right:0;top:8px;width:min(712px,49.5vw);height:780px;border-radius:30px 0 0 30px;object-fit:cover;object-position:55% 50%}
+.copy{position:relative;width:1200px;margin:0 auto;padding-top:112px}
+.copy .in{width:540px}
+h1{font-size:66px;line-height:1.05;letter-spacing:-.022em;font-weight:400;text-wrap:balance}
+h1 em{font-style:italic;font-weight:400}
+.sub{margin-top:30px;max-width:470px;font-size:18px;line-height:1.65;color:var(--mute);text-wrap:pretty}
+.ctas{display:flex;gap:26px;align-items:center;margin-top:38px}
+.micro{margin-top:20px;font-size:13.5px;color:var(--faint);display:flex;gap:18px}
+.micro span{display:flex;align-items:center;gap:6px}
+.micro svg{color:var(--green);stroke-width:2.2}
+
+.note{position:absolute;left:calc(50% + 40px);top:452px;width:338px;background:#fff;border-radius:22px;padding:16px 16px 14px;
+  box-shadow:0 0 0 1px rgba(23,22,15,.05),0 2px 6px rgba(23,22,15,.06),0 34px 60px -24px rgba(40,30,8,.42)}
+.nh{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mute)}
+.nh img{width:22px;height:22px;border-radius:6px;box-shadow:inset 0 0 0 1px var(--line);padding:3px}
+.nh b{color:var(--ink);font-weight:600}
+.nh em{margin-left:auto;font-style:normal;color:var(--faint)}
+.note h3{margin-top:12px;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.note p{margin-top:3px;font-size:14px;line-height:1.45;color:var(--mute)}
+.na{display:flex;gap:8px;margin-top:14px}
+.na span{flex:1;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:14px}
+.na .a{background:#22c55e;color:#fff}
+.na .d{background:#f1efea;color:var(--ink2)}
+
+.next{padding:96px 0 60px;border-top:1px solid var(--line);margin-top:24px}
+.nh2{display:flex;justify-content:space-between;align-items:flex-end;gap:64px}.nh2 .lead{max-width:400px;font-size:16px;line-height:1.6;color:var(--mute)}
+.next .row{display:grid;grid-template-columns:repeat(3,1fr);gap:56px;margin-top:56px}
+.next h2{font-size:42px;line-height:1.08;letter-spacing:-.02em;font-weight:400;flex:1}
+.next h4{font-size:17px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.next h4 svg{font-size:20px;color:var(--blue)}
+.next p{margin-top:10px;font-size:15px;line-height:1.6;color:var(--mute)}
+.next .k{display:block;font-size:13px;color:var(--faint);margin-bottom:14px;font-variant-numeric:tabular-nums}
+
+@media (max-width:600px){
+  .wrap,.copy{width:auto;margin:0 20px}
+  .top{height:64px}.top .logo{height:22px}
+  .links,.right .login,.right .btn{display:none}
+  .menu{display:grid;place-items:center;width:40px;height:40px;border-radius:999px;font-size:20px;box-shadow:inset 0 0 0 1px var(--line)}
+  .hero{height:auto;display:flex;flex-direction:column}
+  .pwrap{order:2}
+  .copy{padding-top:36px}.copy .in{width:auto}
+  h1{font-size:42px;line-height:1.06}
+  .sub{font-size:16.5px;margin-top:20px}
+  .ctas{flex-direction:column;align-items:stretch;gap:16px;margin-top:28px}
+  .ctas .btn{width:100%}.textlink{justify-content:center}
+  .micro{justify-content:center}
+  .pwrap{position:relative;margin:36px 20px 0}
+  .photo{position:static;width:100%;height:440px;border-radius:24px;object-position:52% 50%}
+  .note{left:14px;right:14px;top:auto;bottom:14px;width:auto}
+  .next{display:none}
+}
+@media (min-width:601px){.pwrap{position:static}}
+</style>
+</head>
+<body>
+<nav class="top wrap">
+  <img class="logo" src="logo-minivoip.svg" alt="minivoip">
+  <div class="links"><span>Features</span><span>How it works</span><span>Pricing</span><span>Questions</span></div>
+  <div class="right"><span class="login">Log in</span><span class="btn ink">Get my free line</span><span class="menu"><i data-lucide="menu"></i></span></div>
+</nav>
+
+<header class="hero">
+  <div class="pwrap">
+    <img class="photo" src="photo.jpg" alt="A smiling woman looks at the call on her phone">
+    <div class="note">
+      <div class="nh"><img src="icon.png" alt=""><b>minivoip</b>· Joe’s B&amp;B<em>now</em></div>
+      <h3>Call from your website</h3>
+      <p>A visitor pressed 2: Talk to Joe.</p>
+      <div class="na"><span class="d">Decline</span><span class="a"><i data-lucide="phone"></i>Answer</span></div>
+    </div>
+  </div>
+  <div class="copy"><div class="in">
+    <h1 class="serif">Your website’s receptionist answers every call and sends it <em>to your cell.</em></h1>
+    <p class="sub">Visitors click Call on your website. Your receptionist greets them in your voice, sends each call to the right place, and rings your cell only when it’s for you. No phone line needed.</p>
+    <div class="ctas"><span class="btn blue lg">Get my free line <i data-lucide="arrow-right"></i></span><span class="textlink"><i data-lucide="circle-play"></i>Try the demo call</span></div>
+    <p class="micro"><span><i data-lucide="check"></i>Free while in beta</span><span><i data-lucide="check"></i>No card required</span></p>
+  </div></div>
+</header>
+
+<section class="next wrap">
+  <div class="nh2"><h2 class="serif">Everything a good receptionist does.</h2><p class="lead">On the cell phone you already carry. Set it up once, and change your greeting and choices whenever you like.</p></div>
+  <div class="row">
+    <div><h4><i data-lucide="audio-lines"></i>Answers every call</h4><p>Greets callers in your own voice, day or night.</p></div>
+    <div><h4><i data-lucide="split"></i>Sends it to the right place</h4><p>The right person, your booking page, your prices or your hours.</p></div>
+    <div><h4><i data-lucide="smartphone"></i>Rings your cell</h4><p>Only when it’s for you, on the phone you already have.</p></div>
+  </div>
+</section>
+<script src="shared.js"></script>
+</body>
+</html>

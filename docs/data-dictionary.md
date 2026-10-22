@@ -21,7 +21,7 @@ A person who logs in. One per account for now (staff accounts later).
 | `account_id` | integer → `account.id` (delete cascades) | |
 | `email` | text, unique, case-insensitive | Login name |
 | `password_hash` | text | bcrypt hash; the password is never stored |
-| `is_admin` | integer 0/1 | Can manage promo codes. Emails in `MINIVOIP_ADMINS` (default kdresdell@gmail.com) are admins too |
+| `is_admin` | integer 0/1 | Can manage promo codes (set it with SQL). Emails in `MINIVOIP_ADMINS` are admins too |
 | `created_at` | text (UTC) | |
 
 ## session

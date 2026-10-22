@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>minivoip · The Route</title>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+:root{--bg:#08090c;--panel:#0d0f13;--node:#12151b;--line:#1f232b;--line2:#2b303a;--ink:#eff1f5;--ink2:#c9cdd6;--mute:#8d93a1;--faint:#5f6573;--hot:#f46422}
+html,body{background:var(--bg)}
+body{font-family:"Host Grotesk",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.wrap{width:1200px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;height:76px}
+.top .logo{height:25px}
+.links{display:flex;gap:34px;font-size:14.5px;color:var(--mute)}
+.right{display:flex;gap:22px;align-items:center;font-size:14.5px;font-weight:500;color:var(--ink2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 15px;border-radius:10px;font-weight:500;font-size:14.5px;white-space:nowrap}
+.btn svg{font-size:16px}
+.light{background:#f4f5f8;color:#0a0b0e;box-shadow:inset 0 -1px 0 rgba(0,0,0,.12)}
+.ghost{color:var(--ink);box-shadow:inset 0 0 0 1px var(--line2)}
+.lg{height:48px;padding:0 22px;border-radius:12px;font-size:15.5px}
+.menu{display:none}
+
+.hero{display:grid;grid-template-columns:1fr 390px;gap:72px;align-items:end;padding-top:112px}
+h1{font-size:68px;line-height:1.03;letter-spacing:-.03em;font-weight:600;text-wrap:balance}
+.side p{font-size:17px;line-height:1.6;color:var(--mute);text-wrap:pretty}
+.ctas{display:flex;gap:10px;margin-top:28px}
+.side .micro{margin-top:14px;font-size:13px;color:var(--faint)}
+
+.canvas{margin-top:80px;height:540px;position:relative;border-radius:24px;background-color:var(--panel);
+  background-image:radial-gradient(circle at 1px 1px,#1b1e25 1px,transparent 0);background-size:22px 22px;box-shadow:inset 0 0 0 1px var(--line)}
+.canvas svg.wires{position:absolute;inset:0;width:100%;height:100%}
+.step{position:absolute;top:36px;font-size:12.5px;color:var(--mute);display:flex;align-items:center;gap:8px;font-weight:500}
+.step b{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;color:var(--ink2);background:#171a21;box-shadow:inset 0 0 0 1px var(--line2);font-weight:600}
+.node{position:absolute;background:var(--node);border-radius:14px;box-shadow:inset 0 0 0 1px var(--line2),0 10px 30px -12px rgba(0,0,0,.6)}
+.site{left:48px;top:196px;width:212px;height:128px;overflow:hidden}
+.site .bar{height:28px;display:flex;align-items:center;gap:5px;padding:0 11px;border-bottom:1px solid var(--line)}
+.site .bar i{width:7px;height:7px;border-radius:50%;background:#2b303a}
+.site .bar span{margin-left:8px;font-size:11px;color:var(--faint)}
+.site .body{height:100px;display:grid;place-items:center}
+.callus{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:999px;background:#f4f5f8;color:#0a0b0e;font-weight:600;font-size:14px;box-shadow:0 6px 16px -6px rgba(244,100,34,.5)}
+.greet{left:316px;top:170px;width:304px;height:180px;padding:18px 18px 16px}
+.gh{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--ink2);font-weight:500}
+.gh span{display:flex;align-items:center;gap:7px}
+.gh em{font-style:normal;color:var(--faint);font-variant-numeric:tabular-nums}
+.greet .wave{margin-top:14px;height:30px;justify-content:space-between}
+.greet p{margin-top:14px;font-size:14.5px;line-height:1.5;color:var(--ink)}
+.greet p span{color:var(--faint)}
+.opt{left:688px;width:252px;height:58px;display:flex;align-items:center;gap:12px;padding:0 14px}
+.opt kbd{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink2);background:#191c23;box-shadow:inset 0 0 0 1px var(--line2)}
+.opt div b{display:block;font-size:14px;font-weight:500}
+.opt div small{display:block;font-size:12px;color:var(--faint);margin-top:1px}
+.opt>svg{margin-left:auto;color:var(--faint);font-size:15px}
+.opt.on{background:#191310;box-shadow:inset 0 0 0 1px rgba(244,100,34,.55),0 0 0 4px rgba(244,100,34,.07),0 10px 30px -12px rgba(0,0,0,.6)}
+.opt.on kbd{background:var(--hot);color:#fff;box-shadow:none}
+.opt.on small{color:#f59a6a}
+.opt.on>svg{color:var(--hot)}
+.miniwrap{position:absolute;left:992px;top:84px}.mini{zoom:.58}
+.cap{position:absolute;left:992px;top:452px;width:168px;text-align:center;font-size:12px;color:var(--faint)}
+
+.mflow{display:none}
+
+@media (max-width:600px){
+  .wrap{width:auto;margin:0 20px}
+  .top{height:64px}.top .logo{height:22px}
+  .links,.right .login,.right .btn{display:none}
+  .menu{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;font-size:20px;box-shadow:inset 0 0 0 1px var(--line2)}
+  .hero{display:block;padding-top:40px}
+  h1{font-size:40px;line-height:1.04}
+  .side p{margin-top:20px;font-size:16.5px}
+  .ctas{flex-direction:column}
+  .ctas .btn{width:100%}
+  .canvas{display:none}
+  .mflow{display:block;margin-top:40px;padding:22px 16px;border-radius:20px;background-color:var(--panel);background-image:radial-gradient(circle at 1px 1px,#1b1e25 1px,transparent 0);background-size:22px 22px;box-shadow:inset 0 0 0 1px var(--line)}
+  .mflow .node{position:relative;left:auto;top:auto;width:auto;height:auto}
+  .mflow .site .body{height:76px}
+  .mflow .greet{padding:16px}
+  .wire{width:2px;height:22px;margin:0 auto;background:linear-gradient(#f3840f,#e31a5a)}
+  .mopts{display:grid;gap:8px}
+  .mopts .opt{position:relative;left:auto;width:auto}
+  .ring{display:flex;align-items:center;gap:12px;padding:14px}
+  .ring .ra{width:40px;height:40px;border-radius:50%;background:#1d2129;display:grid;place-items:center;font-size:18px;color:var(--ink2)}
+  .ring div b{display:block;font-size:14.5px;font-weight:600}
+  .ring div small{display:block;font-size:12px;color:var(--mute)}
+  .ring .rb{margin-left:auto;display:flex;gap:8px}
+  .ring .rb span{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:17px}
+}
+</style>
+</head>
+<body>
+<nav class="top wrap">
+  <img class="logo" src="logo-minivoip-dark.svg" alt="minivoip">
+  <div class="links"><span>Features</span><span>How it works</span><span>Pricing</span><span>Questions</span></div>
+  <div class="right"><span class="login">Log in</span><span class="btn light">Get my free line</span><span class="menu"><i data-lucide="menu"></i></span></div>
+</nav>
+
+<header class="hero wrap">
+  <h1>Your website’s receptionist answers every call and sends it to your cell.</h1>
+  <div class="side">
+    <p>Visitors click Call on your website. Your receptionist greets them in your voice, sends each call to the right place, and rings your cell only when it’s for you. No phone line needed.</p>
+    <div class="ctas"><span class="btn light lg">Get my free line <i data-lucide="arrow-right"></i></span><span class="btn ghost lg"><i data-lucide="play"></i> Try the demo call</span></div>
+    <p class="micro">Free while in beta. No card required.</p>
+  </div>
+</header>
+
+<section class="canvas wrap">
+  <svg class="wires" viewBox="0 0 1200 540" fill="none">
+    <defs><linearGradient id="hot" gradientUnits="userSpaceOnUse" x1="260" y1="0" x2="992" y2="0"><stop offset="0" stop-color="#f3840f"/><stop offset=".55" stop-color="#e31a5a"/><stop offset="1" stop-color="#b0247f"/></linearGradient></defs>
+    <path d="M620 260 C656 260 652 140 688 140" stroke="#2b303a" stroke-width="1.25"/>
+    <path d="M620 260 C656 260 652 300 688 300" stroke="#2b303a" stroke-width="1.25"/>
+    <path d="M620 260 C656 260 652 380 688 380" stroke="#2b303a" stroke-width="1.25"/>
+    <path d="M260 260 L316 260" stroke="url(#hot)" stroke-width="2"/>
+    <path d="M620 260 C656 260 652 220 688 220" stroke="url(#hot)" stroke-width="2"/>
+    <path d="M940 220 C968 220 964 262 992 262" stroke="url(#hot)" stroke-width="2"/>
+    <circle cx="288" cy="260" r="9" fill="#f3840f" fill-opacity=".16"/><circle cx="288" cy="260" r="3.5" fill="#fff"/>
+    <circle cx="966" cy="241" r="9" fill="#e31a5a" fill-opacity=".18"/><circle cx="966" cy="241" r="3.5" fill="#fff"/>
+  </svg>
+  <span class="step" style="left:48px"><b>1</b>Visitor clicks Call</span>
+  <span class="step" style="left:316px"><b>2</b>Your greeting plays</span>
+  <span class="step" style="left:688px"><b>3</b>They choose</span>
+  <span class="step" style="left:992px"><b>4</b>Your cell rings</span>
+
+  <div class="node site"><div class="bar"><i></i><i></i><i></i><span>joesbnb.example</span></div><div class="body"><span class="callus"><i data-lucide="phone"></i>Call us</span></div></div>
+  <div class="node greet">
+    <div class="gh"><span><i data-lucide="audio-lines"></i>Greeting, in Joe’s voice</span><em>0:09</em></div>
+    <div class="wave" data-wave="44" data-played=".7" data-h="30" data-seed="5" data-rest="#2a2f39"></div>
+    <p>“Hi, you’ve reached Joe’s B&amp;B. Press 1 for bookings, press 2 <span>to talk to Joe.”</span></p>
+  </div>
+  <div class="node opt" style="top:111px"><kbd>1</kbd><div><b>Bookings</b><small>Opens your booking page</small></div><i data-lucide="link"></i></div>
+  <div class="node opt on" style="top:191px"><kbd>2</kbd><div><b>Talk to Joe</b><small>Ringing Joe’s cell</small></div><i data-lucide="phone"></i></div>
+  <div class="node opt" style="top:271px"><kbd>3</kbd><div><b>Hours and directions</b><small>Plays a message</small></div><i data-lucide="clock"></i></div>
+  <div class="node opt" style="top:351px"><kbd>0</kbd><div><b>Leave a message</b><small>Voicemail, with an alert</small></div><i data-lucide="voicemail"></i></div>
+
+  <div class="miniwrap"><div class="mini">
+    <div class="phone"><div class="scr">
+      <div class="sb"><span>9:41</span><span class="ic"><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery-full"></i></span></div>
+      <div class="app"><img src="icon.png" alt="">minivoip · Joe’s B&amp;B</div>
+      <div class="who"><div class="av"><i data-lucide="globe"></i></div><b>Website caller</b><span>Pressed 2 · Talk to Joe</span><small>from joesbnb.example</small></div>
+      <div class="acts"><div><span class="dec"><i data-lucide="phone-off"></i></span>Decline</div><div><span class="ans"><i data-lucide="phone"></i></span>Answer</div></div>
+      <div class="home"></div>
+    </div><div class="cam"></div></div>
+  </div></div>
+  <p class="cap">Joe’s own cell, same number</p>
+</section>
+
+<section class="mflow wrap">
+  <div class="node site"><div class="bar"><i></i><i></i><i></i><span>joesbnb.example</span></div><div class="body"><span class="callus"><i data-lucide="phone"></i>Call us</span></div></div>
+  <div class="wire"></div>
+  <div class="node greet">
+    <div class="gh"><span><i data-lucide="audio-lines"></i>Greeting, in Joe’s voice</span><em>0:09</em></div>
+    <div class="wave" data-wave="40" data-played=".7" data-h="26" data-seed="5" data-rest="#2a2f39"></div>
+    <p>“Hi, you’ve reached Joe’s B&amp;B. Press 1 for bookings, press 2 <span>to talk to Joe.”</span></p>
+  </div>
+  <div class="wire"></div>
+  <div class="mopts">
+    <div class="node opt"><kbd>1</kbd><div><b>Bookings</b><small>Opens your booking page</small></div><i data-lucide="link"></i></div>
+    <div class="node opt on"><kbd>2</kbd><div><b>Talk to Joe</b><small>Ringing Joe’s cell</small></div><i data-lucide="phone"></i></div>
+    <div class="node opt"><kbd>0</kbd><div><b>Leave a message</b><small>Voicemail, with an alert</small></div><i data-lucide="voicemail"></i></div>
+  </div>
+  <div class="wire" style="background:linear-gradient(#e31a5a,#b0247f)"></div>
+  <div class="node ring"><span class="ra"><i data-lucide="smartphone"></i></span><div><b>Joe’s cell is ringing</b><small>Website caller · pressed 2</small></div><span class="rb"><span style="background:#ef4444"><i data-lucide="phone-off"></i></span><span style="background:#22c55e"><i data-lucide="phone"></i></span></span></div>
+</section>
+<script src="shared.js"></script>
+</body>
+</html>

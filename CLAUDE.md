@@ -82,7 +82,7 @@ B&B and may become a SaaS.
 - Landing page "Call us now" buttons call a real line: `MINIVOIP_CALL_LINE`, default `ken` (Ken's own account);
   hidden if that line doesn't exist. Tests must never press Call on it: it rings Ken's phone.
 - Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
-  `is_admin`, or emails in `MINIVOIP_ADMINS` (default kdresdell@gmail.com, see `main.go`). The dashboard shows each
+  `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. The dashboard shows each
   account's plan (`store.Plan`).
 - `relay/`: built-in TURN relay (pion/turn) on 3478 UDP+TCP, voice on 49160-49200 UDP (the ports the router
   forwards; the old coturn used them). Public address: `MINIVOIP_PUBLIC_IP`, else DNS of `MINIVOIP_TURN_HOST`

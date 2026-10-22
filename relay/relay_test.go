@@ -55,7 +55,7 @@ func TestRelayNeedsAValidLogin(t *testing.T) {
 }
 
 func TestPrivatePeersRefused(t *testing.T) {
-	for ip, want := range map[string]bool{"75.158.253.160": true, "192.168.1.89": false, "127.0.0.1": false, "100.64.1.1": false, "10.1.2.3": false} {
+	for ip, want := range map[string]bool{"203.0.113.10": true, "192.168.0.20": false, "127.0.0.1": false, "100.64.1.1": false, "10.1.2.3": false} {
 		if got := publicPeer(nil, net.ParseIP(ip)); got != want {
 			t.Errorf("%s: %v", ip, got)
 		}

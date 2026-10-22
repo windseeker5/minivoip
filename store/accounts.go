@@ -24,6 +24,7 @@ type User struct {
 	ID        int64
 	AccountID int64
 	Email     string
+	IsAdmin   bool // can manage promo codes (see web.Server.Admins)
 }
 
 // CreateAccount makes an account with its first user. A promo code is
@@ -86,8 +87,8 @@ func (s *Store) CreateAccount(email, password, promo string) (User, error) {
 func (s *Store) Login(email, password string) (User, error) {
 	var u User
 	var hash string
-	err := s.db.QueryRow("SELECT id, account_id, email, password_hash FROM user WHERE email = ?", strings.TrimSpace(email)).
-		Scan(&u.ID, &u.AccountID, &u.Email, &hash)
+	err := s.db.QueryRow("SELECT id, account_id, email, password_hash, is_admin FROM user WHERE email = ?", strings.TrimSpace(email)).
+		Scan(&u.ID, &u.AccountID, &u.Email, &hash, &u.IsAdmin)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrBadLogin
 	}
@@ -117,8 +118,8 @@ func (s *Store) NewSession(userID int64) (string, time.Time, error) {
 func (s *Store) UserBySession(token string) (User, error) {
 	var u User
 	err := s.db.QueryRow(`
-		SELECT u.id, u.account_id, u.email FROM session s JOIN user u ON u.id = s.user_id
-		WHERE s.token = ? AND s.expires_at > datetime('now')`, token).Scan(&u.ID, &u.AccountID, &u.Email)
+		SELECT u.id, u.account_id, u.email, u.is_admin FROM session s JOIN user u ON u.id = s.user_id
+		WHERE s.token = ? AND s.expires_at > datetime('now')`, token).Scan(&u.ID, &u.AccountID, &u.Email, &u.IsAdmin)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrNotFound
 	}

@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: Accounts and menus work: sign up (with promo code), log in, create a line, edit the voice menu (typed text, computer voice), call page and phone app use each user's own line. Calls work on one Wi-Fi. Tests pass (`go test ./...`).
-- Next action: Ken picks the next feature: voicemail, recorded greetings, waking the phone (push), or the promo-code admin page. Run `node tests/e2e/site.mjs` after every change.
-- Last update: 2026-10-21. Built the landing page and logo; ported the POC's call setup to Go (`calls/`, `lines/`, `pages/call.templ`, `assets/js/call.js`, `phone.js`, new dependency `github.com/coder/websocket`). Removed the old POC containers, Caddy route and OMT "Call me" button. `OLD-ARCHIVE/` was deleted outside this session; the POC stays in git commit 5b8d116. Committed on branch `go-version` (a7b8724). Added https://voip.dresdell.com (Caddy block, DNS by Ken) pointing at the dev app; test call through it passed. Added the database (`store/`, `docs/data-dictionary.md`), sign up/log in (`web/`), line creation and menu editor; the phone app now needs the line owner's login. New dependencies: `modernc.org/sqlite`, `golang.org/x/crypto`. Linked all pages (Log in / My dashboard on the landing page, way back from the phone app), added CLAUDE.md rules 1-3 (don't run the server, test your own work, build connected features) and the whole-site browser test `tests/e2e/site.mjs` (passes locally and through voip.dresdell.com).
+- Status: Built and tested (go test + `tests/e2e/site.mjs`): accounts, lines, menu editor with recorded voice, real calls, voicemail, push notifications to wake the phone, promo code admin page. Calls work on one Wi-Fi (no TURN relay yet).
+- Next action: Ken tries on his real phones: notifications (Android; iPhone from the home screen) and a recorded greeting. Then: TURN relay for calls over cellular data.
+- Last update: 2026-10-21. While Ken walked the dog: voicemail, recorded prompts, push notifications (new dependency webpush-go), promo admin page; migrations 2-5. Branch `go-version`, all committed. Earlier the same day: Go rewrite, landing page, accounts, voip.dresdell.com via Caddy, old POC containers removed.
 
 ## Rules
 

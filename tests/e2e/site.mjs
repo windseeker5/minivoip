@@ -6,7 +6,8 @@
 //    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
 //    then voicemail (unanswered call and a voicemail choice), listen, delete.
-// 4. A stranger can't open the phone app; log out works.
+// 4. Promo codes: admins only; create, sign up with it, used up, revoke.
+// 5. A stranger can't open the phone app; log out works.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
 //
 // BASE=https://voip.dresdell.com node tests/e2e/site.mjs  tests through Caddy.
@@ -331,6 +332,70 @@ try {
   await owner.waitForFunction(() => document.querySelectorAll("[data-voicemail]").length === 1, null, { timeout: 5000 });
   check(true, "deleting a message removes it");
 
+  // Promo codes (admin) -----------------------------------------------------
+  step = "admin only";
+  await owner.goto(BASE + "/dashboard");
+  check(!(await owner.isVisible('a[href="/admin/promo"]')), "a normal user has no Admin link");
+  check((await owner.request.get(BASE + "/admin/promo")).status() === 404, "a normal user can't open the admin page");
+  const adminDB = new DatabaseSync(DB);
+  adminDB.prepare("UPDATE user SET is_admin = 1 WHERE email = ?").run(EMAIL);
+  adminDB.close();
+  await owner.reload();
+  await owner.click('a[href="/admin/promo"]');
+  await owner.waitForSelector("#code");
+  check(true, "an admin reaches the promo code page from the dashboard");
+
+  step = "create code";
+  const CODE = `E2E-${stamp.toUpperCase()}`;
+  await owner.fill("#code", CODE.toLowerCase());
+  await owner.fill("#max_uses", "1");
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector(`text=${CODE} is ready`);
+  check(await owner.isVisible(`[data-promo="${CODE}"] >> text=0 of 1 used`), "the new code is listed, unused");
+  await owner.fill("#code", CODE);
+  await owner.click("main button[type=submit]");
+  check(await owner.isVisible("text=already exists"), "the same code can't be made twice");
+
+  step = "friend signs up with the code";
+  const friend = await newPage();
+  const FRIEND = `e2e-${stamp}-friend@example.com`;
+  await friend.goto(BASE + "/signup");
+  await friend.fill("#email", FRIEND);
+  await friend.fill("#password", "e2e-password");
+  await friend.fill("#promo", CODE.toLowerCase());
+  await friend.click("main button[type=submit]");
+  await friend.waitForSelector("#name");
+  await friend.fill("#name", `e2e-${stamp}-f`);
+  await friend.fill("#business", "Friend Shop");
+  await friend.fill("#owner", "Sam");
+  await friend.click("main button[type=submit]");
+  await friend.waitForSelector("[data-add-choice]");
+  await friend.goto(BASE + "/dashboard");
+  check((await friend.textContent("[data-plan]")).includes(`free forever, with the code ${CODE}`), "a friend who used the code is free forever");
+
+  step = "code used up";
+  const late = await newPage();
+  await late.goto(BASE + "/signup");
+  await late.fill("#email", `e2e-${stamp}-late@example.com`);
+  await late.fill("#password", "e2e-password");
+  await late.fill("#promo", CODE);
+  await late.click("main button[type=submit]");
+  check(await late.isVisible("text=promo code isn't valid"), "a used-up code is refused at sign up");
+
+  step = "revoke";
+  await owner.goto(BASE + "/admin/promo");
+  check(await owner.isVisible(`[data-promo="${CODE}"] >> text=1 of 1 used`) && await owner.isVisible(`[data-promo="${CODE}"] >> text=${FRIEND}`), "the admin page shows who used the code");
+  await owner.screenshot({ path: `${SHOTS}/admin-promo.png`, fullPage: true });
+  await owner.setViewportSize({ width: 390, height: 844 });
+  const adminWide = await owner.evaluate(() => document.documentElement.scrollWidth);
+  check(adminWide <= 390, `phone width: /admin/promo doesn't scroll sideways (${adminWide}px)`);
+  await owner.screenshot({ path: `${SHOTS}/admin-promo-phone.png`, fullPage: true });
+  await owner.setViewportSize({ width: 1280, height: 900 });
+  await owner.click(`[data-promo="${CODE}"] button[type=submit]`);
+  await owner.waitForSelector(`[data-promo="${CODE}"] >> text=Revoked`);
+  await friend.reload();
+  check((await friend.textContent("[data-plan]")).includes("was revoked"), "revoking a code shows on the friend's dashboard");
+
   // 4. Strangers and log out ----------------------------------------------
   step = "stranger";
   const stranger = await newPage();
@@ -360,6 +425,7 @@ try {
       WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const p of prompts) if (p.f) rmSync(join(dirname(DB), "prompts", p.f), { force: true });
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
+  db.prepare("DELETE FROM promo_code WHERE code LIKE 'E2E-%'").run();
   db.close();
 }
 

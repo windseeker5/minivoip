@@ -1,0 +1,163 @@
+package pages
+
+import (
+	"strconv"
+	"strings"
+	"time"
+
+	"minivoip/components/badge"
+	"minivoip/components/button"
+	"minivoip/components/input"
+	"minivoip/store"
+)
+
+// PromoForm is the "new code" form shown back after an error.
+type PromoForm struct {
+	Code      string
+	MaxUses   string
+	ValidFrom string
+	ValidTo   string
+	Error     string
+}
+
+func uses(p store.PromoCode) string {
+	if p.MaxUses == 0 {
+		return strconv.Itoa(p.TimesUsed) + " used, no limit"
+	}
+	return strconv.Itoa(p.TimesUsed) + " of " + strconv.Itoa(p.MaxUses) + " used"
+}
+
+func dates(p store.PromoCode) string {
+	day := func(s string) string { return strings.SplitN(s, " ", 2)[0] }
+	switch {
+	case p.ValidFrom == "" && p.ValidTo == "":
+		return "Any time"
+	case p.ValidFrom == "":
+		return "Until " + day(p.ValidTo)
+	case p.ValidTo == "":
+		return "From " + day(p.ValidFrom)
+	}
+	return day(p.ValidFrom) + " to " + day(p.ValidTo)
+}
+
+// notUsable says why an unrevoked code can't be used right now.
+func notUsable(p store.PromoCode) string {
+	now := time.Now().UTC().Format(time.DateTime)
+	switch {
+	case p.MaxUses > 0 && p.TimesUsed >= p.MaxUses:
+		return "Used up"
+	case p.ValidTo != "" && p.ValidTo < now:
+		return "Expired"
+	}
+	return "Not started yet"
+}
+
+templ promoStatus(p store.PromoCode) {
+	if p.Revoked {
+		@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
+			Revoked
+		}
+	} else if p.Usable(time.Now()) {
+		@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+			Active
+		}
+	} else {
+		@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+			{ notUsable(p) }
+		}
+	}
+}
+
+// PromoPage is the admin page: make codes, see who used them, revoke them.
+templ PromoPage(email string, list []store.PromoCode, f PromoForm, saved string) {
+	@dashShell("Promo codes", email, "/admin/promo") {
+		<h1 class="text-3xl font-bold tracking-tight">Promo codes</h1>
+		<p class="mt-2 text-muted-foreground">A code makes a line free forever. Give it to family and friends; revoke it whenever you want.</p>
+		<div class="mt-8 flex flex-col gap-6">
+			@panel() {
+				<h2 class="font-semibold">New code</h2>
+				<form method="post" action="/admin/promo" class="mt-4 flex flex-col gap-4">
+					@formError(f.Error)
+					if saved != "" {
+						<p class="rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400" role="status">{ saved }</p>
+					}
+					<div class="grid gap-4 sm:grid-cols-4">
+						@formField("code", "Code") {
+							@input.Input(input.Props{ID: "code", Name: "code", Value: f.Code, Required: true, Placeholder: "FAMILY", Class: "uppercase", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "characters"}})
+						}
+						@formField("max_uses", "How many sign ups") {
+							@input.Input(input.Props{ID: "max_uses", Name: "max_uses", Type: "number", Value: f.MaxUses, Placeholder: "No limit", Attributes: templ.Attributes{"min": "0", "inputmode": "numeric"}})
+						}
+						@formField("valid_from", "Usable from") {
+							@input.Input(input.Props{ID: "valid_from", Name: "valid_from", Type: "date", Value: f.ValidFrom})
+						}
+						@formField("valid_to", "Usable until") {
+							@input.Input(input.Props{ID: "valid_to", Name: "valid_to", Type: "date", Value: f.ValidTo})
+						}
+					</div>
+					<p class="text-xs text-muted-foreground">Leave a box empty for no limit. The dates only control when people can sign up with the code; their line stays free afterwards.</p>
+					<div>
+						@button.Button(button.Props{Type: button.TypeSubmit}) {
+							Create the code
+						}
+					</div>
+				</form>
+			}
+			@panel() {
+				<h2 class="font-semibold">All codes</h2>
+				if len(list) == 0 {
+					<p class="mt-3 text-sm text-muted-foreground">No codes yet.</p>
+				} else {
+					<div class="relative mt-4 overflow-x-auto">
+						<table class="w-full min-w-[40rem] text-left text-sm">
+							<thead class="border-b text-xs text-muted-foreground">
+								<tr>
+									<th class="py-2 pr-4 font-medium">Code</th>
+									<th class="py-2 pr-4 font-medium">Status</th>
+									<th class="py-2 pr-4 font-medium">Uses</th>
+									<th class="py-2 pr-4 font-medium">When</th>
+									<th class="py-2 pr-4 font-medium">Used by</th>
+									<th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
+								</tr>
+							</thead>
+							<tbody class="divide-y">
+								for _, p := range list {
+									<tr data-promo={ p.Code }>
+										<td class="py-3 pr-4 font-mono font-semibold">{ p.Code }</td>
+										<td class="py-3 pr-4">
+											@promoStatus(p)
+										</td>
+										<td class="py-3 pr-4 tabular-nums">{ uses(p) }</td>
+										<td class="py-3 pr-4">{ dates(p) }</td>
+										<td class="py-3 pr-4 text-muted-foreground">
+											if len(p.Accounts) == 0 {
+												Nobody yet
+											} else {
+												{ strings.Join(p.Accounts, ", ") }
+											}
+										</td>
+										<td class="py-3 text-right">
+											<form method="post" action={ templ.SafeURL("/admin/promo/" + p.Code + "/revoke") }>
+												if p.Revoked {
+													<input type="hidden" name="revoked" value="0"/>
+													@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeSm}) {
+														Restore
+													}
+												} else {
+													<input type="hidden" name="revoked" value="1"/>
+													@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeSm}) {
+														Revoke
+													}
+												}
+											</form>
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			}
+		</div>
+	}
+}

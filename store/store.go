@@ -110,6 +110,10 @@ var migrations = []string{
 		value  TEXT NOT NULL
 	);
 	`,
+	// 5: admins (promo code page).
+	`
+	ALTER TABLE user ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

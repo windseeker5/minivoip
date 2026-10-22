@@ -25,11 +25,14 @@ templ dashShell(title, email, current string) {
 		<header class="border-b bg-background">
 			<div class="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
 				@brand()
-				<nav class="flex items-center gap-1 text-sm">
+				<nav class="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto text-sm whitespace-nowrap md:order-none md:mx-0 md:w-auto">
 					@dashLink("/dashboard", "My line", current)
 					@dashLink("/dashboard/menu", "Voice menu", current)
 					@dashLink("/dashboard/voicemail", "Voicemail", current)
 					@dashLink("/app", "Phone app", current)
+					if isAdmin(ctx) {
+						@dashLink("/admin/promo", "Admin", current)
+					}
 				</nav>
 				<form method="post" action="/logout" class="flex items-center gap-3 text-sm text-muted-foreground">
 					<span class="hidden sm:inline">{ email }</span>
@@ -90,10 +93,11 @@ templ NewLine(email string, f LineForm) {
 }
 
 // Dashboard is "My line": the call link and what to do next.
-templ Dashboard(email string, l lines.Line, callURL string, newVoicemails int) {
+templ Dashboard(email string, l lines.Line, callURL string, newVoicemails int, plan string) {
 	@dashShell("My line", email, "/dashboard") {
 		<h1 class="text-3xl font-bold tracking-tight">{ l.Business }</h1>
 		<p class="mt-2 text-muted-foreground">Your receptionist answers at this link. Share it, or put it behind a Call button on your website.</p>
+		<p class="mt-1 text-sm text-muted-foreground" data-plan>{ plan }</p>
 		<div class="mt-8 flex flex-col gap-6">
 			@panel() {
 				<h2 class="font-semibold">Your call link</h2>

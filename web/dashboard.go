@@ -30,7 +30,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request, u store.User)
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, s.Store.NewVoicemails(u.AccountID)))
+	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, s.Store.NewVoicemails(u.AccountID), s.planText(u.AccountID)))
 }
 
 func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User) {

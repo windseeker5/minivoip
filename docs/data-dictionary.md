@@ -21,6 +21,7 @@ A person who logs in. One per account for now (staff accounts later).
 | `account_id` | integer → `account.id` (delete cascades) | |
 | `email` | text, unique, case-insensitive | Login name |
 | `password_hash` | text | bcrypt hash; the password is never stored |
+| `is_admin` | integer 0/1 | Can manage promo codes. Emails in `MINIVOIP_ADMINS` (default kdresdell@gmail.com) are admins too |
 | `created_at` | text (UTC) | |
 
 ## session
@@ -62,7 +63,7 @@ One choice in a line's voice menu.
 | `say_audio` | text | The owner's recording of `say` (file under `prompts/`), or empty |
 
 ## promo_code
-Codes that make a line free forever. No admin page yet: add codes with SQL.
+Codes that make a line free forever. Admins manage them at `/admin/promo` (create, see who used them, revoke or restore). Revoking also ends "free forever" for the accounts that used the code.
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -116,5 +117,6 @@ Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, mad
 |---|---|---|
 | 1 | 2026-10-21 | First schema: `account`, `user`, `session`, `line`, `menu_option`, `promo_code` |
 | 2 | 2026-10-21 | `voicemail` table |
+| 5 | 2026-10-21 | `user.is_admin` |
 | 4 | 2026-10-21 | `device`, `setting` (push notifications) |
 | 3 | 2026-10-21 | `line.greeting_audio`, `menu_option.say_audio` (recorded prompts in `<data dir>/prompts/`, public at `/prompt/<name>`, random names; saving the menu deletes recordings it no longer uses) |

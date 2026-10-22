@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"minivoip/lines"
 )
@@ -135,5 +136,51 @@ func TestVoicemail(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("the audio file should be deleted")
+	}
+}
+
+func TestPromoAdmin(t *testing.T) {
+	s := open(t)
+	if err := CheckPromoCode("family"); err == nil {
+		t.Fatal("codes are capitals")
+	}
+	if err := s.CreatePromoCode("FAMILY", 2, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreatePromoCode("FAMILY", 0, "", ""); !errors.Is(err, ErrPromoExists) {
+		t.Fatalf("duplicate: %v", err)
+	}
+	s.CreatePromoCode("LATER", 0, "2999-01-01", "")
+	if _, err := s.CreateAccount("b@example.com", "password1", "LATER"); !errors.Is(err, ErrBadPromo) {
+		t.Fatalf("a code that isn't valid yet: %v", err)
+	}
+	u, err := s.CreateAccount("a@example.com", "password1", "family")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, revoked, _ := s.Plan(u.AccountID); code != "FAMILY" || revoked {
+		t.Fatalf("plan: %s %v", code, revoked)
+	}
+	list, _ := s.PromoCodes()
+	var fam PromoCode
+	for _, p := range list {
+		if p.Code == "FAMILY" {
+			fam = p
+		}
+	}
+	if fam.TimesUsed != 1 || len(fam.Accounts) != 1 || fam.Accounts[0] != "a@example.com" || !fam.Usable(time.Now()) {
+		t.Fatalf("FAMILY: %+v", fam)
+	}
+	if err := s.SetPromoRevoked("FAMILY", true); err != nil {
+		t.Fatal(err)
+	}
+	if _, revoked, _ := s.Plan(u.AccountID); !revoked {
+		t.Fatal("revoking shows on the account's plan")
+	}
+	if _, err := s.CreateAccount("c@example.com", "password1", "FAMILY"); !errors.Is(err, ErrBadPromo) {
+		t.Fatalf("revoked code: %v", err)
+	}
+	if err := s.SetPromoRevoked("NOPE", true); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown code: %v", err)
 	}
 }

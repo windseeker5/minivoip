@@ -41,7 +41,7 @@ func main() {
 	hub.OnRing = sender.Ring
 	hub.OnMissed = sender.Missed
 
-	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail}
+	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins()}
 	site.Routes(mux)
 
 	ln, err := listen()
@@ -111,6 +111,15 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /sw.js", at("js/sw.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /manifest.webmanifest", at("brand/manifest.webmanifest", "application/manifest+json"))
+}
+
+// admins can manage promo codes: MINIVOIP_ADMINS (comma-separated emails),
+// else Ken's account.
+func admins() []string {
+	if a := os.Getenv("MINIVOIP_ADMINS"); a != "" {
+		return strings.Split(a, ",")
+	}
+	return []string{"kdresdell@gmail.com"}
 }
 
 // pushContact is the contact the push services see: MINIVOIP_PUSH_CONTACT,

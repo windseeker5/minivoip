@@ -76,6 +76,9 @@ B&B and may become a SaaS.
   every 5 s until answered (30 s max), `OnMissed` "Missed call", a new voicemail "New voicemail". The service worker
   is `assets/js/sw.js`, served at `/sw.js`; the install manifest is `assets/brand/manifest.webmanifest` at
   `/manifest.webmanifest`. The phone app's notification panel is in `phone.js`.
+- Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
+  `is_admin`, or emails in `MINIVOIP_ADMINS` (default kdresdell@gmail.com, see `main.go`). The dashboard shows each
+  account's plan (`store.Plan`).
 - No STUN/TURN yet (`iceServers: []`): calls work on one machine or one Wi-Fi. A phone needs HTTPS for the microphone.
 - Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy
   (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs.

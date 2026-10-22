@@ -30,6 +30,9 @@ type Server struct {
 	OnVoicemail func(line string)
 	// Push sends notifications to the owner's devices (nil in tests).
 	Push *push.Sender
+	// Admins are emails that can manage promo codes (besides users marked
+	// is_admin in the database).
+	Admins []string
 }
 
 type ctxKey struct{}
@@ -55,6 +58,10 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /app/push/subscribe", s.auth(s.pushSubscribe))
 	mux.Handle("POST /app/push/unsubscribe", s.auth(s.pushUnsubscribe))
 	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
+
+	mux.Handle("GET /admin/promo", s.admin(s.promoPage))
+	mux.Handle("POST /admin/promo", s.admin(s.createPromo))
+	mux.Handle("POST /admin/promo/{code}/revoke", s.admin(s.revokePromo))
 	mux.HandleFunc("GET /prompt/{name}", s.prompt)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))
@@ -79,6 +86,7 @@ func (s *Server) user(r *http.Request) (store.User, bool) {
 		return store.User{}, false
 	}
 	u, err := s.Store.UserBySession(c.Value)
+	u.IsAdmin = s.isAdmin(u)
 	return u, err == nil
 }
 
@@ -94,7 +102,8 @@ func (s *Server) auth(next func(http.ResponseWriter, *http.Request, store.User))
 			http.Error(w, "This form came from another site.", http.StatusForbidden)
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, u)), u)
+		ctx := pages.WithAdmin(context.WithValue(r.Context(), ctxKey{}, u), u.IsAdmin)
+		next(w, r.WithContext(ctx), u)
 	})
 }
 

@@ -15,15 +15,35 @@ type AccountForm struct {
 	Error string
 }
 
+// accountShell frames sign up, log in and the first-line step: a card on a
+// grey page, with the small footer.
 templ accountShell(title string) {
 	@layouts.Base(title+" · minivoip", "") {
-		<main class="flex min-h-dvh flex-col items-center bg-muted/40 px-4 py-10">
-			@brand()
-			<div class="mt-8 w-full max-w-sm rounded-2xl border bg-background p-7 shadow-[0_24px_60px_-34px_rgb(0_0_0/0.35)]">
-				{ children... }
-			</div>
-		</main>
+		<div class="flex min-h-dvh flex-col bg-muted/40">
+			<main class="flex flex-1 flex-col items-center px-4 py-10">
+				@brand()
+				<div class="mt-8 w-full max-w-md rounded-2xl border bg-background p-7 shadow-[0_24px_60px_-34px_rgb(0_0_0/0.35)] sm:p-8">
+					{ children... }
+				</div>
+			</main>
+			@smallFooter()
+		</div>
 	}
+}
+
+// smallFooter closes the account and dashboard pages.
+templ smallFooter() {
+	<footer class="border-t bg-background">
+		<div class="mx-auto flex max-w-4xl flex-col items-center justify-between gap-2 px-4 py-5 text-sm text-muted-foreground sm:flex-row">
+			<span>minivoip, part of the mini family with minipass and minicrm.</span>
+			<span>Questions? <a href="mailto:kdresdell@minipass.me" class="underline underline-offset-4 hover:text-foreground">kdresdell@minipass.me</a></span>
+		</div>
+	</footer>
+}
+
+// stepLabel shows where a new account is in its setup.
+templ stepLabel(text string) {
+	<p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">{ text }</p>
 }
 
 templ formError(msg string) {
@@ -43,6 +63,7 @@ templ formField(id, text string) {
 
 templ Signup(f AccountForm) {
 	@accountShell("Get your free line") {
+		@stepLabel("Step 1 of 2: your account")
 		<h1 class="text-2xl font-bold tracking-tight">Get your free line</h1>
 		<p class="mt-1 text-sm text-muted-foreground">Free while in beta. No card required.</p>
 		<form method="post" action="/signup" class="mt-6 flex flex-col gap-4">

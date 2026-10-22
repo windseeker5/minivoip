@@ -12,8 +12,10 @@ import (
 var ErrNameTaken = errors.New("this line name is already taken")
 
 // CreateLine gives an account its line, with a starter menu: a greeting
-// and "1: talk to <owner>". The owner edits both in the menu editor.
-func (s *Store) CreateLine(accountID int64, name, business, owner string) error {
+// and "1: talk to us". The owner edits both in the menu editor. owner_name
+// holds the business name: callers hear "Ringing Joe's B&B".
+func (s *Store) CreateLine(accountID int64, name, business string) error {
+	owner := business
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -32,8 +34,8 @@ func (s *Store) CreateLine(accountID int64, name, business, owner string) error 
 		return err
 	}
 	lineID, _ := res.LastInsertId()
-	if _, err := tx.Exec("INSERT INTO menu_option (line_id, position, key, label, action, say) VALUES (?, 0, '1', ?, 'ring', ?)",
-		lineID, "Talk to "+owner, "Please hold, I'm ringing "+owner+"."); err != nil {
+	if _, err := tx.Exec("INSERT INTO menu_option (line_id, position, key, label, action, say) VALUES (?, 0, '1', 'Talk to us', 'ring', ?)",
+		lineID, "Please hold, I'm connecting you."); err != nil {
 		return err
 	}
 	return tx.Commit()

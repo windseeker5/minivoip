@@ -72,11 +72,11 @@ func TestPromoCodes(t *testing.T) {
 func TestLineAndMenu(t *testing.T) {
 	s := open(t)
 	u, _ := s.CreateAccount("joe@example.com", "password1", "")
-	if err := s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B", "Joe"); err != nil {
+	if err := s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B"); err != nil {
 		t.Fatal(err)
 	}
 	other, _ := s.CreateAccount("sam@example.com", "password1", "")
-	if err := s.CreateLine(other.AccountID, "joesbnb", "Sam's", "Sam"); !errors.Is(err, ErrNameTaken) {
+	if err := s.CreateLine(other.AccountID, "joesbnb", "Sam's"); !errors.Is(err, ErrNameTaken) {
 		t.Fatalf("taken name: %v", err)
 	}
 
@@ -84,7 +84,7 @@ func TestLineAndMenu(t *testing.T) {
 	if err != nil || len(l.Options) != 1 || l.Options[0].Action != lines.Ring {
 		t.Fatalf("starter line: %+v %v", l, err)
 	}
-	if l.Menu() != "Press 1 to talk to Joe." {
+	if l.Menu() != "Press 1 to talk to us." {
 		t.Fatalf("menu = %q", l.Menu())
 	}
 
@@ -107,7 +107,7 @@ func TestLineAndMenu(t *testing.T) {
 func TestVoicemail(t *testing.T) {
 	s := open(t)
 	u, _ := s.CreateAccount("joe@example.com", "password1", "")
-	s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B", "Joe")
+	s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B")
 	other, _ := s.CreateAccount("sam@example.com", "password1", "")
 
 	v, err := s.AddVoicemail("joesbnb", "Talk to Joe", "audio/webm", 4200, strings.NewReader("fake opus"))

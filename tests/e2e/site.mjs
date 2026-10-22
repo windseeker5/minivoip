@@ -125,14 +125,18 @@ try {
   await owner.fill("#email", EMAIL);
   await owner.fill("#password", "e2e-password");
   await owner.click("main button[type=submit]");
-  await owner.waitForSelector("#name");
-  check(true, "sign up leads to 'Create your line'");
+  await owner.waitForSelector("[data-business]");
+  check(true, "sign up leads to step 2, the business name");
 
   step = "create line";
+  await owner.fill("#business", "E2E Shop & Co");
+  check(await owner.textContent("[data-link-preview]") === "e2e-shop-and-co", `the call link is made from the business name (${await owner.textContent("[data-link-preview]")})`);
+  await owner.screenshot({ path: `${SHOTS}/new-line.png` });
+  await owner.click("[data-link-edit]");
   await owner.fill("#name", LINE);
+  check(await owner.textContent("[data-link-preview]") === LINE, "'Change it' edits the call link");
   await owner.fill("#business", "E2E Shop");
-  await owner.fill("#owner", "Ken");
-  await owner.click("main button[type=submit]");
+  await owner.click("form[data-new-line] button[type=submit]");
   await owner.waitForSelector("[data-add-choice]");
   check(true, "creating the line opens the menu editor");
 
@@ -151,7 +155,7 @@ try {
   await rows.nth(3).locator("[data-action-select]").selectOption("voicemail");
   await owner.click("[data-preview]");
   const heard = await owner.textContent("[data-preview-text]");
-  check(/press 1 to talk to Ken/i.test(heard) && /press 2 for opening hours/i.test(heard), `"Hear it" reads the menu: ${heard.trim()}`);
+  check(/press 1 to talk to us/i.test(heard) && /press 2 for opening hours/i.test(heard), `"Hear it" reads the menu: ${heard.trim()}`);
   await owner.click("main button[type=submit]");
   await owner.waitForSelector("text=Saved.");
   check(true, "menu saves");
@@ -264,7 +268,7 @@ try {
   await owner.waitForTimeout(6000);
   check(pushes.length - ringStart >= 2, `a sleeping phone gets repeated "Incoming call" notifications (${pushes.length - ringStart} in 6 s)`);
   await owner.click('[data-action="accept"]');
-  await caller.waitForSelector("text=On the line with Ken", { timeout: 15000 });
+  await caller.waitForSelector("text=On the line with E2E Shop", { timeout: 15000 });
   check(true, "the call connects");
   await caller.screenshot({ path: `${SHOTS}/call.png` });
   const afterAnswer = pushes.length;
@@ -364,11 +368,9 @@ try {
   await friend.fill("#password", "e2e-password");
   await friend.fill("#promo", CODE.toLowerCase());
   await friend.click("main button[type=submit]");
-  await friend.waitForSelector("#name");
-  await friend.fill("#name", `e2e-${stamp}-f`);
-  await friend.fill("#business", "Friend Shop");
-  await friend.fill("#owner", "Sam");
-  await friend.click("main button[type=submit]");
+  await friend.waitForSelector("[data-business]");
+  await friend.fill("#business", `e2e ${stamp} friend`);
+  await friend.click("form[data-new-line] button[type=submit]");
   await friend.waitForSelector("[data-add-choice]");
   await friend.goto(BASE + "/dashboard");
   check((await friend.textContent("[data-plan]")).includes(`free forever, with the code ${CODE}`), "a friend who used the code is free forever");

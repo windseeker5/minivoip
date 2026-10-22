@@ -89,6 +89,32 @@ func choicePhrase(label string) string {
 var verbs = map[string]bool{"talk": true, "speak": true, "leave": true, "book": true, "hear": true, "reach": true,
 	"get": true, "visit": true, "see": true, "check": true, "make": true, "order": true, "ask": true, "call": true}
 
+// Suggest turns a business name into a line name: "Joe's B&B" -> "joes-bandb".
+func Suggest(business string) string {
+	s := strings.ToLower(business)
+	s = strings.NewReplacer("'", "", "’", "", "&", "and", "é", "e", "è", "e", "ê", "e", "à", "a", "ç", "c", "ô", "o", "î", "i", "û", "u").Replace(s)
+	var b strings.Builder
+	dash := false
+	for _, r := range s {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			b.WriteRune(r)
+			dash = false
+		} else if !dash && b.Len() > 0 {
+			b.WriteByte('-')
+			dash = true
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	if len(out) > 30 {
+		out = strings.Trim(out[:30], "-")
+	}
+	for len(out) < 3 {
+		out += "-line"
+		out = strings.Trim(out, "-")
+	}
+	return out
+}
+
 var nameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{1,28}[a-z0-9])$`)
 
 // Reserved names would clash with the site's own pages.

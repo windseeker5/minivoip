@@ -12,6 +12,38 @@ document.querySelectorAll("[data-copy]").forEach(function (btn) {
   });
 });
 
+// Step 2 of sign up: show the call link made from the business name, the
+// same way lines.Suggest makes it on the server.
+(function () {
+  var form = document.querySelector("[data-new-line]");
+  if (!form) return;
+  var business = form.querySelector("[data-business]");
+  var preview = form.querySelector("[data-link-preview]");
+  var field = form.querySelector("[data-link-field]");
+  var name = form.querySelector('[name="name"]');
+  var accents = { "é": "e", "è": "e", "ê": "e", "à": "a", "ç": "c", "ô": "o", "î": "i", "û": "u" };
+
+  function suggest(text) {
+    var s = text.toLowerCase().replace(/['’]/g, "").replace(/&/g, "and").replace(/[éèêàçôîû]/g, function (c) { return accents[c]; });
+    s = s.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30).replace(/-+$/, "");
+    while (s.length < 3) s = (s + "-line").replace(/^-+/, "");
+    return s;
+  }
+
+  business.addEventListener("input", function () {
+    if (field.hidden) preview.textContent = business.value.trim() ? suggest(business.value) : "your-business";
+  });
+  name.addEventListener("input", function () {
+    preview.textContent = name.value.trim() || "your-business";
+  });
+  form.querySelector("[data-link-edit]").addEventListener("click", function (e) {
+    e.target.hidden = true;
+    field.hidden = false;
+    name.value = preview.textContent === "your-business" ? "" : preview.textContent;
+    name.focus();
+  });
+})();
+
 (function () {
   var form = document.querySelector("[data-menu-form]");
   if (!form) return;

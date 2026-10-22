@@ -40,9 +40,9 @@ A phone line: the call link `/call/<name>` and its voice menu. One per account.
 |---|---|---|
 | `id` | integer, key | |
 | `account_id` | integer → `account.id` (delete cascades) | |
-| `name` | text, unique | Lowercase letters, digits, dashes, 3–30; can't be changed. Some names are reserved (`lines.CheckName`) |
+| `name` | text, unique | The call link's last part. Made from the business name (`lines.Suggest`, `-2`… if taken) unless the owner changes it; lowercase letters, digits, dashes, 3–30; can't be changed. Some names are reserved (`lines.CheckName`) |
 | `business` | text | Shown on the call page |
-| `owner_name` | text | First name, used in "Talk to Joe" |
+| `owner_name` | text | Name callers hear in "Ringing …" and "On the line with …". Since 2026-10-21 it is the business name (sign up no longer asks for a first name) |
 | `greeting` | text | Welcome message, read by the browser's voice |
 | `greeting_audio` | text | The owner's recorded welcome (file under `prompts/`), or empty. When set, callers hear it instead of `greeting` and the spoken menu |
 | `created_at` | text (UTC) | |

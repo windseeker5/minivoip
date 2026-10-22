@@ -23,7 +23,7 @@ func baseURL(r *http.Request) string {
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request, u store.User) {
 	l, err := s.Store.LineForAccount(u.AccountID)
 	if errors.Is(err, store.ErrNotFound) {
-		render(w, r, pages.NewLine(u.Email, pages.LineForm{}))
+		render(w, r, pages.NewLine(u.Email, pages.LineForm{Host: r.Host}))
 		return
 	}
 	if err != nil {
@@ -37,17 +37,27 @@ func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User
 	f := pages.LineForm{
 		Name:     strings.ToLower(strings.TrimSpace(r.FormValue("name"))),
 		Business: strings.TrimSpace(r.FormValue("business")),
-		Owner:    strings.TrimSpace(r.FormValue("owner")),
+		Host:     r.Host,
 	}
-	if err := lines.CheckName(f.Name); err != nil {
+	custom := f.Name != ""
+	if !custom {
+		f.Name = lines.Suggest(f.Business)
+	}
+	if f.Business == "" {
+		f.Error = "Write your business name."
+	} else if err := lines.CheckName(f.Name); err != nil {
 		f.Error = err.Error()
-	} else if f.Business == "" || f.Owner == "" {
-		f.Error = "Fill in your business name and your first name."
+		f.Custom = true
 	} else {
-		err := s.Store.CreateLine(u.AccountID, f.Name, f.Business, f.Owner)
+		err := s.Store.CreateLine(u.AccountID, f.Name, f.Business)
+		// A suggested link that's taken gets a number: joes-bandb-2.
+		for i := 2; !custom && errors.Is(err, store.ErrNameTaken) && i < 10; i++ {
+			err = s.Store.CreateLine(u.AccountID, fmt.Sprintf("%s-%d", f.Name, i), f.Business)
+		}
 		switch {
 		case errors.Is(err, store.ErrNameTaken):
-			f.Error = "Someone already uses " + f.Name + ". Try another name."
+			f.Error = "The link " + f.Name + " is already taken. Pick another one."
+			f.Custom = true
 		case err != nil:
 			serverError(w, r, err)
 			return
@@ -87,7 +97,7 @@ func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) 
 		return
 	}
 	l.Business = strings.TrimSpace(r.FormValue("business"))
-	l.Owner = strings.TrimSpace(r.FormValue("owner"))
+	l.Owner = l.Business
 	l.Greeting = strings.TrimSpace(r.FormValue("greeting"))
 	l.GreetingAudio = s.recording(r.FormValue("greeting_audio"))
 	l.Options = nil
@@ -125,8 +135,8 @@ func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) 
 // checkMenu returns what's wrong with a menu, in plain words, or "".
 func checkMenu(l lines.Line) string {
 	switch {
-	case l.Business == "" || l.Owner == "":
-		return "Fill in your business name and your first name."
+	case l.Business == "":
+		return "Write your business name."
 	case l.Greeting == "" && l.GreetingAudio == "":
 		return "Write or record a welcome message."
 	case len(l.Options) == 0:

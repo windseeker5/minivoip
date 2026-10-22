@@ -36,7 +36,7 @@ func setup(t *testing.T, endpoint string) (*store.Store, *Sender) {
 	}
 	t.Cleanup(func() { st.Close() })
 	u, _ := st.CreateAccount("joe@example.com", "password1", "")
-	st.CreateLine(u.AccountID, "joesbnb", "Joe's B&B", "Joe")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's B&B")
 
 	key, _ := ecdh.P256().GenerateKey(rand.Reader)
 	auth := make([]byte, 16)

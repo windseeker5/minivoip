@@ -16,7 +16,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
    Browsers run headless only (`playwright-core` with the cached `chromium_headless_shell`), never a visible
    window and never the Playwright MCP. Only ask Ken for what a machine can't do, like his real phone or his ears.
-3. **Build connected features.** Every new page is linked from the pages around it (landing page, log in,
+3. **Every feature or bug fix happens on its own branch**, never straight on `main`. When Ken says "ship it", do it
+   all yourself with the `gh` command line: push the branch, open a pull request on GitHub, merge it into `main`,
+   then switch back to an up-to-date `main` locally. Don't ship (or push) before Ken says so.
+4. **Build connected features.** Every new page is linked from the pages around it (landing page, log in,
    dashboard, phone app), and the whole path is tested from the landing page, not just the page in isolation.
 
 @AGENTS.md

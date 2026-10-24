@@ -56,7 +56,7 @@ type faq struct {
 
 var faqs = []faq{
 	{"Can people call me from a regular phone?", "Not yet. Calls come from your website, your call link or a QR code. A real phone number is planned as an add-on."},
-	{"Will my iPhone ring like a normal call?", "You get a notification with a sound, and you answer by tapping it. Apple doesn't let web apps show a full ringing screen. Android phones and computers keep ringing until you answer."},
+	{"Will my phone ring like a normal call?", "On Android, yes: the minivoip app rings with your ringtone and shows the call screen, even when your phone is locked. Computers ring while the app is open. On iPhone, for now you get a notification with a sound and answer by tapping it; a ringing iPhone app is next."},
 	{"Does the caller need to install anything?", "No. They click the button and talk from their browser, after allowing the microphone."},
 	{"What if I miss the call?", "After 30 seconds the caller can leave a voicemail. You get a notification and play it in the app."},
 	{"I can't edit my website. Can I still use it?", "Yes. Put your call link on your Google Maps listing, your Facebook page, your email signature, or print it as a QR code for your door."},
@@ -1783,7 +1783,7 @@ func siteFooter() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "<span>Part of the mini family, with minipass and minicrm.</span></div><a href=\"mailto:kdresdell@minipass.me\" class=\"underline-offset-4 hover:text-foreground hover:underline\">kdresdell@minipass.me</a></div></footer>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "<span>Part of the mini family, with minipass and minicrm.</span></div><div class=\"flex items-center gap-5\"><a href=\"/download/minivoip.apk\" class=\"underline-offset-4 hover:text-foreground hover:underline\">Get the Android app</a> <a href=\"mailto:kdresdell@minipass.me\" class=\"underline-offset-4 hover:text-foreground hover:underline\">kdresdell@minipass.me</a></div></div></footer>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

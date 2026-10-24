@@ -114,6 +114,12 @@ async function crawl(page, start, label) {
     if (seen.has(path)) continue;
     seen.add(path);
     step = `${label} ${path}`;
+    if (path.startsWith("/download/")) {
+      // A file to download (the Android app), not a page.
+      const res = await page.request.get(BASE + path);
+      check(res.status() === 200 && (await res.body()).length > 100000, `${label}: ${path} downloads (${res.status()})`);
+      continue;
+    }
     const res = await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
     check(res && res.status() === 200, `${label}: ${path} loads (${res && res.status()})`);
     const links = await page.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href")));
@@ -304,7 +310,7 @@ try {
   // 3. A real call --------------------------------------------------------
   step = "call";
   await owner.goto(BASE + "/app");
-  await owner.waitForSelector("text=Online", { timeout: 10000 });
+  await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   const caller = await newPage(390, 760);
   await caller.goto(BASE + `/call/${LINE}`);
   await caller.click('[data-action="call"]');
@@ -335,14 +341,16 @@ try {
   await caller.waitForTimeout(6000);
   check(pushes.length === afterAnswer, `answering stops the notifications (${pushes.length - afterAnswer} more)`);
   await caller.click('[data-action="hangup"]');
-  await owner.waitForSelector(".cs-call", { state: "hidden", timeout: 10000 });
+  await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   check(true, "hanging up reaches the phone");
+  await owner.waitForSelector('[data-panel="calls"] .ap-row[data-kind="answered"]', { timeout: 5000 });
+  check(/Talk to us/.test(await owner.textContent('[data-panel="calls"] .ap-row[data-kind="answered"]')), "the answered call shows in the call list, with the caller's choice");
 
   step = "relay call";
   // Both sides forced through the relay (TURN) at the public address: the
   // path a phone on cellular data needs.
   await owner.goto(BASE + "/app?relay=1");
-  await owner.waitForSelector("text=Online", { timeout: 10000 });
+  await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await caller.goto(BASE + `/call/${LINE}?relay=1`);
   await caller.click('[data-action="call"]');
   await caller.waitForSelector('[data-key="1"]:visible');
@@ -358,10 +366,10 @@ try {
     check(c && c.route === "relay>relay" && c.bytesIn > 1000 && o && o.bytesIn > 1000,
       `voice flows both ways through the relay (caller ${c && c.route}, ${c && c.bytesIn} bytes in; phone ${o && o.bytesIn} bytes in)`);
     await caller.click('[data-action="hangup"]');
-    await owner.waitForSelector(".cs-call", { state: "hidden", timeout: 10000 });
+    await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   }
   await owner.goto(BASE + "/app");
-  await owner.waitForSelector("text=Online", { timeout: 10000 });
+  await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await caller.goto(BASE + `/call/${LINE}`);
 
   step = "play option";
@@ -391,6 +399,7 @@ try {
   check(afterDecline.includes("missed") && afterDecline.includes("voicemail"), `declining sends "Missed call", the message sends "New voicemail" (${afterDecline.join(", ")})`);
   await owner.waitForSelector("[data-voicemail]", { timeout: 10000 });
   check(true, "the phone app shows the new message without reloading");
+  check(await owner.isVisible("[data-vm-dot]"), "the Voicemail tab shows a dot for the new message");
 
   step = "voicemail choice";
   await caller.click('[data-action="call"]');
@@ -422,6 +431,30 @@ try {
   await items.first().locator('button[aria-label="Delete this message"]').click();
   await owner.waitForFunction(() => document.querySelectorAll("[data-voicemail]").length === 1, null, { timeout: 5000 });
   check(true, "deleting a message removes it");
+
+  step = "away";
+  await owner.goto(BASE + "/app");
+  await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
+  await owner.click("[data-avail-btn]");
+  await owner.click('[data-avail-menu] [data-mode="off"]');
+  await owner.waitForSelector('[data-avail-state][data-mode="off"]');
+  await caller.click('[data-action="call"]');
+  await caller.waitForSelector('[data-key="1"]:visible');
+  await caller.click('[data-key="1"]');
+  await caller.waitForSelector('[data-action="send-message"]:visible', { timeout: 20000 });
+  check(await owner.isHidden("[data-call-screen]"), "Off: a call goes straight to voicemail and the app doesn't ring");
+  await caller.waitForTimeout(1500);
+  await caller.click('[data-action="hangup"]');
+  await caller.waitForSelector("text=Message sent", { timeout: 10000 });
+  const callDB = new DatabaseSync(DB, { readOnly: true });
+  const outcomes = callDB.prepare(`SELECT c.outcome FROM call_log c JOIN line l ON l.id = c.line_id WHERE l.name = ? ORDER BY c.id`).all(LINE).map((r) => r.outcome);
+  callDB.close();
+  check(outcomes.includes("answered") && outcomes.includes("declined") && outcomes[outcomes.length - 1] === "away",
+    `the call history has every call (${outcomes.join(", ")})`);
+  await owner.click("[data-avail-btn]");
+  await owner.click('[data-avail-menu] [data-mode="on"]');
+  await owner.waitForSelector('[data-avail-state][data-mode="on"]');
+  check(true, "the Available switch turns back on");
 
   // Promo codes (admin) -----------------------------------------------------
   step = "admin only";
@@ -489,7 +522,7 @@ try {
   step = "stranger";
   const stranger = await newPage(390, 844);
   await stranger.goto(BASE + "/app");
-  check(new URL(stranger.url()).pathname === "/login" && await stranger.isVisible("text=Your phone app"), "a stranger can't open the phone app, and gets the app's own log in");
+  check(new URL(stranger.url()).pathname === "/login" && await stranger.isVisible("[data-app-login]"), "a stranger can't open the phone app, and gets the app's own log in");
   await stranger.screenshot({ path: `${SHOTS}/app-login.png` });
 
   step = "phone app log in and out";
@@ -498,11 +531,12 @@ try {
   await phoneOnly.fill("#email", EMAIL);
   await phoneOnly.fill("#password", "e2e-password");
   await phoneOnly.click("button[type=submit]");
-  await phoneOnly.waitForSelector("text=Online", { timeout: 10000 });
+  await phoneOnly.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   check(new URL(phoneOnly.url()).pathname === "/app", "logging in from the phone app stays in the app");
   check(!(await phoneOnly.isVisible('a[href="/dashboard"]')), "the phone app has no dashboard links");
+  await phoneOnly.click('[data-tab="me"]');
   await phoneOnly.click("text=Log out");
-  await phoneOnly.waitForSelector("text=Your phone app");
+  await phoneOnly.waitForSelector("[data-app-login]");
   check(true, "logging out of the phone app returns to the app's log in");
   step = "log out";
   await owner.goto(BASE + "/dashboard");

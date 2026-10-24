@@ -45,6 +45,7 @@ A phone line: the call link `/call/<name>` and its voice menu. One per account.
 | `owner_name` | text | Name callers hear in "Ringing …" and "On the line with …". Since 2026-10-21 it is the business name (sign up no longer asks for a first name) |
 | `greeting` | text | Welcome message, read by the browser's voice |
 | `greeting_audio` | text | The owner's recorded welcome (file under `prompts/`), or empty. When set, callers hear it instead of `greeting` and the spoken menu |
+| `away_until` | text (UTC) | The app's Available switch: '' = available; a time = paused until then ("Pause for 1 hour"); `9999-12-31 00:00:00` = Off until turned back on. While away, calls go straight to voicemail and nothing rings |
 | `created_at` | text (UTC) | |
 
 ## menu_option
@@ -83,6 +84,7 @@ A message a caller left. The audio file is `<data dir>/voicemail/<file>` (delete
 | `id` | integer, key | |
 | `line_id` | integer → `line.id` (delete cascades; the file stays, see note) | |
 | `option` | text | Menu choice the caller picked ("Talk to Joe", "Leave a message") |
+| `call_id` | text | The unanswered call (`call_log.call_id`) the message follows; '' when the caller picked a voicemail choice |
 | `duration_ms` | integer | Length measured by the caller's browser |
 | `file` | text | File name under `voicemail/` (`msg-*.webm`, `.m4a` or `.ogg`) |
 | `content_type` | text | e.g. `audio/webm` |
@@ -91,6 +93,20 @@ A message a caller left. The audio file is `<data dir>/voicemail/<file>` (delete
 
 Note: deleting an account removes its voicemail rows but not the files; the e2e test deletes its own files.
 
+## call_log
+The owner's call history: one row per call that reached the line, written by the call hub when the call ends (`calls.Hub.OnEnd`). The app's Calls list shows these rows plus voicemails left from a voicemail choice; a call followed by a voicemail shows as that voicemail.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `line_id` | integer → `line.id` (delete cascades) | |
+| `call_id` | text, unique | The hub's id for the call (also in `push_log.call_id` and `voicemail.call_id`) |
+| `option` | text | Menu choice the caller picked to ring the owner |
+| `outcome` | text: `answered`, `missed`, `declined`, `away` | `missed` = rang out or the caller hung up first; `declined` = the owner pressed Decline; `away` = the Available switch was off or paused, nothing rang |
+| `started_at` | text (UTC) | When it started ringing |
+| `answered_at` | text (UTC), null | When the owner answered; null if nobody did |
+| `ended_at` | text (UTC) | When it ended |
+
 ## device
 A browser that gets push notifications (usually the owner's phone app). Saved when the owner turns notifications on; deleted when they turn them off or the push service answers 404/410.
 
@@ -98,7 +114,7 @@ A browser that gets push notifications (usually the owner's phone app). Saved wh
 |---|---|---|
 | `id` | integer, key | |
 | `account_id` | integer → `account.id` (delete cascades) | |
-| `endpoint` | text, unique | The push service URL from the browser's `PushSubscription` |
+| `endpoint` | text, unique | The push service URL from the browser's `PushSubscription`, or `fcm:<token>` for the Android app (its Firebase token; `p256dh` and `auth` are then empty) |
 | `p256dh` | text | Browser's public key (base64url) |
 | `auth` | text | Browser's auth secret (base64url) |
 | `user_agent` | text | Which browser/phone, for display |
@@ -137,3 +153,4 @@ Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, mad
 | 4 | 2026-10-21 | `device`, `setting` (push notifications) |
 | 3 | 2026-10-21 | `line.greeting_audio`, `menu_option.say_audio` (recorded prompts in `<data dir>/prompts/`, public at `/prompt/<name>`, random names; saving the menu deletes recordings it no longer uses) |
 | 6 | 2026-10-22 | `push_log` (delivery receipts) |
+| 7 | 2026-10-24 | `call_log` (call history), `voicemail.call_id`, `line.away_until` (Available switch) |

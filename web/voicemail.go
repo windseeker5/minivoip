@@ -19,7 +19,7 @@ func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "The message is too long.", http.StatusRequestEntityTooLarge)
 		return
 	}
-	line, option, ok := s.Hub.UseVoicemailToken(r.FormValue("token"))
+	pass, ok := s.Hub.UseVoicemailToken(r.FormValue("token"))
 	if !ok {
 		http.Error(w, "This voicemail link has expired. Please call again.", http.StatusForbidden)
 		return
@@ -39,13 +39,13 @@ func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
 		ct = "audio/webm"
 	}
 	ms, _ := strconv.ParseInt(r.FormValue("duration_ms"), 10, 64)
-	if _, err := s.Store.AddVoicemail(line, option, ct, ms, file); err != nil {
+	if _, err := s.Store.AddVoicemail(pass.Line, pass.Option, pass.CallID, ct, ms, file); err != nil {
 		serverError(w, r, err)
 		return
 	}
-	s.Hub.NotifyOwners(line, calls.Message{Type: "voicemail"})
+	s.Hub.NotifyOwners(pass.Line, calls.Message{Type: "voicemail"})
 	if s.OnVoicemail != nil {
-		s.OnVoicemail(line)
+		s.OnVoicemail(pass.Line)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -59,14 +59,14 @@ func (s *Server) voicemailPage(w http.ResponseWriter, r *http.Request, u store.U
 	render(w, r, pages.VoicemailPage(u.Email, list))
 }
 
-// voicemailFragment is the list alone, for the phone app to refresh.
+// voicemailFragment is the phone app's voicemail list alone, to refresh it.
 func (s *Server) voicemailFragment(w http.ResponseWriter, r *http.Request, u store.User) {
 	list, err := s.Store.Voicemails(u.AccountID)
 	if err != nil {
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.VoicemailList(list, "/app"))
+	render(w, r, pages.AppVoicemails(list))
 }
 
 func voicemailID(r *http.Request) int64 {

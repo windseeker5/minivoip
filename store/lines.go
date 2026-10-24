@@ -60,8 +60,8 @@ func (s *Store) LineExists(name string) bool {
 func (s *Store) line(where string, arg any) (lines.Line, error) {
 	var l lines.Line
 	var id int64
-	err := s.db.QueryRow("SELECT id, name, business, owner_name, greeting, greeting_audio FROM line WHERE "+where, arg).
-		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio)
+	err := s.db.QueryRow("SELECT id, name, business, owner_name, greeting, greeting_audio, away_until FROM line WHERE "+where, arg).
+		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio, &l.AwayUntil)
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, ErrNotFound
 	}

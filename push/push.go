@@ -1,5 +1,6 @@
-// Package push wakes the owner's phone with web push notifications (the
-// free VAPID standard: no Firebase or Apple account). The keys are made on
+// Package push wakes the owner's phone: web push notifications (the free
+// VAPID standard) for the browser app, and Firebase (fcm.go) for the
+// Android app, which can ring like a phone call. The VAPID keys are made on
 // first start and kept in the database's setting table.
 package push
 
@@ -9,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,11 +49,12 @@ type Sender struct {
 	Client webpush.HTTPClient
 
 	public, private string
+	fcm             *fcm
 }
 
 // New loads the VAPID keys, making them the first time.
 func New(st *store.Store, subject string) (*Sender, error) {
-	s := &Sender{Store: st, Subject: subject}
+	s := &Sender{Store: st, Subject: subject, fcm: &fcm{dir: FirebaseDir(), client: &http.Client{Timeout: 15 * time.Second}}}
 	var err error
 	if s.public, err = st.Setting("vapid_public"); err != nil {
 		return nil, err
@@ -79,6 +82,13 @@ func (s *Sender) PublicKey() string { return s.public }
 // Send delivers one notification to one device. A device the push service
 // says is gone is forgotten.
 func (s *Sender) Send(d store.Device, n Notification, ttl time.Duration, urgent bool) error {
+	if token, ok := strings.CutPrefix(d.Endpoint, FCMPrefix); ok {
+		err := s.fcm.send(token, n, ttl, urgent)
+		if err == errGone {
+			s.Store.DeleteDevice(d.Endpoint)
+		}
+		return err
+	}
 	body, _ := json.Marshal(n)
 	urgency := webpush.UrgencyNormal
 	if urgent {

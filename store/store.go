@@ -130,6 +130,23 @@ var migrations = []string{
 	);
 	CREATE INDEX push_log_sent ON push_log(sent_at);
 	`,
+	// 7: call history, voicemails tied to their call, and the owner's
+	// Available switch.
+	`
+	CREATE TABLE call_log (
+		id          INTEGER PRIMARY KEY,
+		line_id     INTEGER NOT NULL REFERENCES line(id) ON DELETE CASCADE,
+		call_id     TEXT NOT NULL UNIQUE,
+		option      TEXT NOT NULL DEFAULT '',
+		outcome     TEXT NOT NULL CHECK (outcome IN ('answered', 'missed', 'declined', 'away')),
+		started_at  TEXT NOT NULL,
+		answered_at TEXT,
+		ended_at    TEXT NOT NULL
+	);
+	CREATE INDEX call_log_line ON call_log(line_id, started_at);
+	ALTER TABLE voicemail ADD COLUMN call_id TEXT NOT NULL DEFAULT '';
+	ALTER TABLE line ADD COLUMN away_until TEXT NOT NULL DEFAULT '';
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

@@ -4,8 +4,8 @@ Last update: 2026-10-22 · Agreed with Ken. Read this before planning any new fe
 
 ## The goal
 
-One simple place where a small business talks with its customers. It works in any browser (iPhone, Android or a
-computer), with no app store and no phone line. If someone who only knows how to use a phone can't use it without
+One simple place where a small business talks with its customers. Visitors use any browser; the owner uses the same
+app pages in a browser, on a computer, or inside a small phone app that rings like a real call. No phone line. If someone who only knows how to use a phone can't use it without
 help, it isn't done.
 
 ## Our edge: anyone can reach you
@@ -40,14 +40,14 @@ Why the prices differ:
 
 ## Decisions
 
-- **Web app only (PWA), no store apps.** One app for iPhone, Android and computers. Store apps would ring better on
-  phones, but Apple's $99 USD a year and two separate apps don't fit a $5-a-month product with an unproven market.
-  Revisit only once there are paying customers who need it.
-- **What a web app can do for ringing, accepted as the limit:**
-  - Computer: full ringing (looping ringtone, call window) while the app or a tab is open.
-  - Android: good, once the owner sets the app's alerts to a ringtone, allows the lock screen and turns off battery
-    saver for it. The app must guide them through that and offer a "Test my ringing" call.
-  - iPhone: a short alert sound only; no ringtone and no full call screen (Apple's rule for web apps).
+- **One set of app pages, with small phone apps around them for ringing** (changed 2026-10-24; before: web app
+  only). Ken's Pixel 9 test showed a web app's alert arrives in half a second on a locked phone, but silently: Android
+  and iPhone only let installed apps ring like a call. So:
+  - Computer: the web app (a browser window); full ringing while it's open.
+  - Android: a small Kotlin app (`android/`) showing the same `/app` pages, plus a real ring (Firebase push, the
+    phone's ringtone, the call screen over the lock screen). Installed from our site for now, Play Store later.
+  - iPhone: next, the same idea (Apple's call screen; $99 USD a year Apple account, built on a rented Mac). The family's
+    iPhones are the test phones. Until then, the iPhone web app only gets a short alert.
   - Safety net when nobody answers: voicemail, later "leave your number, we call you back".
 - **The voice menu is the junk-call filter.** An open door invites junk callers; the menu keeps robots out and is a
   selling point ("only real people get through").

@@ -53,6 +53,8 @@ type ctxKey struct{}
 // Routes registers every page on mux.
 func (s *Server) Routes(mux *http.ServeMux) {
 	s.Hub.CanAnswer = s.canAnswer
+	s.Hub.Available = s.Store.Available
+	s.Hub.OnEnd = s.logCall
 
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("GET /signup", s.signupPage)
@@ -67,11 +69,16 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /dashboard/menu", s.auth(s.saveMenu))
 	mux.Handle("GET /app", s.auth(s.phoneApp))
 	mux.Handle("GET /app/voicemails", s.auth(s.voicemailFragment))
+	mux.Handle("GET /app/calls", s.auth(s.callsFragment))
+	mux.Handle("POST /app/available", s.auth(s.setAvailable))
 	mux.Handle("POST /dashboard/prompt", s.auth(s.uploadPrompt))
 	mux.Handle("POST /app/push/subscribe", s.auth(s.pushSubscribe))
 	mux.Handle("POST /app/push/unsubscribe", s.auth(s.pushUnsubscribe))
 	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
 	mux.Handle("POST /app/push/receipt", s.auth(s.pushReceipt))
+	mux.Handle("POST /app/calls/{id}/decline", s.auth(s.declineCall))
+	mux.HandleFunc("GET /api/android/config", s.androidConfig)
+	mux.HandleFunc("GET /download/minivoip.apk", s.androidAPK)
 
 	mux.Handle("GET /admin/promo", s.admin(s.promoPage))
 	mux.Handle("POST /admin/promo", s.admin(s.createPromo))

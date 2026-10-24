@@ -1,6 +1,18 @@
 # Build plan
 
-Last update: 2026-10-21 · Design: [architecture.md](architecture.md)
+Last update: 2026-10-24 · Design: [architecture.md](architecture.md) · Goal: [vision.md](vision.md)
+
+## Where we are (2026-10-24)
+- **Works end to end:** a visitor clicks "Call us", hears the owner's voice menu, and talks to the owner or leaves a
+  voicemail. Real calls over HTTPS through the built-in relay (https://voip.dresdell.com while `task dev` runs).
+- **Owner's app** (look C): call history, voicemails, Available / Pause / Off, menu editor. On a computer it rings
+  and fills the window; on Android the minivoip app rings like a real phone call, even locked (Ken's Pixel 9).
+- **Next, most important first:**
+  1. **iPhone app** that rings (same idea as Android: Apple's call screen; $99 USD a year Apple account, built on a
+     rented Mac; the family's iPhones to test).
+  2. **Security:** anyone who knows a call link can call, robots too.
+  3. **Landing page:** the demo phone isn't good looking (Ken).
+  4. Container and home server (Phase 6).
 
 The rule: **build it locally with auto-reload first, like Flask debug mode. The container comes last.**
 
@@ -79,15 +91,22 @@ Done 2026-10-21 (before the rest of Phase 1): SQLite with migrations (`store/`),
 - Dashboard screens read real data instead of fake data.
 
 ## Phase 3: phone app install + push
-Done 2026-10-21: manifest + service worker, VAPID keys made on first start (kept in the database, no `.env`), "Turn on notifications" and "Send a test" in the phone app, ringing pushes every 5 s, "Missed call" and "New voicemail" pushes. 2026-10-22: rings every 10 s (was 5), ring pushes wait up to a minute for a sleeping phone and collapse into one (push `Topic`), a late ring shows as "Missed call", answering clears the ring on other devices, and every push gets a delivery receipt (`push_log`). Still to check on Ken's real phones (Android, iPhone from the home screen).
+Done 2026-10-21: manifest + service worker, VAPID keys made on first start (kept in the database, no `.env`), "Turn on notifications" and "Send a test" in the phone app, ringing pushes every 5 s, "Missed call" and "New voicemail" pushes. 2026-10-22: rings every 10 s (was 5), ring pushes wait up to a minute for a sleeping phone and collapse into one (push `Topic`), a late ring shows as "Missed call", answering clears the ring on other devices, and every push gets a delivery receipt (`push_log`). 2026-10-24 on Ken's phones: the computer rings well; on Android a web push arrives in half a second while locked
+but silently, so Android got its own app (Phase 3b). iPhone not tried yet.
 - Web app manifest + service worker, so `/app` can be installed.
 - Generate VAPID keys once, store them in `.env` (never in git; add `.env.example`).
 - "Send test notification" button in the dashboard.
 - To test on a real phone you need HTTPS. Pick one at that point: a local certificate (e.g. `mkcert`, used with templ's `--proxy-tls-crt`/`--proxy-tls-key`), or test on the home server behind its existing HTTPS proxy.
 - Test: Android (Chrome), iPhone (added to home screen), computer.
 
+## Phase 3b: phone apps that ring like a call
+Android done 2026-10-24: `android/` (Kotlin), the same `/app` pages in a web view plus a real ring through Firebase
+(ringtone until answered, call screen over the lock screen). Downloaded from the landing page and the app's Me tab
+(`/download/minivoip.apk`). Next: iPhone, the same way.
+
 ## Phase 4: real calls (web → phone app)
-Started early (2026-10-21) as a thin slice: one line in code (`lines/`), call setup in `calls/`, visitor window `/call/joesbnb`, phone app `/app`. Works on localhost; next is a real phone over HTTPS.
+Done: started 2026-10-21 as a thin slice, now real calls over HTTPS between any browser and the owner's app
+(computer, Android), through the built-in relay when needed, with call history (2026-10-24).
 - WebSocket call setup (`coder/websocket`): visitor ↔ server ↔ phone app.
 - Visitor's browser plays the menu, then starts a direct WebRTC call with the phone app.
 - Ring all devices of the line; first to answer wins. Push to sleeping devices every ~10 s.
@@ -105,5 +124,6 @@ Done 2026-10-21: no answer (30 s or Decline) or a voicemail choice → the brows
 - `task build` produces the production binary.
 
 ## Later (not planned in detail)
-- Long-term direction (meeting room, whiteboard, notes, two plans): [vision.md](vision.md). Web app only; no store apps (decided 2026-10-22).
+- Long-term direction (meeting room, whiteboard, notes, two plans): [vision.md](vision.md). Same app pages
+  everywhere, with small phone apps around them for ringing (decided 2026-10-24; was "web app only").
 - Step 2: desk phones / SIP apps. Step 3: real phone number from a SIP provider. See [architecture.md](architecture.md#growing-later).

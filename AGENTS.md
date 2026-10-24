@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: Android app works (2026-10-24, not committed): Ken's locked Pixel 9 rang with his ringtone and the call screen within 1 s, answered, voice both ways. `android/` (Kotlin web view on `/app` + native ring through Firebase, project `minivoip-push-kd`, files in `data/firebase/`), served at `/download/minivoip.apk`, installed over USB (adb). Computer app works too. `go test`, `app.mjs`, `site.mjs` pass.
-- Next action: commit; then iPhone (same idea: Apple call screen, $99/yr Apple account, rented Mac; family iPhones to test). Still pending: landing page demo phone redesign, security (anyone who knows `/call/<line>` can call), back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-24. Pixel 9 test: web push arrived in 0.5 s while locked but silent; decided with Ken: native shells (Kotlin Android now, iPhone next), same app pages inside (`docs/vision.md`). Built `android/`, `push/fcm.go` (FCM HTTP v1, stdlib JWT), `GET /api/android/config`, `POST /app/calls/{id}/decline` (hub `Decline`), `/download/minivoip.apk`; Android signing key in `android/` (gitignored, back it up). Computer test passed on the second try.
+- Status: healthy, all on `main` (PR #1, 2026-10-24). Calls work end to end; the owner's app (look C) rings on the computer, and the Android app (`android/`, Firebase, project `minivoip-push-kd`, files in `data/firebase/`) rings like a real call on Ken's locked Pixel 9. Plan and progress: `docs/plan.md` "Where we are".
+- Next action: Ken picks the next piece (recommended: iPhone app that rings; then security of call links; then the landing page demo phone). Work on a branch, ship with a PR when Ken says "ship it" (CLAUDE.md rule 3). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-24. Look C owner app, call history, Available switch, Android app with native ring, landing page links the Android app, vision and plan updated (native shells around the same pages). Shipped as PR #1. Android app installs over USB (`adb install -r data/android/minivoip.apk`) or from `/download/minivoip.apk`.
 
 ## Rules
 

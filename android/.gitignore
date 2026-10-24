@@ -1,0 +1,6 @@
+# Machine paths, signing passwords and build output
+local.properties
+*.jks
+.gradle/
+build/
+app/build/

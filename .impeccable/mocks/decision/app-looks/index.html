@@ -1,0 +1,785 @@
+<title>minivoip app looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one column of three looks; each look = two phone screens side by side, then the computer window full width. */
+:root {
+  --bg: #f4f4f2; --surface: #ffffff; --fg: #121214; --muted: #5f5f66; --line: #e2e2e0; --tag: #e8e8e5;
+  --font: Onest, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111113; --surface: #19191c; --fg: #f2f2f4; --muted: #a2a2aa; --line: #2a2a2f; --tag: #26262b; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #111113; --surface: #19191c; --fg: #f2f2f4; --muted: #a2a2aa; --line: #2a2a2f; --tag: #26262b; color-scheme: dark }
+
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 48px 96px; }
+.intro { display: grid; gap: 12px; max-width: 64ch; }
+.intro img { height: 22px; width: auto; }
+.intro .on-dark { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .intro .on-light { display: none; } :root:not([data-theme="light"]) .intro .on-dark { display: block; } }
+:root[data-theme="dark"] .intro .on-light { display: none; }
+:root[data-theme="dark"] .intro .on-dark { display: block; }
+h1 { margin: 12px 0 0; font-size: clamp(32px, 5vw, 48px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.05; text-wrap: balance; }
+.intro p { margin: 0; color: var(--muted); font-size: 17px; }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.jump a { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); color: var(--fg); text-decoration: none; font-size: 14px; font-weight: 500; }
+.jump a:hover { box-shadow: 0 0 0 1px var(--fg); }
+.jump a:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+.look { display: grid; gap: 28px; margin-top: 88px; padding-top: 40px; border-top: 1px solid var(--line); scroll-margin-top: 16px; }
+.look-head { display: grid; gap: 8px; max-width: 66ch; }
+.tag { justify-self: start; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--tag); color: var(--muted); }
+.look-head h2 { margin: 0; font-size: clamp(26px, 3.6vw, 36px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; text-wrap: balance; }
+.look-head p { margin: 0; color: var(--muted); }
+
+.phones { display: flex; flex-wrap: wrap; gap: 32px; }
+.shot { margin: 0; display: grid; gap: 12px; min-width: 0; }
+.shot-phone { flex: 0 1 330px; }
+figcaption { font-size: 14px; color: var(--muted); }
+.fit { width: 100%; }
+.mock { overflow: hidden; }
+.mock-phone { border-radius: 40px; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 30px 60px -30px rgba(0,0,0,.35); }
+.mock-desk { border-radius: 14px; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 30px 70px -35px rgba(0,0,0,.4); }
+.mock *, .mock *::before, .mock *::after { box-sizing: border-box; }
+.mock button { font: inherit; color: inherit; cursor: default; }
+.mock h1, .mock h2 { text-wrap: balance; }
+.mock a { color: inherit; }
+
+.note { margin-top: 88px; padding: 24px; border-radius: 16px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); color: var(--muted); max-width: 70ch; }
+.note strong { color: var(--fg); font-weight: 600; }
+</style>
+
+<div class="wrap" id="looks">
+  <header class="intro">
+    <img class="on-light" src="logo-light.svg" alt="minivoip">
+    <img class="on-dark" src="logo-dark.svg" alt="minivoip">
+    <h1>Three looks for the minivoip app</h1>
+    <p>One app for the phone and the computer. Each look shows the phone home screen, the phone ringing, and the computer window. Pick one, or mix parts.</p>
+    <nav class="jump" aria-label="Looks">
+      <a href="#look-a">A · One list, light</a>
+      <a href="#look-b">B · Status first, dark</a>
+      <a href="#look-c">C · Tabs, warm light</a>
+    </nav>
+  </header>
+
+
+<section class="look" id="look-a">
+  <header class="look-head">
+    <span class="tag">Look A</span>
+    <h2>One list, light</h2>
+    <p>Everything in one clean list, with an “Available” switch on top. On the computer it’s a small window you park in a corner; a call shows up as a dark card inside it.</p>
+  </header>
+  <div class="phones">
+    <figure class="shot shot-phone"><div class="fit" data-w="390" data-h="844"><div class="mock mock-phone" style="width:390px;height:844px"><div style="width: 390px; height: 844px; background: #ffffff; color: #0a0a0b; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 6px">
+    <img src="logo-light.svg" alt="minivoip" style="height: 20px; width: auto">
+    <button aria-label="Settings" style="width: 44px; height: 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #56565e">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <div style="padding: 14px 20px 0">
+    <h1 style="margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1">Joe's B&amp;B</h1>
+    <div style="margin-top: 16px; display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; border-radius: 14px; box-shadow: 0 0 0 1px #ebebef, 0 6px 18px -10px rgba(20,20,30,.18)">
+      <span style="width: 10px; height: 10px; border-radius: 50%; background: #1f9d55; box-shadow: 0 0 0 4px rgba(31,157,85,.14); flex: none"></span>
+      <div style="flex: 1; min-width: 0">
+        <div style="font-weight: 600; font-size: 15px">Available</div>
+        <div style="color: #6a6a73; font-size: 13px; margin-top: 1px">Calls ring here and on your computer</div>
+      </div>
+      <button aria-label="Available" aria-pressed="true" style="width: 50px; height: 30px; border: 0; border-radius: 999px; background: #0a0a0b; padding: 3px; display: flex; justify-content: flex-end">
+        <span style="width: 24px; height: 24px; border-radius: 50%; background: #ffffff; display: block"></span>
+      </button>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 6px; padding: 22px 20px 8px">
+    <button style="height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: #0a0a0b; color: #ffffff; font-size: 14px; font-weight: 500">All</button>
+    <button style="height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: #f3f3f5; font-size: 14px; font-weight: 500">Missed <span style="color: #6a6a73">1</span></button>
+    <button style="height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: #f3f3f5; font-size: 14px; font-weight: 500">Voicemail <span style="color: #6a6a73">2</span></button>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 0 20px">
+    <div style="font-size: 12px; font-weight: 600; color: #6a6a73; letter-spacing: .02em; padding: 12px 0 6px">Today</div>
+
+    <div style="display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid #efeff2">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: #f3f3f5; display: grid; place-items: center; flex: none; color: #0a0a0b">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+      </span>
+      <div style="flex: 1; min-width: 0">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span style="font-weight: 600; font-size: 15px">Voicemail · 0:42</span><span style="color: #6a6a73; font-size: 13px">2:14 pm</span></div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px">
+          <button aria-label="Play voicemail" style="width: 32px; height: 32px; border: 0; border-radius: 50%; background: #0a0a0b; color: #ffffff; display: grid; place-items: center; flex: none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+          </button>
+          <div aria-hidden="true" style="display: flex; align-items: center; gap: 2px; height: 22px; flex: 1">
+            <span style="width: 3px; height: 8px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 14px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 20px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 12px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 17px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 9px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 15px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 21px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 11px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 6px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 13px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 18px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 10px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 16px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 7px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 12px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 19px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 9px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 14px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 6px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 11px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 16px; border-radius: 2px; background: #d4d4da"></span><span style="width: 3px; height: 8px; border-radius: 2px; background: #d4d4da"></span>
+          </div>
+        </div>
+        <div style="color: #6a6a73; font-size: 13px; margin-top: 6px">Chose “Book a room”</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid #efeff2">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: #fdecea; display: grid; place-items: center; flex: none; color: #c4321f">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"/><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+      </span>
+      <div style="flex: 1; min-width: 0">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span style="font-weight: 600; font-size: 15px; color: #c4321f">Missed call</span><span style="color: #6a6a73; font-size: 13px">1:05 pm</span></div>
+        <div style="color: #6a6a73; font-size: 13px; margin-top: 2px">Chose “Opening hours” · left no message</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid #efeff2">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: #e8f5ee; display: grid; place-items: center; flex: none; color: #1a7f46">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+      </span>
+      <div style="flex: 1; min-width: 0">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span style="font-weight: 600; font-size: 15px">Answered · 4:18</span><span style="color: #6a6a73; font-size: 13px">10:32 am</span></div>
+        <div style="color: #6a6a73; font-size: 13px; margin-top: 2px">Chose “Book a room” · on your computer</div>
+      </div>
+    </div>
+
+    <div style="font-size: 12px; font-weight: 600; color: #6a6a73; letter-spacing: .02em; padding: 18px 0 6px">Yesterday</div>
+    <div style="display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid #efeff2">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: #f3f3f5; display: grid; place-items: center; flex: none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+      </span>
+      <div style="flex: 1; min-width: 0">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span style="font-weight: 600; font-size: 15px">Voicemail · 0:19</span><span style="color: #6a6a73; font-size: 13px">6:40 pm</span></div>
+        <div style="color: #6a6a73; font-size: 13px; margin-top: 2px">Chose “Something else” · listened</div>
+      </div>
+    </div>
+  </div>
+
+  <a href="#looks" style="margin: 0 20px 22px; height: 52px; border-radius: 14px; background: #f3f3f5; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; text-decoration: none; font-weight: 500; font-size: 15px">
+    <span style="display: flex; align-items: center; gap: 10px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>
+      Your voice menu · 3 choices
+    </span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </a>
+</div></div></div><figcaption>Phone: home</figcaption></figure>
+    <figure class="shot shot-phone"><div class="fit" data-w="390" data-h="844"><div class="mock mock-phone" style="width:390px;height:844px"><div style="width: 390px; height: 844px; background: #ffffff; color: #0a0a0b; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 64px 28px 56px; overflow: hidden">
+
+  <div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 999px; background: #f3f3f5; font-size: 13px; font-weight: 500; color: #46464e">
+    <span style="width: 7px; height: 7px; border-radius: 50%; background: #1f9d55"></span>
+    Call from your website
+  </div>
+
+  <div style="margin-top: 72px; width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; background: #f6f6f8; box-shadow: 0 0 0 12px rgba(10,10,11,.03), 0 0 0 28px rgba(10,10,11,.02)">
+    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#0a0a0b" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+  </div>
+
+  <h1 style="margin: 36px 0 0; font-size: 34px; font-weight: 600; letter-spacing: -0.03em; text-align: center">Website caller</h1>
+  <p style="margin: 10px 0 0; font-size: 17px; color: #56565e; text-align: center">Chose <span style="color: #c2410c; font-weight: 600">“Book a room”</span></p>
+  <p style="margin: 6px 0 0; font-size: 14px; color: #6a6a73; text-align: center">Ringing for 0:08 · also on your computer</p>
+
+  <div style="flex: 1"></div>
+
+  <div style="display: flex; justify-content: space-between; width: 100%; padding: 0 22px">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px">
+      <button aria-label="Decline" style="width: 76px; height: 76px; border: 0; border-radius: 50%; background: #dc3a26; color: #ffffff; display: grid; place-items: center; box-shadow: 0 14px 30px -12px rgba(220,58,38,.6)">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate(135deg)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+      </button>
+      <span style="font-size: 14px; font-weight: 500; color: #46464e">Decline</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px">
+      <button aria-label="Answer" style="width: 76px; height: 76px; border: 0; border-radius: 50%; background: #1f9d55; color: #ffffff; display: grid; place-items: center; box-shadow: 0 0 0 10px rgba(31,157,85,.12), 0 14px 30px -12px rgba(31,157,85,.7)">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+      </button>
+      <span style="font-size: 14px; font-weight: 500; color: #46464e">Answer</span>
+    </div>
+  </div>
+
+  <p style="margin: 34px 0 0; font-size: 13px; color: #6a6a73; text-align: center">No answer in 30 s → the caller can leave a voicemail</p>
+</div></div></div><figcaption>Phone: call coming in (Android)</figcaption></figure>
+  </div>
+  <figure class="shot shot-desk"><div class="fit" data-w="1280" data-h="844"><div class="mock mock-desk" style="width:1280px;height:844px"><div style="position: relative; width: 1280px; height: 844px; background: #e4e4e8; font-family: Onest, system-ui, sans-serif; color: #0a0a0b; overflow: hidden">
+
+  <div aria-hidden="true" style="position: absolute; left: 40px; top: 40px; width: 860px; height: 764px; border-radius: 12px; background: #fbfbfc; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 20px 50px -25px rgba(0,0,0,.25); overflow: hidden">
+    <div style="height: 40px; background: #f1f1f4; border-bottom: 1px solid #e6e6ea; display: flex; align-items: center; gap: 8px; padding: 0 14px">
+      <span style="width: 180px; height: 22px; border-radius: 6px; background: #ffffff"></span>
+    </div>
+    <div style="display: flex; height: 100%">
+      <div style="width: 220px; padding: 20px; display: flex; flex-direction: column; gap: 14px; border-right: 1px solid #ededf0">
+        <span style="height: 10px; width: 120px; border-radius: 5px; background: #e6e6ea"></span><span style="height: 10px; width: 150px; border-radius: 5px; background: #ececef"></span><span style="height: 10px; width: 100px; border-radius: 5px; background: #ececef"></span><span style="height: 10px; width: 140px; border-radius: 5px; background: #ececef"></span>
+      </div>
+      <div style="flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 16px">
+        <span style="height: 14px; width: 260px; border-radius: 6px; background: #e3e3e8"></span><span style="height: 10px; width: 480px; border-radius: 5px; background: #ececef"></span><span style="height: 10px; width: 420px; border-radius: 5px; background: #ececef"></span><span style="height: 10px; width: 500px; border-radius: 5px; background: #ececef"></span><span style="height: 10px; width: 300px; border-radius: 5px; background: #ececef"></span>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; right: 40px; bottom: 40px; width: 380px; height: 640px; border-radius: 14px; background: #ffffff; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 30px 70px -20px rgba(0,0,0,.35); display: flex; flex-direction: column; overflow: hidden">
+    <div style="height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 14px; border-bottom: 1px solid #efeff2">
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: #46464e">
+        <img src="app-icon.svg" alt="" style="width: 18px; height: 18px; border-radius: 4px">
+        minivoip
+      </span>
+      <span aria-hidden="true" style="display: flex; gap: 4px; color: #8a8a93">
+        <span style="width: 28px; height: 24px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></span>
+        <span style="width: 28px; height: 24px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+      </span>
+    </div>
+
+    <div style="margin: 14px 14px 0; padding: 16px; border-radius: 14px; background: #0a0a0b; color: #ffffff">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.1); display: grid; place-items: center; flex: none">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        </span>
+        <div style="flex: 1; min-width: 0">
+          <div style="font-weight: 600; font-size: 16px">Website caller</div>
+          <div style="font-size: 13px; color: #b9b9c2; margin-top: 2px">Chose <span style="color: #fb923c; font-weight: 600">“Book a room”</span> · 0:08</div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px">
+        <button style="height: 44px; border: 0; border-radius: 10px; background: rgba(255,255,255,.1); color: #ffffff; font-weight: 600; font-size: 14px">Decline</button>
+        <button style="height: 44px; border: 0; border-radius: 10px; background: #1f9d55; color: #ffffff; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+          Answer
+        </button>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 16px 18px 6px">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: #1f9d55"></span>
+      <span style="font-weight: 600; font-size: 14px">Available</span>
+      <span style="color: #6a6a73; font-size: 13px">· Joe's B&amp;B</span>
+    </div>
+
+    <div style="flex: 1; padding: 0 18px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #efeff2; margin-top: 8px">
+        <span style="width: 34px; height: 34px; border-radius: 50%; background: #f3f3f5; display: grid; place-items: center; flex: none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+        </span>
+        <div style="flex: 1; min-width: 0">
+          <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px">Voicemail · 0:42</span><span style="color: #6a6a73; font-size: 12px">2:14 pm</span></div>
+          <div style="color: #6a6a73; font-size: 12px; margin-top: 1px">Chose “Book a room”</div>
+        </div>
+        <button aria-label="Play voicemail" style="width: 30px; height: 30px; border: 0; border-radius: 50%; background: #0a0a0b; color: #ffffff; display: grid; place-items: center; flex: none">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+        </button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #efeff2">
+        <span style="width: 34px; height: 34px; border-radius: 50%; background: #fdecea; color: #c4321f; display: grid; place-items: center; flex: none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"/><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+        </span>
+        <div style="flex: 1; min-width: 0">
+          <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px; color: #c4321f">Missed call</span><span style="color: #6a6a73; font-size: 12px">1:05 pm</span></div>
+          <div style="color: #6a6a73; font-size: 12px; margin-top: 1px">Chose “Opening hours”</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #efeff2">
+        <span style="width: 34px; height: 34px; border-radius: 50%; background: #e8f5ee; color: #1a7f46; display: grid; place-items: center; flex: none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+        </span>
+        <div style="flex: 1; min-width: 0">
+          <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px">Answered · 4:18</span><span style="color: #6a6a73; font-size: 12px">10:32 am</span></div>
+          <div style="color: #6a6a73; font-size: 12px; margin-top: 1px">Chose “Book a room”</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div></div><figcaption>Computer: small window in a corner, call coming in</figcaption></figure>
+</section>
+
+<section class="look" id="look-b">
+  <header class="look-head">
+    <span class="tag">Look B</span>
+    <h2>Status first, dark</h2>
+    <p>A big “You’re available” card with On, Pause 1 h and Off, then only what needs you. On the computer it’s a wide window like Google Chat: menu, calls, and the ringing call big on the right.</p>
+  </header>
+  <div class="phones">
+    <figure class="shot shot-phone"><div class="fit" data-w="390" data-h="844"><div class="mock mock-phone" style="width:390px;height:844px"><div style="width: 390px; height: 844px; background: #0e0f13; color: #f4f4f6; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 6px">
+    <img src="logo-dark.svg" alt="minivoip" style="height: 20px; width: auto">
+    <button aria-label="Settings" style="width: 44px; height: 44px; border: 0; background: transparent; border-radius: 12px; display: grid; place-items: center; color: #a3a4ae">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </header>
+
+  <section style="margin: 12px 16px 0; padding: 22px 20px 20px; border-radius: 22px; background: #16171c; box-shadow: inset 0 0 0 1px #24252c">
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #a3a4ae">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: #34c472; box-shadow: 0 0 0 4px rgba(52,196,114,.16)"></span>
+      Joe's B&amp;B
+    </div>
+    <h1 style="margin: 12px 0 0; font-size: 40px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.05">You're<br>available</h1>
+    <p style="margin: 10px 0 0; font-size: 15px; color: #a3a4ae; line-height: 1.45">Website calls ring on 2 devices.</p>
+
+    <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap">
+      <span style="display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; background: #212228; font-size: 13px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>
+        This phone
+      </span>
+      <span style="display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; background: #212228; font-size: 13px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>
+        Ken's laptop
+      </span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 20px; padding: 4px; border-radius: 12px; background: #0e0f13">
+      <button aria-pressed="true" style="height: 38px; border: 0; border-radius: 9px; background: #f4f4f6; color: #0e0f13; font-size: 14px; font-weight: 600">On</button>
+      <button aria-pressed="false" style="height: 38px; border: 0; border-radius: 9px; background: transparent; color: #c9cad2; font-size: 14px; font-weight: 500">Pause 1 h</button>
+      <button aria-pressed="false" style="height: 38px; border: 0; border-radius: 9px; background: transparent; color: #c9cad2; font-size: 14px; font-weight: 500">Off</button>
+    </div>
+  </section>
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 26px 20px 4px">
+    <h2 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em">New for you</h2>
+    <span style="font-size: 13px; color: #a3a4ae">3</span>
+  </div>
+
+  <div style="padding: 0 20px; flex: 1; overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #22232a; margin-top: 8px">
+      <button aria-label="Play voicemail" style="width: 40px; height: 40px; border: 0; border-radius: 50%; background: #f4f4f6; color: #0e0f13; display: grid; place-items: center; flex: none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+      </button>
+      <div style="flex: 1; min-width: 0">
+        <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 15px">Voicemail · 0:42</span><span style="color: #a3a4ae; font-size: 13px">2:14 pm</span></div>
+        <div style="color: #a3a4ae; font-size: 13px; margin-top: 2px">Chose “Book a room”</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #22232a">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: rgba(240,82,62,.14); color: #ff7a66; display: grid; place-items: center; flex: none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"/><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+      </span>
+      <div style="flex: 1; min-width: 0">
+        <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 15px">Missed call</span><span style="color: #a3a4ae; font-size: 13px">1:05 pm</span></div>
+        <div style="color: #a3a4ae; font-size: 13px; margin-top: 2px">Chose “Opening hours” · no message</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #22232a">
+      <button aria-label="Play voicemail" style="width: 40px; height: 40px; border: 0; border-radius: 50%; background: #f4f4f6; color: #0e0f13; display: grid; place-items: center; flex: none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+      </button>
+      <div style="flex: 1; min-width: 0">
+        <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 15px">Voicemail · 0:19</span><span style="color: #a3a4ae; font-size: 13px">Yesterday</span></div>
+        <div style="color: #a3a4ae; font-size: 13px; margin-top: 2px">Chose “Something else”</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 16px 22px">
+    <a href="#looks" style="height: 50px; border-radius: 14px; background: #16171c; box-shadow: inset 0 0 0 1px #24252c; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-size: 14px; font-weight: 500">All calls</a>
+    <a href="#looks" style="height: 50px; border-radius: 14px; background: #16171c; box-shadow: inset 0 0 0 1px #24252c; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-size: 14px; font-weight: 500">Voice menu</a>
+  </div>
+</div></div></div><figcaption>Phone: home</figcaption></figure>
+    <figure class="shot shot-phone"><div class="fit" data-w="390" data-h="844"><div class="mock mock-phone" style="width:390px;height:844px"><div style="width: 390px; height: 844px; background: radial-gradient(120% 60% at 50% 0%, #23242c 0%, #0e0f13 65%); color: #f4f4f6; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 72px 28px 56px; overflow: hidden">
+
+  <p style="margin: 0; font-size: 14px; color: #a3a4ae">Joe's B&amp;B · website call</p>
+
+  <div style="margin-top: 64px; width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; background: #1c1d23; box-shadow: 0 0 0 1px #2c2d35, 0 0 0 16px rgba(255,255,255,.035), 0 0 0 36px rgba(255,255,255,.02)">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f4f4f6" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+  </div>
+
+  <h1 style="margin: 40px 0 0; font-size: 34px; font-weight: 600; letter-spacing: -0.03em">Website caller</h1>
+  <p style="margin: 8px 0 0; font-size: 15px; color: #a3a4ae">Ringing · 0:08</p>
+
+  <div style="margin-top: 34px; width: 100%; padding: 16px 18px; border-radius: 16px; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px #24252c">
+    <div style="font-size: 12px; color: #a3a4ae; font-weight: 500">What they did</div>
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 14px">
+      <span style="color: #c9cad2">Heard your greeting</span>
+      <span aria-hidden="true" style="flex: 1; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #f3840f, #e31a5a, #5a2692, #143495)"></span>
+      <span style="color: #fb8a4c; font-weight: 600">Book a room</span>
+    </div>
+  </div>
+
+  <div style="flex: 1"></div>
+
+  <div style="display: flex; justify-content: space-between; width: 100%; padding: 0 22px">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px">
+      <button aria-label="Decline" style="width: 76px; height: 76px; border: 0; border-radius: 50%; background: #e0412c; color: #ffffff; display: grid; place-items: center">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate(135deg)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+      </button>
+      <span style="font-size: 14px; font-weight: 500; color: #c9cad2">Decline</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px">
+      <button aria-label="Answer" style="width: 76px; height: 76px; border: 0; border-radius: 50%; background: #22a95c; color: #ffffff; display: grid; place-items: center; box-shadow: 0 0 0 10px rgba(34,169,92,.16), 0 0 0 22px rgba(34,169,92,.07)">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+      </button>
+      <span style="font-size: 14px; font-weight: 500; color: #c9cad2">Answer</span>
+    </div>
+  </div>
+</div></div></div><figcaption>Phone: call coming in (Android)</figcaption></figure>
+  </div>
+  <figure class="shot shot-desk"><div class="fit" data-w="1280" data-h="844"><div class="mock mock-desk" style="width:1280px;height:844px"><div style="width: 1280px; height: 844px; background: #0e0f13; color: #f4f4f6; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px #24252c">
+
+  <div style="height: 40px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 16px; background: #0b0c0f; border-bottom: 1px solid #1e1f25">
+    <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a3a4ae">
+      <img src="app-icon.svg" alt="" style="width: 18px; height: 18px; border-radius: 4px">
+      minivoip · Joe's B&amp;B
+    </span>
+    <span aria-hidden="true" style="display: flex; gap: 4px; color: #6f707a">
+      <span style="width: 30px; height: 26px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></span>
+      <span style="width: 30px; height: 26px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="1"/></svg></span>
+      <span style="width: 30px; height: 26px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+    </span>
+  </div>
+
+  <div style="flex: 1; display: flex; min-height: 0">
+
+    <nav style="width: 248px; flex: none; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #1e1f25">
+      <img src="logo-dark.svg" alt="minivoip" style="height: 18px; width: auto; align-self: flex-start; margin: 0 8px 20px">
+
+      <div style="padding: 14px; border-radius: 14px; background: #16171c; box-shadow: inset 0 0 0 1px #24252c; margin-bottom: 14px">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #34c472; box-shadow: 0 0 0 4px rgba(52,196,114,.16)"></span>
+          Available
+        </div>
+        <div style="font-size: 12px; color: #a3a4ae; margin-top: 4px">Rings here and on your phone</div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 12px; padding: 3px; border-radius: 9px; background: #0e0f13">
+          <button aria-pressed="true" style="height: 28px; border: 0; border-radius: 7px; background: #f4f4f6; color: #0e0f13; font-size: 12px; font-weight: 600">On</button>
+          <button aria-pressed="false" style="height: 28px; border: 0; border-radius: 7px; background: transparent; color: #c9cad2; font-size: 12px">Pause</button>
+          <button aria-pressed="false" style="height: 28px; border: 0; border-radius: 7px; background: transparent; color: #c9cad2; font-size: 12px">Off</button>
+        </div>
+      </div>
+
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px; border-radius: 10px; background: #1c1d23; color: #f4f4f6; text-decoration: none; font-size: 14px; font-weight: 500">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+        Calls
+      </a>
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px; border-radius: 10px; text-decoration: none; font-size: 14px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+        <span style="flex: 1">Voicemail</span><span style="font-size: 12px; font-weight: 600; min-width: 20px; height: 20px; border-radius: 10px; background: #f4f4f6; color: #0e0f13; display: grid; place-items: center">2</span>
+      </a>
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px; border-radius: 10px; text-decoration: none; font-size: 14px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>
+        Voice menu
+      </a>
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px; border-radius: 10px; text-decoration: none; font-size: 14px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>
+        My devices
+      </a>
+      <div style="flex: 1"></div>
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px; border-radius: 10px; text-decoration: none; font-size: 14px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+        Call button for your site
+      </a>
+    </nav>
+
+    <section style="width: 380px; flex: none; border-right: 1px solid #1e1f25; display: flex; flex-direction: column">
+      <div style="padding: 22px 20px 12px">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em">Calls</h1>
+      </div>
+      <div style="padding: 0 10px; display: flex; flex-direction: column; gap: 2px">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 10px; border-radius: 12px; background: rgba(34,169,92,.1); box-shadow: inset 0 0 0 1px rgba(34,169,92,.35)">
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #22a95c; color: #ffffff; display: grid; place-items: center; flex: none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px">Website caller</span><span style="color: #5fd38f; font-size: 12px; font-weight: 600">Ringing</span></div>
+            <div style="color: #a3a4ae; font-size: 13px; margin-top: 1px">Chose “Book a room”</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 10px; border-radius: 12px">
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #1c1d23; display: grid; place-items: center; flex: none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px">Voicemail · 0:42</span><span style="color: #a3a4ae; font-size: 12px">2:14 pm</span></div>
+            <div style="color: #a3a4ae; font-size: 13px; margin-top: 1px">Chose “Book a room”</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 10px; border-radius: 12px">
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: rgba(240,82,62,.14); color: #ff7a66; display: grid; place-items: center; flex: none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"/><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px">Missed call</span><span style="color: #a3a4ae; font-size: 12px">1:05 pm</span></div>
+            <div style="color: #a3a4ae; font-size: 13px; margin-top: 1px">Chose “Opening hours”</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 10px; border-radius: 12px">
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #1c1d23; color: #5fd38f; display: grid; place-items: center; flex: none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px">Answered · 4:18</span><span style="color: #a3a4ae; font-size: 12px">10:32 am</span></div>
+            <div style="color: #a3a4ae; font-size: 13px; margin-top: 1px">Chose “Book a room” · on your phone</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 10px; border-radius: 12px">
+          <span style="width: 36px; height: 36px; border-radius: 50%; background: #1c1d23; display: grid; place-items: center; flex: none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="display: flex; justify-content: space-between"><span style="font-weight: 600; font-size: 14px">Voicemail · 0:19</span><span style="color: #a3a4ae; font-size: 12px">Yesterday</span></div>
+            <div style="color: #a3a4ae; font-size: 13px; margin-top: 1px">Chose “Something else”</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; background: radial-gradient(70% 60% at 50% 30%, #1b1c22 0%, #0e0f13 70%)">
+      <div style="width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; background: #1c1d23; box-shadow: 0 0 0 1px #2c2d35, 0 0 0 16px rgba(255,255,255,.035), 0 0 0 34px rgba(255,255,255,.02)">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f4f4f6" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      </div>
+      <h2 style="margin: 36px 0 0; font-size: 32px; font-weight: 600; letter-spacing: -0.03em">Website caller</h2>
+      <p style="margin: 8px 0 0; font-size: 15px; color: #a3a4ae">Ringing · 0:08 · also on your phone</p>
+
+      <div style="margin-top: 28px; width: 380px; padding: 14px 18px; border-radius: 14px; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px #24252c; display: flex; align-items: center; gap: 10px; font-size: 14px">
+        <span style="color: #c9cad2">Heard your greeting</span>
+        <span aria-hidden="true" style="flex: 1; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #f3840f, #e31a5a, #5a2692, #143495)"></span>
+        <span style="color: #fb8a4c; font-weight: 600">Book a room</span>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 36px">
+        <button style="height: 52px; padding: 0 28px; border: 0; border-radius: 14px; background: #24252c; color: #f4f4f6; font-size: 15px; font-weight: 600">Decline</button>
+        <button style="height: 52px; padding: 0 36px; border: 0; border-radius: 14px; background: #22a95c; color: #ffffff; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 0 0 8px rgba(34,169,92,.14)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+          Answer
+        </button>
+      </div>
+    </main>
+  </div>
+</div></div></div><figcaption>Computer: wide window, call coming in</figcaption></figure>
+</section>
+
+<section class="look" id="look-c">
+  <header class="look-head">
+    <span class="tag">Look C</span>
+    <h2>Tabs like a phone, warm light</h2>
+    <p>Tabs at the bottom like a real phone app. The ringing screen says it in plain words. On the computer: a wide window with a voicemail open and the call popping up in the corner.</p>
+  </header>
+  <div class="phones">
+    <figure class="shot shot-phone"><div class="fit" data-w="390" data-h="844"><div class="mock mock-phone" style="width:390px;height:844px"><div style="width: 390px; height: 844px; background: #f6f5f1; color: #1a1a17; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 22px 20px 0">
+    <img src="logo-light.svg" alt="minivoip" style="height: 19px; width: auto">
+    <button style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 12px; border: 0; border-radius: 999px; background: #ffffff; box-shadow: 0 0 0 1px #e5e3dc; font-size: 14px; font-weight: 500">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: #1f9d55"></span>
+      Available
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+  </header>
+
+  <div style="padding: 26px 20px 0">
+    <h1 style="margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.035em">Calls</h1>
+    <p style="margin: 4px 0 0; font-size: 14px; color: #6b6a64">Joe's B&amp;B · rings on this phone and Ken's laptop</p>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 20px 16px 0; display: flex; flex-direction: column; gap: 18px">
+    <div>
+      <div style="font-size: 13px; font-weight: 600; color: #6b6a64; padding: 0 6px 8px">Today</div>
+      <div style="border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1, 0 8px 22px -16px rgba(40,36,25,.25); overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: #f1efe9; display: grid; place-items: center; flex: none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="font-weight: 600; font-size: 15px">Voicemail <span style="font-weight: 400; color: #6b6a64">· 0:42</span></div>
+            <div style="color: #6b6a64; font-size: 13px; margin-top: 2px">“Book a room” · 2:14 pm</div>
+          </div>
+          <button aria-label="Play voicemail" style="width: 36px; height: 36px; border: 0; border-radius: 50%; background: #1a1a17; color: #ffffff; display: grid; place-items: center; flex: none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+          </button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-top: 1px solid #f0eee8">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: #fcebe6; color: #b8341f; display: grid; place-items: center; flex: none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"/><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="font-weight: 600; font-size: 15px; color: #b8341f">Missed call</div>
+            <div style="color: #6b6a64; font-size: 13px; margin-top: 2px">“Opening hours” · 1:05 pm</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-top: 1px solid #f0eee8">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: #e7f4ec; color: #1a7f46; display: grid; place-items: center; flex: none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="font-weight: 600; font-size: 15px">Answered <span style="font-weight: 400; color: #6b6a64">· 4:18</span></div>
+            <div style="color: #6b6a64; font-size: 13px; margin-top: 2px">“Book a room” · 10:32 am</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size: 13px; font-weight: 600; color: #6b6a64; padding: 0 6px 8px">Yesterday</div>
+      <div style="border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1, 0 8px 22px -16px rgba(40,36,25,.25); overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: #f1efe9; display: grid; place-items: center; flex: none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+          </span>
+          <div style="flex: 1; min-width: 0">
+            <div style="font-weight: 600; font-size: 15px">Voicemail <span style="font-weight: 400; color: #6b6a64">· 0:19</span></div>
+            <div style="color: #6b6a64; font-size: 13px; margin-top: 2px">“Something else” · 6:40 pm</div>
+          </div>
+          <button aria-label="Play voicemail" style="width: 36px; height: 36px; border: 0; border-radius: 50%; background: #f1efe9; color: #1a1a17; display: grid; place-items: center; flex: none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 8px 8px 22px; background: rgba(255,255,255,.85); border-top: 1px solid #e9e7e1">
+    <a href="#looks" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; text-decoration: none; font-size: 12px; font-weight: 600">
+      <span style="width: 56px; height: 30px; border-radius: 999px; background: #1a1a17; color: #ffffff; display: grid; place-items: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span>
+      Calls
+    </a>
+    <a href="#looks" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; text-decoration: none; font-size: 12px; color: #4a4943">
+      <span style="position: relative; width: 56px; height: 30px; display: grid; place-items: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg><span style="position: absolute; top: 2px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: #b8341f"></span></span>
+      Voicemail
+    </a>
+    <a href="#looks" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; text-decoration: none; font-size: 12px; color: #4a4943">
+      <span style="width: 56px; height: 30px; display: grid; place-items: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg></span>
+      Menu
+    </a>
+    <a href="#looks" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; text-decoration: none; font-size: 12px; color: #4a4943">
+      <span style="width: 56px; height: 30px; display: grid; place-items: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+      Me
+    </a>
+  </nav>
+</div></div></div><figcaption>Phone: home</figcaption></figure>
+    <figure class="shot shot-phone"><div class="fit" data-w="390" data-h="844"><div class="mock mock-phone" style="width:390px;height:844px"><div style="width: 390px; height: 844px; background: #f6f5f1; color: #1a1a17; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; padding: 64px 24px 40px; overflow: hidden">
+
+  <div style="display: flex; align-items: center; gap: 10px">
+    <span style="width: 10px; height: 10px; border-radius: 50%; background: #1f9d55; box-shadow: 0 0 0 5px rgba(31,157,85,.15)"></span>
+    <span style="font-size: 15px; font-weight: 500; color: #4a4943">Incoming call · 0:08</span>
+  </div>
+
+  <h1 style="margin: 28px 0 0; font-size: 46px; font-weight: 600; letter-spacing: -0.04em; line-height: 1.02">Someone wants to <span style="color: #c2410c">book a room</span></h1>
+  <p style="margin: 18px 0 0; font-size: 16px; color: #6b6a64; line-height: 1.5">A visitor on joesbnb.ca heard your greeting and pressed “Book a room”.</p>
+
+  <div style="margin-top: 28px; border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1; padding: 6px 16px">
+    <div style="display: flex; justify-content: space-between; padding: 11px 0; font-size: 14px"><span style="color: #6b6a64">Also ringing</span><span style="font-weight: 500">Ken's laptop</span></div>
+    <div style="display: flex; justify-content: space-between; padding: 11px 0; font-size: 14px; border-top: 1px solid #f0eee8"><span style="color: #6b6a64">If nobody answers</span><span style="font-weight: 500">Voicemail in 0:22</span></div>
+  </div>
+
+  <div style="flex: 1"></div>
+
+  <button style="height: 64px; border: 0; border-radius: 18px; background: #1f9d55; color: #ffffff; font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 16px 34px -14px rgba(31,157,85,.7)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+    Answer
+  </button>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px">
+    <button style="height: 52px; border: 0; border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e2e0d9; font-size: 15px; font-weight: 600; color: #b8341f">Decline</button>
+    <button style="height: 52px; border: 0; border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e2e0d9; font-size: 15px; font-weight: 600">To voicemail</button>
+  </div>
+</div></div></div><figcaption>Phone: call coming in (Android)</figcaption></figure>
+  </div>
+  <figure class="shot shot-desk"><div class="fit" data-w="1280" data-h="844"><div class="mock mock-desk" style="width:1280px;height:844px"><div style="position: relative; width: 1280px; height: 844px; background: #f6f5f1; color: #1a1a17; font-family: Onest, system-ui, sans-serif; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px #e2e0d9">
+
+  <div style="height: 40px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 16px; background: #efede8; border-bottom: 1px solid #e5e3dc">
+    <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b6a64">
+      <img src="app-icon.svg" alt="" style="width: 18px; height: 18px; border-radius: 4px">
+      minivoip · Joe's B&amp;B
+    </span>
+    <span aria-hidden="true" style="display: flex; gap: 4px; color: #8c8a82">
+      <span style="width: 30px; height: 26px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></span>
+      <span style="width: 30px; height: 26px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="1"/></svg></span>
+      <span style="width: 30px; height: 26px; display: grid; place-items: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+    </span>
+  </div>
+
+  <div style="flex: 1; display: flex; min-height: 0">
+    <nav style="width: 220px; flex: none; padding: 22px 12px; display: flex; flex-direction: column; gap: 4px">
+      <img src="logo-light.svg" alt="minivoip" style="height: 18px; width: auto; align-self: flex-start; margin: 0 10px 24px">
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 10px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1; color: #1a1a17; text-decoration: none; font-size: 14px; font-weight: 600">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+        Calls
+      </a>
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg>
+        <span style="flex: 1">Voicemail</span><span style="width: 8px; height: 8px; border-radius: 50%; background: #b8341f"></span>
+      </a>
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>
+        Menu
+      </a>
+      <a href="#looks" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 10px; text-decoration: none; font-size: 14px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        Me
+      </a>
+      <div style="flex: 1"></div>
+      <button style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1; font-size: 14px; font-weight: 500; text-align: left">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #1f9d55; box-shadow: 0 0 0 4px rgba(31,157,85,.15)"></span>
+        <span style="flex: 1">Available</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </nav>
+
+    <section style="width: 400px; flex: none; padding: 22px 16px 22px 8px; display: flex; flex-direction: column">
+      <h1 style="margin: 0 6px; font-size: 26px; font-weight: 600; letter-spacing: -0.03em">Calls</h1>
+      <div style="font-size: 13px; font-weight: 600; color: #6b6a64; padding: 18px 6px 8px">Today</div>
+      <div style="border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1; overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 14px; background: #f8f6f1; box-shadow: inset 3px 0 0 #1a1a17">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #ece9e1; display: grid; place-items: center; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg></span>
+          <div style="flex: 1; min-width: 0"><div style="font-weight: 600; font-size: 14px">Voicemail <span style="font-weight: 400; color: #6b6a64">· 0:42</span></div><div style="color: #6b6a64; font-size: 13px; margin-top: 1px">“Book a room” · 2:14 pm</div></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-top: 1px solid #f0eee8">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #fcebe6; color: #b8341f; display: grid; place-items: center; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"/><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span>
+          <div style="flex: 1; min-width: 0"><div style="font-weight: 600; font-size: 14px; color: #b8341f">Missed call</div><div style="color: #6b6a64; font-size: 13px; margin-top: 1px">“Opening hours” · 1:05 pm</div></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-top: 1px solid #f0eee8">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #e7f4ec; color: #1a7f46; display: grid; place-items: center; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span>
+          <div style="flex: 1; min-width: 0"><div style="font-weight: 600; font-size: 14px">Answered <span style="font-weight: 400; color: #6b6a64">· 4:18</span></div><div style="color: #6b6a64; font-size: 13px; margin-top: 1px">“Book a room” · 10:32 am</div></div>
+        </div>
+      </div>
+      <div style="font-size: 13px; font-weight: 600; color: #6b6a64; padding: 18px 6px 8px">Yesterday</div>
+      <div style="border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1; overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 13px 14px">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f1efe9; display: grid; place-items: center; flex: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 14h10"/></svg></span>
+          <div style="flex: 1; min-width: 0"><div style="font-weight: 600; font-size: 14px">Voicemail <span style="font-weight: 400; color: #6b6a64">· 0:19</span></div><div style="color: #6b6a64; font-size: 13px; margin-top: 1px">“Something else” · 6:40 pm</div></div>
+        </div>
+      </div>
+    </section>
+
+    <main style="flex: 1; min-width: 0; margin: 16px 16px 16px 0; border-radius: 18px; background: #ffffff; box-shadow: 0 0 0 1px #e9e7e1; padding: 40px 44px; display: flex; flex-direction: column">
+      <div style="font-size: 13px; color: #6b6a64">Voicemail · Today, 2:14 pm</div>
+      <h2 style="margin: 8px 0 0; font-size: 32px; font-weight: 600; letter-spacing: -0.03em">A visitor chose “Book a room”</h2>
+      <p style="margin: 10px 0 0; font-size: 15px; color: #6b6a64">Rang this computer and your phone for 30 s, then left a message.</p>
+
+      <div style="margin-top: 32px; display: flex; align-items: center; gap: 18px; padding: 20px; border-radius: 16px; background: #f6f5f1">
+        <button aria-label="Play voicemail" style="width: 52px; height: 52px; border: 0; border-radius: 50%; background: #1a1a17; color: #ffffff; display: grid; place-items: center; flex: none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+        </button>
+        <div aria-hidden="true" style="flex: 1; display: flex; align-items: center; gap: 3px; height: 40px">
+          <span style="width: 3px; height: 12px; border-radius: 2px; background: #f3840f"></span><span style="width: 3px; height: 22px; border-radius: 2px; background: #f46422"></span><span style="width: 3px; height: 30px; border-radius: 2px; background: #ec4a3a"></span><span style="width: 3px; height: 18px; border-radius: 2px; background: #e31a5a"></span><span style="width: 3px; height: 34px; border-radius: 2px; background: #c8176a"></span><span style="width: 3px; height: 14px; border-radius: 2px; background: #9f1574"></span><span style="width: 3px; height: 24px; border-radius: 2px; background: #7a1e84"></span><span style="width: 3px; height: 36px; border-radius: 2px; background: #5a2692"></span><span style="width: 3px; height: 20px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 10px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 26px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 32px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 16px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 28px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 12px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 22px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 34px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 18px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 9px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 24px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 30px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 14px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 20px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 28px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 12px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 18px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 8px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 22px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 16px; border-radius: 2px; background: #d6d3ca"></span><span style="width: 3px; height: 10px; border-radius: 2px; background: #d6d3ca"></span>
+        </div>
+        <span style="font-size: 14px; color: #6b6a64; font-variant-numeric: tabular-nums">0:14 / 0:42</span>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 18px">
+        <button style="height: 42px; padding: 0 16px; border: 0; border-radius: 11px; background: #1a1a17; color: #ffffff; font-size: 14px; font-weight: 600">Mark as done</button>
+        <button style="height: 42px; padding: 0 16px; border: 0; border-radius: 11px; background: #ffffff; box-shadow: 0 0 0 1px #e2e0d9; font-size: 14px; font-weight: 500">Download</button>
+        <button style="height: 42px; padding: 0 16px; border: 0; border-radius: 11px; background: #ffffff; box-shadow: 0 0 0 1px #e2e0d9; font-size: 14px; font-weight: 500; color: #b8341f">Delete</button>
+      </div>
+    </main>
+  </div>
+
+  <div style="position: absolute; right: 36px; bottom: 36px; width: 360px; padding: 18px; border-radius: 18px; background: #1a1a17; color: #ffffff; box-shadow: 0 30px 60px -20px rgba(26,26,23,.55)">
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #c8c6bf">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: #34c472; box-shadow: 0 0 0 4px rgba(52,196,114,.2)"></span>
+      Incoming call · 0:08
+    </div>
+    <div style="margin-top: 10px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em">Someone wants to <span style="color: #fb923c">book a room</span></div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px">
+      <button style="height: 44px; border: 0; border-radius: 12px; background: rgba(255,255,255,.12); color: #ffffff; font-size: 14px; font-weight: 600">Decline</button>
+      <button style="height: 44px; border: 0; border-radius: 12px; background: #1f9d55; color: #ffffff; font-size: 14px; font-weight: 600">Answer</button>
+    </div>
+  </div>
+</div></div></div><figcaption>Computer: wide window, voicemail open, call popping up</figcaption></figure>
+</section>
+
+  <p class="note"><strong>About these pictures.</strong> Joe’s B&amp;B and its calls are a demo. Only the Android phone gets a full ringing screen; an iPhone shows a short alert instead (Apple’s rule for web apps). Nothing here is wired up yet.</p>
+</div>
+
+<script>
+(function () {
+  var fits = document.querySelectorAll('.fit');
+  function size() {
+    fits.forEach(function (f) {
+      var w = +f.dataset.w, m = f.firstElementChild;
+      var z = Math.min(1, f.clientWidth / w);
+      m.style.zoom = z;
+    });
+  }
+  size();
+  window.addEventListener('resize', size);
+})();
+</script>

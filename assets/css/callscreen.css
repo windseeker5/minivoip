@@ -1,8 +1,7 @@
-/* Phone-style screens: the visitor's call window (/call/<line>) and the
-   owner's phone app (/app). Always dark, like a phone's call screen; one
-   warm accent from the logo's orange bar. Ported from the proof of concept's
-   widget.css and owner.css. Plain CSS (not Tailwind) so these screens keep
-   their own look. */
+/* Phone-style screen: the visitor's call window (/call/<line>). Always dark,
+   like a phone's call screen; one warm accent from the logo's orange bar.
+   Ported from the proof of concept's widget.css. Plain CSS (not Tailwind) so
+   the screen keeps its own look. The owner's app has its own: app.css. */
 
 .cs {
   --cs-bg: #121319; --cs-raise: #1c1d26; --cs-line: #2d2f3c; --cs-fg: #f3f3f7; --cs-muted: #a9abbb;
@@ -104,45 +103,6 @@
 .cs-foot { margin: 14px 0 0; text-align: center; color: var(--cs-muted); font-size: 12px; }
 .cs-foot a { color: inherit; }
 .cs-remote { display: none; }
-
-/* ------------------------------------------------------------ phone app home */
-
-.cs-app { max-width: 520px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); }
-.cs-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.cs-top img { height: 24px; width: auto; }
-.cs-online { display: flex; align-items: center; gap: 8px; color: var(--cs-muted); font-size: 14px; }
-.cs-online i { width: 9px; height: 9px; border-radius: 50%; background: var(--cs-end); }
-.cs-online i.is-on { background: var(--cs-ok); }
-.cs-title { margin: 26px 0 2px; font: 700 28px/1.15 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; }
-.cs-sub { margin: 0; color: var(--cs-muted); font-size: 15px; }
-.cs-ready { display: flex; align-items: center; gap: 14px; margin-top: 22px; padding: 18px; border-radius: 18px;
-  background: linear-gradient(180deg, #1f2130, var(--cs-raise)); box-shadow: inset 0 0 0 1px var(--cs-line); }
-.cs-ready svg { flex: none; width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: rgb(46 158 91 / .16); color: #59c584; }
-.cs-ready p { margin: 0; }
-.cs-ready .cs-sub { font-size: 14px; }
-.cs-box { margin-top: 14px; padding: 18px; border-radius: 18px; background: var(--cs-raise); box-shadow: inset 0 0 0 1px var(--cs-line); }
-.cs-box h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--cs-muted); }
-.cs-box p { margin: 0; }
-.cs-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-.cs-pillbtn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 20px; border: 0;
-  border-radius: 999px; background: rgb(243 243 247 / .12); color: var(--cs-fg); font-weight: 600; text-decoration: none; }
-.cs-pillbtn.is-main { background: var(--cs-accent); color: var(--cs-on-accent); }
-.cs-link { min-height: 44px; padding: 0 6px; border: 0; background: none; color: var(--cs-muted); text-decoration: underline; text-underline-offset: 4px; }
-.cs-hint { margin-top: 10px !important; color: var(--cs-muted); font-size: 14px; }
-
-/* The incoming / live call takes over the app */
-.cs-call { position: fixed; inset: 0; z-index: 10; }
-.cs-call .cs-screen { min-height: 100dvh; height: 100dvh; width: 100%; border-radius: 0; box-shadow: none; }
-.cs-call .cs-option { margin: 2px 0 0; padding: 4px 12px; border-radius: 999px; background: rgb(243 132 15 / .14); color: var(--cs-accent); font-size: 14px; font-weight: 600; }
-.cs-call .cs-option:empty { display: none; }
-
-/* Log in, app style */
-.cs-form { display: grid; gap: 12px; margin-top: 22px; }
-.cs-form label { display: grid; gap: 6px; color: var(--cs-muted); font-size: 14px; }
-.cs-form input { min-height: 52px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--cs-raise);
-  box-shadow: inset 0 0 0 1px var(--cs-line); color: var(--cs-fg); font: inherit; font-size: 17px; }
-.cs-form input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--cs-accent); }
-.cs-err { padding: 10px 14px; border-radius: 12px; background: rgb(214 64 47 / .14); color: #ff8b7d; font-size: 15px; }
 
 @media (prefers-reduced-motion: reduce) {
   .cs *, .cs *::before { animation: none !important; transition: none !important; }

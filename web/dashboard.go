@@ -208,28 +208,6 @@ func (s *Server) prompt(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path)
 }
 
-func (s *Server) phoneApp(w http.ResponseWriter, r *http.Request, u store.User) {
-	l, err := s.Store.LineForAccount(u.AccountID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-		return
-	}
-	if err != nil {
-		serverError(w, r, err)
-		return
-	}
-	list, err := s.Store.Voicemails(u.AccountID)
-	if err != nil {
-		serverError(w, r, err)
-		return
-	}
-	key := ""
-	if s.Push != nil {
-		key = s.Push.PublicKey()
-	}
-	render(w, r, pages.Phone(l, list, key, strings.TrimPrefix(strings.TrimPrefix(baseURL(r), "https://"), "http://")+"/call/"+l.Name))
-}
-
 func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {
 	l, err := s.Store.LineByName(r.PathValue("line"))
 	if errors.Is(err, store.ErrNotFound) {

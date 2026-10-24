@@ -16,7 +16,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
    Browsers run headless only (`playwright-core` with the cached `chromium_headless_shell`), never a visible
    window and never the Playwright MCP. Only ask Ken for what a machine can't do, like his real phone or his ears.
-3. **Build connected features.** Every new page is linked from the pages around it (landing page, log in,
+3. **Every feature or bug fix happens on its own branch**, never straight on `main`. When Ken says "ship it", do it
+   all yourself with the `gh` command line: push the branch, open a pull request on GitHub, merge it into `main`,
+   then switch back to an up-to-date `main` locally. Don't ship (or push) before Ken says so.
+4. **Build connected features.** Every new page is linked from the pages around it (landing page, log in,
    dashboard, phone app), and the whole path is tested from the landing page, not just the page in isolation.
 
 @AGENTS.md
@@ -57,8 +60,8 @@ B&B and may become a SaaS.
 
 - `main.go` opens the database and hands everything to `web.Server.Routes`.
 - `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, and a
-  same-site check on form posts; `dashboard.go` has "My line", line creation, the menu editor, the phone app and
-  the call page.
+  same-site check on form posts; `dashboard.go` has "My line", line creation, the menu editor and the call page;
+  `app.go` the owner's app (`/app`, its call list, the Available switch, call history logging).
 - `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
   Passwords use bcrypt. The dev database is `data/minivoip.db` (gitignored).
@@ -68,16 +71,23 @@ B&B and may become a SaaS.
   incoming, accept, offer/answer/ice, hangup, no-answer, busy); one call per line, kept in memory. Only the line's
   logged-in owner may connect as `owner` (`CanAnswer`). It hands the caller a one-time voicemail token on
   "no-answer" or a voicemail choice; `web/voicemail.go` takes the upload (`POST /api/voicemail`) and tells the
-  phone app (`NotifyOwners`).
+  phone app (`NotifyOwners`). Every finished call goes to `OnEnd` (saved in `call_log`, the app's call history);
+  `Available` (the app's Available switch, `line.away_until`) sends calls straight to voicemail while away.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
   `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor with voice recorder: uploads to
   `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
-  (list shared by the dashboard and the phone app), `call` + `call.js` (visitor's
-  call window `/call/{line}`) and `Phone` + `phone.js` (phone app `/app`, login required).
-- The call window and the phone app are phone-style screens with their own plain CSS,
-  `assets/css/callscreen.css` (always dark, ported from the proof of concept's look Ken liked). The phone app
-  never links to the dashboard; logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
-- `push/`: web push (VAPID keys in the `setting` table, `webpush-go`). The hub's `OnRing` sends "Incoming call"
+  (the dashboard's list), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
+  (the owner's app `/app`, login required: Calls, Voicemail, Menu and Me tabs on a phone; sidebar and a detail
+  pane on a computer; the incoming call screen).
+- The owner's app has its own plain CSS, `assets/css/app.css` (look C, warm light, DESIGN.md "Owner app"); the
+  visitor's call window keeps `assets/css/callscreen.css` (always dark). The app never links to the dashboard;
+  logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
+- Checking the app without the server: `node tests/e2e/app.mjs` renders it with sample calls
+  (`TestAppPreview` in `pages/app_test.go`) and clicks through it headless with a fake call socket, at phone and
+  computer width (screenshots `tests/e2e/shots/app-*.png`). Real calls are only tested by `site.mjs`.
+- `push/`: web push (VAPID keys in the `setting` table, `webpush-go`), and Firebase for the Android app
+  (`push/fcm.go`: devices with endpoint `fcm:<token>`; the Firebase project `minivoip-push-kd` on Ken's Google account,
+  its two files in `data/firebase/`, never in git; `GET /api/android/config` hands the app its settings). The hub's `OnRing` sends "Incoming call"
   every 10 s until answered (30 s max), `OnAnswered` clears it on other devices, `OnMissed` "Missed call", a new
   voicemail "New voicemail". Every push is logged in `push_log` and the phone sends a receipt back
   (`POST /app/push/receipt`), so `push_log` shows what each phone really got and how late. The service worker
@@ -88,6 +98,10 @@ B&B and may become a SaaS.
 - Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
   `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. The dashboard shows each
   account's plan (`store.Plan`).
+- `android/`: the Android app (Kotlin, no Compose; see `android/README.md`): a web view on `/app` (the page finds it
+  as `window.MinivoipAndroid` in `phone.js`) plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
+  call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,
+  Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`.
 - `relay/`: built-in TURN relay (pion/turn) on 3478 UDP+TCP, voice on 49160-49200 UDP (the ports the router
   forwards; the old coturn used them). Public address: `MINIVOIP_PUBLIC_IP`, else DNS of `MINIVOIP_TURN_HOST`
   (default voip.dresdell.com). Logins: `GET /api/ice` gives STUN + a 2-hour TURN REST login (secret in the

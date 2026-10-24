@@ -110,11 +110,11 @@ func TestVoicemail(t *testing.T) {
 	s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B")
 	other, _ := s.CreateAccount("sam@example.com", "password1", "")
 
-	v, err := s.AddVoicemail("joesbnb", "Talk to Joe", "audio/webm", 4200, strings.NewReader("fake opus"))
+	v, err := s.AddVoicemail("joesbnb", "Talk to Joe", "", "audio/webm", 4200, strings.NewReader("fake opus"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddVoicemail("joesbnb", "", "audio/webm", 0, strings.NewReader("")); err == nil {
+	if _, err := s.AddVoicemail("joesbnb", "", "", "audio/webm", 0, strings.NewReader("")); err == nil {
 		t.Fatal("an empty recording should be refused")
 	}
 	if s.NewVoicemails(u.AccountID) != 1 {
@@ -211,5 +211,66 @@ func TestPushLog(t *testing.T) {
 	log, _ := s.PushLog("joesbnb", 10)
 	if len(log) != 1 || log[0].Result != "ok" || log[0].ShownAs != "ring" || log[0].ShownAt == "" {
 		t.Fatalf("push log = %+v", log)
+	}
+}
+
+func TestCallHistory(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B")
+	other, _ := s.CreateAccount("sam@example.com", "password1", "")
+	s.CreateLine(other.AccountID, "samsshop", "Sam's Shop")
+
+	t0 := time.Date(2026, 1, 10, 14, 0, 0, 0, time.UTC)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(s.LogCall("joesbnb", CallRecord{CallID: "a1", Option: "Book a room", Outcome: "answered",
+		Started: t0, Answered: t0.Add(5 * time.Second), Ended: t0.Add(65 * time.Second)}))
+	must(s.LogCall("joesbnb", CallRecord{CallID: "m1", Outcome: "missed", Started: t0.Add(time.Hour), Ended: t0.Add(time.Hour + 30*time.Second)}))
+	must(s.LogCall("samsshop", CallRecord{CallID: "x1", Outcome: "missed", Started: t0, Ended: t0}))
+	// A voicemail after the missed call, and one from a voicemail choice.
+	_, err := s.AddVoicemail("joesbnb", "", "m1", "audio/webm", 3000, strings.NewReader("a"))
+	must(err)
+	_, err = s.AddVoicemail("joesbnb", "Leave a message", "", "audio/webm", 3000, strings.NewReader("b"))
+	must(err)
+
+	list, err := s.CallHistory(u.AccountID, 50)
+	must(err)
+	if len(list) != 3 {
+		t.Fatalf("history: %+v", list)
+	}
+	// The voicemail choice was saved just now, so it comes first.
+	if list[0].Outcome != "" || list[0].Voicemail == nil || list[0].Option != "Leave a message" {
+		t.Fatalf("voicemail choice: %+v", list[0])
+	}
+	if list[1].Outcome != "missed" || list[1].Voicemail == nil || list[1].Voicemail.CallID != "m1" {
+		t.Fatalf("missed call with voicemail: %+v", list[1])
+	}
+	if list[2].Outcome != "answered" || list[2].TalkSeconds != 60 || list[2].Voicemail != nil || list[2].At != "2026-01-10 14:00:00" {
+		t.Fatalf("answered call: %+v", list[2])
+	}
+}
+
+func TestAvailable(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B")
+	if !s.Available("joesbnb") {
+		t.Fatal("a new line is available")
+	}
+	s.SetAwayUntil(u.AccountID, Away)
+	if s.Available("joesbnb") {
+		t.Fatal("Off means away")
+	}
+	s.SetAwayUntil(u.AccountID, time.Now().Add(-time.Minute).UTC().Format(time.DateTime))
+	if !s.Available("joesbnb") {
+		t.Fatal("a pause that ended means available again")
+	}
+	if l, _ := s.LineForAccount(u.AccountID); l.AwayUntil == "" {
+		t.Fatal("the line reads away_until")
 	}
 }

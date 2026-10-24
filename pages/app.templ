@@ -1,0 +1,562 @@
+package pages
+
+import (
+	"strconv"
+	"time"
+
+	"minivoip/layouts"
+	"minivoip/lines"
+	"minivoip/store"
+)
+
+// AppData is everything the owner's app (/app) shows.
+type AppData struct {
+	Line       lines.Line
+	Email      string
+	History    []store.HistoryEntry
+	Voicemails []store.Voicemail
+	VapidKey   string
+	CallURL    string // "voip.example.com/call/joesbnb", for display
+	Devices    int    // devices with notifications on
+	// RingSeconds is how long a call rings before the caller is offered voicemail.
+	RingSeconds int
+}
+
+// localTime reads a stored UTC time in the server's time zone.
+func localTime(utc string) (time.Time, bool) {
+	t, err := time.ParseInLocation(time.DateTime, utc, time.UTC)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t.Local(), true
+}
+
+// clock is "2:14 PM".
+func clock(utc string) string {
+	if t, ok := localTime(utc); ok {
+		return t.Format("3:04 PM")
+	}
+	return ""
+}
+
+// dayLabel is "Today", "Yesterday", "Mon, Oct 20" or "Oct 20, 2025".
+func dayLabel(utc string, now time.Time) string {
+	t, ok := localTime(utc)
+	if !ok {
+		return ""
+	}
+	y1, m1, d1 := t.Date()
+	y2, m2, d2 := now.Date()
+	day := time.Date(y1, m1, d1, 0, 0, 0, 0, time.Local)
+	today := time.Date(y2, m2, d2, 0, 0, 0, 0, time.Local)
+	switch {
+	case day.Equal(today):
+		return "Today"
+	case day.Equal(today.AddDate(0, 0, -1)):
+		return "Yesterday"
+	case y1 == y2:
+		return t.Format("Mon, Jan 2")
+	default:
+		return t.Format("Jan 2, 2006")
+	}
+}
+
+type dayGroup struct {
+	Label   string
+	Entries []store.HistoryEntry
+}
+
+// byDay splits a newest-first history into days.
+func byDay(list []store.HistoryEntry) []dayGroup {
+	var out []dayGroup
+	now := time.Now()
+	for _, e := range list {
+		label := dayLabel(e.At, now)
+		if len(out) == 0 || out[len(out)-1].Label != label {
+			out = append(out, dayGroup{Label: label})
+		}
+		out[len(out)-1].Entries = append(out[len(out)-1].Entries, e)
+	}
+	return out
+}
+
+func mmss(s int64) string {
+	return strconv.FormatInt(s/60, 10) + ":" + pad(s%60)
+}
+
+// entryKind picks the row's icon and colour: voicemail, missed or answered.
+func entryKind(e store.HistoryEntry) string {
+	switch {
+	case e.Voicemail != nil:
+		return "voicemail"
+	case e.Outcome == "answered":
+		return "answered"
+	default:
+		return "missed"
+	}
+}
+
+func entryTitle(e store.HistoryEntry) string {
+	switch {
+	case e.Voicemail != nil:
+		return "Voicemail"
+	case e.Outcome == "answered":
+		return "Answered"
+	case e.Outcome == "declined":
+		return "Declined"
+	case e.Outcome == "away":
+		return "Call while you were away"
+	default:
+		return "Missed call"
+	}
+}
+
+// entryLength is the voicemail's or the conversation's length.
+func entryLength(e store.HistoryEntry) string {
+	switch {
+	case e.Voicemail != nil:
+		return length(*e.Voicemail)
+	case e.Outcome == "answered":
+		return mmss(e.TalkSeconds)
+	}
+	return ""
+}
+
+// availability reads a line's away_until for the Available switch.
+func availability(until string) (label string, on bool) {
+	switch {
+	case store.IsAvailable(until):
+		return "Available", true
+	case until == store.Away:
+		return "Off", false
+	}
+	if t, ok := localTime(until); ok {
+		return "Paused until " + t.Format("3:04 PM"), false
+	}
+	return "Paused", false
+}
+
+func availMode(until string) string {
+	switch {
+	case store.IsAvailable(until):
+		return "on"
+	case until == store.Away:
+		return "off"
+	}
+	return "pause"
+}
+
+// pauseEnd is when a pause ends (RFC 3339, for phone.js), or "".
+func pauseEnd(until string) string {
+	if availMode(until) != "pause" {
+		return ""
+	}
+	t, err := time.ParseInLocation(time.DateTime, until, time.UTC)
+	if err != nil {
+		return ""
+	}
+	return t.Format(time.RFC3339)
+}
+
+func optionAction(o lines.Option) string {
+	switch o.Action {
+	case lines.Ring:
+		return "Rings your phone and computer"
+	case lines.Play:
+		return "Plays a message, then hangs up"
+	case lines.Link:
+		return "Opens " + o.URL
+	case lines.Voicemail:
+		return "Takes a voicemail"
+	}
+	return ""
+}
+
+func idStr(id int64) string { return strconv.FormatInt(id, 10) }
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return strconv.Itoa(n) + " " + many
+}
+
+// ----------------------------------------------------------------- icons
+
+templ icPhone() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>
+}
+
+templ icMissed() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"></path><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>
+}
+
+templ icVoicemail() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6.5" cy="12" r="4"></circle><circle cx="17.5" cy="12" r="4"></circle><path d="M6.5 16h11"></path></svg>
+}
+
+templ icMic() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10a7 7 0 0 0 14 0M12 17v5"></path></svg>
+}
+
+templ icUser() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+}
+
+templ icPlay() {
+	<svg class="ap-ic-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>
+	<svg class="ap-ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4.5" width="4" height="15" rx="1"></rect><rect x="14" y="4.5" width="4" height="15" rx="1"></rect></svg>
+}
+
+templ icChevron() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+}
+
+templ icTrash() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+}
+
+templ icHangup() {
+	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 14.6c4.6-4.1 12.2-4.1 16.8 0 .6.5.7 1.4.2 2l-1.3 1.6c-.4.5-1.1.6-1.7.4l-2.6-1a1.4 1.4 0 0 1-.9-1.3v-1.7a10 10 0 0 0-4.2 0v1.7c0 .6-.4 1.1-.9 1.3l-2.6 1c-.6.2-1.3.1-1.7-.4l-1.3-1.6c-.5-.6-.4-1.5.2-2Z"></path></svg>
+}
+
+// ----------------------------------------------------------------- pieces
+
+// Availability is the Available switch's state, also sent back when the
+// owner changes it (POST /app/available).
+templ Availability(until string) {
+	{{ label, on := availability(until) }}
+	<span class="ap-avail-state" data-avail-state data-mode={ availMode(until) } data-on={ strconv.FormatBool(on) } data-until={ pauseEnd(until) }>
+		<i class="ap-dot"></i>
+		<span>{ label }</span>
+	</span>
+}
+
+templ playButton(v store.Voicemail, label string) {
+	<button type="button" class="ap-play" data-play aria-label={ label }>
+		@icPlay()
+	</button>
+	<audio preload="none" src={ "/voicemail/" + idStr(v.ID) + "/audio" }></audio>
+}
+
+// historyRow is one call in the list. Voicemail rows play in place on the
+// phone and open on the right on a computer.
+templ historyRow(e store.HistoryEntry) {
+	if e.Voicemail != nil {
+		<li class="ap-row" data-kind="voicemail" data-voicemail={ idStr(e.Voicemail.ID) } data-title={ "Voicemail · " + entryLength(e) } data-option={ e.Option } data-when={ when(e.At) }>
+			<span class="ap-ico">
+				@icVoicemail()
+			</span>
+			<button type="button" class="ap-row-main" data-open>
+				<span class="ap-row-title">
+					Voicemail <span class="ap-row-len">· { entryLength(e) }</span>
+					if !e.Voicemail.Listened {
+						<span class="ap-new" data-new>New</span>
+					}
+				</span>
+				<span class="ap-row-sub">
+					if e.Option != "" {
+						“{ e.Option }” ·
+					}
+					{ clock(e.At) }
+				</span>
+			</button>
+			@playButton(*e.Voicemail, "Play voicemail")
+		</li>
+	} else {
+		<li class="ap-row" data-kind={ entryKind(e) }>
+			<span class="ap-ico">
+				if entryKind(e) == "answered" {
+					@icPhone()
+				} else {
+					@icMissed()
+				}
+			</span>
+			<span class="ap-row-main">
+				<span class="ap-row-title">
+					{ entryTitle(e) }
+					if l := entryLength(e); l != "" {
+						<span class="ap-row-len">· { l }</span>
+					}
+				</span>
+				<span class="ap-row-sub">
+					if e.Option != "" {
+						“{ e.Option }” ·
+					}
+					{ clock(e.At) }
+				</span>
+			</span>
+		</li>
+	}
+}
+
+// AppCalls is the call list, grouped by day (also GET /app/calls).
+templ AppCalls(list []store.HistoryEntry) {
+	<div data-calls>
+		if len(list) == 0 {
+			<div class="ap-empty">
+				<span class="ap-empty-ico">
+					@icPhone()
+				</span>
+				<p class="ap-empty-title">No calls yet</p>
+				<p>When someone calls from your website, the call shows up here.</p>
+			</div>
+		} else {
+			for _, g := range byDay(list) {
+				<h2 class="ap-day">{ g.Label }</h2>
+				<ul class="ap-group">
+					for _, e := range g.Entries {
+						@historyRow(e)
+					}
+				</ul>
+			}
+		}
+	</div>
+}
+
+// AppVoicemails is the voicemail list (also GET /app/voicemails).
+templ AppVoicemails(list []store.Voicemail) {
+	<div data-voicemails>
+		if len(list) == 0 {
+			<div class="ap-empty">
+				<span class="ap-empty-ico">
+					@icVoicemail()
+				</span>
+				<p class="ap-empty-title">No messages yet</p>
+				<p>When nobody answers, callers can leave a message. It shows up here.</p>
+			</div>
+		} else {
+			<ul class="ap-group">
+				for _, v := range list {
+					<li class="ap-row" data-kind="voicemail" data-voicemail={ idStr(v.ID) } data-title={ "Voicemail · " + length(v) } data-option={ v.Option } data-when={ when(v.CreatedAt) }>
+						<span class="ap-ico">
+							@icVoicemail()
+						</span>
+						<button type="button" class="ap-row-main" data-open>
+							<span class="ap-row-title">
+								Voicemail <span class="ap-row-len">· { length(v) }</span>
+								if !v.Listened {
+									<span class="ap-new" data-new>New</span>
+								}
+							</span>
+							<span class="ap-row-sub">
+								if v.Option != "" {
+									“{ v.Option }” ·
+								}
+								{ when(v.CreatedAt) }
+							</span>
+						</button>
+						<form method="post" action={ templ.SafeURL("/voicemail/" + idStr(v.ID) + "/delete") } class="ap-row-del">
+							<input type="hidden" name="back" value="/app#voicemail"/>
+							<button type="submit" class="ap-iconbtn" aria-label="Delete this message">
+								@icTrash()
+							</button>
+						</form>
+						@playButton(v, "Play voicemail")
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+templ tab(name, label string) {
+	<button type="button" class="ap-tab" role="tab" data-tab={ name } aria-controls={ "panel-" + name } aria-selected={ strconv.FormatBool(name == "calls") }>
+		<span class="ap-tab-ico">
+			switch name {
+				case "calls":
+					@icPhone()
+				case "voicemail":
+					@icVoicemail()
+				case "menu":
+					@icMic()
+				default:
+					@icUser()
+			}
+			if name == "voicemail" {
+				<i class="ap-tab-dot" data-vm-dot hidden></i>
+			}
+		</span>
+		<span>{ label }</span>
+	</button>
+}
+
+// Phone is the owner's app: /app, on the phone and the computer. Tabs for
+// calls, voicemail, the menu and settings; on a computer the tabs sit on the
+// left and a voicemail opens on the right. An incoming call takes the whole
+// screen (the whole window on a computer). phone.js runs it;
+// data-show lists the call states each part appears in. Look: DESIGN.md
+// "Owner app".
+templ Phone(d AppData) {
+	@layouts.Base("minivoip", "") {
+		<link rel="stylesheet" href="/assets/css/app.css"/>
+		<div class="ap" data-phone data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) }>
+			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
+			<img class="ap-logo" src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="110" height="20"/>
+			<div class="ap-avail">
+				<button type="button" class="ap-avail-btn" data-avail-btn aria-haspopup="true" aria-expanded="false" aria-label="Change whether calls ring">
+					@Availability(d.Line.AwayUntil)
+					@icChevron()
+				</button>
+				<div class="ap-avail-menu" data-avail-menu hidden>
+					<button type="button" data-mode="on"><b>Available</b><span>Calls ring on your devices</span></button>
+					<button type="button" data-mode="pause"><b>Pause for 1 hour</b><span>Callers can leave a voicemail</span></button>
+					<button type="button" data-mode="off"><b>Off</b><span>Every call goes to voicemail</span></button>
+				</div>
+			</div>
+			<nav class="ap-tabs" role="tablist" aria-label="minivoip">
+				@tab("calls", "Calls")
+				@tab("voicemail", "Voicemail")
+				@tab("menu", "Menu")
+				@tab("me", "Me")
+			</nav>
+			<main class="ap-main">
+				<section class="ap-panel" id="panel-calls" role="tabpanel" data-panel="calls">
+					<header class="ap-head">
+						<h1>Calls</h1>
+						<p>{ d.Line.Business } · calls from your website</p>
+					</header>
+					<div data-calls-box>
+						@AppCalls(d.History)
+					</div>
+				</section>
+				<section class="ap-panel" id="panel-voicemail" role="tabpanel" data-panel="voicemail" hidden>
+					<header class="ap-head">
+						<h1>Voicemail</h1>
+						<p>Messages callers left when nobody answered.</p>
+					</header>
+					<div data-voicemail-box>
+						@AppVoicemails(d.Voicemails)
+					</div>
+				</section>
+				<section class="ap-panel" id="panel-menu" role="tabpanel" data-panel="menu" hidden>
+					<header class="ap-head">
+						<h1>Menu</h1>
+						<p>What callers hear before your phone rings.</p>
+					</header>
+					<h2 class="ap-day">Your call link</h2>
+					<div class="ap-card ap-link">
+						<span class="ap-link-url" data-call-url>{ d.CallURL }</span>
+						<button type="button" class="ap-btn" data-copy>Copy</button>
+					</div>
+					<h2 class="ap-day">Greeting</h2>
+					<div class="ap-card ap-greeting">
+						if d.Line.GreetingAudio != "" {
+							<p>Your recorded greeting</p>
+							<audio controls preload="none" src={ promptURL(d.Line.GreetingAudio) }></audio>
+						} else {
+							<p>“{ d.Line.Greeting }”</p>
+							<p class="ap-muted">Read by the caller's browser. Record it in your own voice from the dashboard.</p>
+						}
+					</div>
+					<h2 class="ap-day">Choices</h2>
+					<ul class="ap-group">
+						for _, o := range d.Line.Options {
+							<li class="ap-row">
+								<span class="ap-key">{ o.Key }</span>
+								<span class="ap-row-main">
+									<span class="ap-row-title">{ o.Label }</span>
+									<span class="ap-row-sub">{ optionAction(o) }</span>
+								</span>
+							</li>
+						}
+					</ul>
+					<p class="ap-note">To change your greeting and choices, open the dashboard on a computer.</p>
+				</section>
+				<section class="ap-panel" id="panel-me" role="tabpanel" data-panel="me" hidden>
+					<header class="ap-head">
+						<h1>Me</h1>
+						<p>{ d.Email }</p>
+					</header>
+					<h2 class="ap-day">Ringing</h2>
+					<div class="ap-card ap-setting" data-push>
+						<p class="ap-setting-title">Ring when the app is closed</p>
+						<p class="ap-muted" data-push-state>Checking this device…</p>
+						<p class="ap-muted" data-push-ios hidden>On iPhone: tap Share, then “Add to Home Screen”. Open minivoip from that icon and turn notifications on there.</p>
+						<div class="ap-actions">
+							<button type="button" class="ap-btn is-ink" data-push-on hidden>Turn on notifications</button>
+							<button type="button" class="ap-btn" data-push-test hidden>Send a test</button>
+							<button type="button" class="ap-textbtn" data-push-off hidden>Turn off on this device</button>
+						</div>
+						<p class="ap-muted ap-small">{ plural(d.Devices, "device has", "devices have") } notifications on. This device: <span data-conn>connecting…</span></p>
+					</div>
+					<h2 class="ap-day">Install</h2>
+					<div class="ap-card ap-setting" data-install>
+						<p class="ap-setting-title">Put minivoip on this device</p>
+						<p class="ap-muted" data-install-text>Install the app to open it from your home screen or dock, in its own window.</p>
+						<div class="ap-actions">
+							<button type="button" class="ap-btn is-ink" data-install-btn hidden>Install minivoip</button>
+							<a class="ap-btn is-ink" href="/download/minivoip.apk" data-android-get hidden>Get the Android app</a>
+						</div>
+					</div>
+					<form method="post" action="/logout" class="ap-logout">
+						<input type="hidden" name="next" value="/app"/>
+						<button type="submit" class="ap-btn">Log out</button>
+					</form>
+				</section>
+			</main>
+			<aside class="ap-detail" aria-label="Details">
+				<div class="ap-detail-idle" data-detail-idle>
+					<span class="ap-empty-ico">
+						@icPhone()
+					</span>
+					<h2>Calls ring here</h2>
+					<p>Keep this window open, even behind your other work. A call fills this window with a ringtone, and an alert brings it to the front.</p>
+					<dl class="ap-facts">
+						<div><dt>Your call link</dt><dd>{ d.CallURL }</dd></div>
+						<div><dt>Ringing</dt><dd>{ strconv.Itoa(d.RingSeconds) } s, then voicemail</dd></div>
+					</dl>
+				</div>
+				<div class="ap-vm" data-detail-vm hidden>
+					<p class="ap-muted" data-vm-when></p>
+					<h2 data-vm-title></h2>
+					<p class="ap-vm-option" data-vm-option></p>
+					<div class="ap-player">
+						<button type="button" class="ap-play is-big" data-vm-play aria-label="Play voicemail">
+							@icPlay()
+						</button>
+						<div class="ap-progress"><i data-vm-bar></i></div>
+						<span class="ap-time" data-vm-time>0:00</span>
+					</div>
+					<form method="post" class="ap-actions" data-vm-delete>
+						<input type="hidden" name="back" value="/app#voicemail"/>
+						<button type="submit" class="ap-btn is-red">Delete</button>
+					</form>
+				</div>
+			</aside>
+			<div class="ap-call" data-call-screen data-show="incoming connecting talking" hidden>
+				<div class="ap-call-in">
+					<p class="ap-call-state">
+						<i class="ap-dot"></i>
+						<span data-status role="status" aria-live="assertive">Incoming call</span>
+						<span data-timer></span>
+					</p>
+					<h2 class="ap-call-title" data-call-title>Someone is calling</h2>
+					<p class="ap-call-sub" data-call-sub>A visitor on your website is calling you.</p>
+					<p class="ap-call-fact" data-show="incoming" hidden>If nobody answers: <b data-countdown>voicemail</b></p>
+					<div class="ap-call-bar" data-show="incoming" hidden>
+						<button type="button" class="ap-answer" data-action="accept">
+							@icPhone()
+							<span>Answer</span>
+						</button>
+						<button type="button" class="ap-decline" data-action="decline">Decline</button>
+						<p class="ap-call-note">Declined callers can leave a voicemail.</p>
+					</div>
+					<div class="ap-call-bar is-live" data-show="connecting talking" hidden>
+						<button type="button" class="ap-btn ap-mute" data-action="mute" aria-pressed="false">
+							@icMic()
+							<span>Mute</span>
+						</button>
+						<button type="button" class="ap-hangup" data-action="hangup">
+							@icHangup()
+							<span>Hang up</span>
+						</button>
+					</div>
+				</div>
+			</div>
+			<audio data-remote autoplay playsinline></audio>
+		</div>
+		<script src="/assets/js/voicemail.js" defer></script>
+		<script src="/assets/js/phone.js" defer></script>
+	}
+}

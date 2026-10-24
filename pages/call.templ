@@ -3,7 +3,6 @@ package pages
 import (
 	"minivoip/layouts"
 	"minivoip/lines"
-	"minivoip/store"
 )
 
 // callData is what call.js needs to play the menu.
@@ -144,117 +143,28 @@ templ Call(l lines.Line) {
 	}
 }
 
-// Phone is the owner's phone app: /app. Its own dark app (no dashboard):
-// the line, notifications, voicemail, log out. A call takes the whole
-// screen. phone.js keeps it connected and rings.
-templ Phone(l lines.Line, voicemails []store.Voicemail, vapidKey, callURL string) {
-	@layouts.Base("minivoip", "") {
-		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
-		<div class="cs dark" data-phone data-line={ l.Name } data-vapid={ vapidKey }>
-			<main class="cs-app">
-				<div class="cs-top">
-					<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24"/>
-					<span class="cs-online"><i data-dot></i><span data-conn>Connecting…</span></span>
-				</div>
-				<h1 class="cs-title">{ l.Business }</h1>
-				<p class="cs-sub">{ callURL }</p>
-				<div class="cs-ready">
-					@svgPhone()
-					<div>
-						<p><strong>Ready for calls</strong></p>
-						<p class="cs-sub">This phone rings when a caller picks a "Ring my phone" choice.</p>
-					</div>
-				</div>
-				<section class="cs-box" data-push>
-					<h2>Ring when the app is closed</h2>
-					<p data-push-state>Checking this phone…</p>
-					<p class="cs-hint" data-push-ios hidden>On iPhone: tap Share, then "Add to Home Screen". Open minivoip from that icon and turn notifications on there.</p>
-					<div class="cs-row">
-						<button type="button" class="cs-pillbtn is-main" data-push-on hidden>Turn on notifications</button>
-						<button type="button" class="cs-pillbtn" data-push-test hidden>Send a test</button>
-						<button type="button" class="cs-link" data-push-off hidden>Turn off on this phone</button>
-					</div>
-				</section>
-				<section class="cs-box">
-					<h2>Voicemail</h2>
-					<div data-voicemail-box>
-						@VoicemailList(voicemails, "/app")
-					</div>
-				</section>
-				<form method="post" action="/logout" class="cs-row">
-					<input type="hidden" name="next" value="/app"/>
-					<button type="submit" class="cs-link">Log out</button>
-				</form>
-			</main>
-			<div class="cs-call" data-show="incoming connecting talking" hidden>
-				<div class="cs-screen">
-					<header class="cs-head">
-						<div class="cs-avatar">
-							@svgPerson()
-						</div>
-						<p class="cs-name">Website caller</p>
-						<p class="cs-status" data-status role="status" aria-live="assertive">Incoming call…</p>
-						<p class="cs-option" data-option></p>
-						<p class="cs-timer" data-timer></p>
-					</header>
-					<div class="cs-mid"></div>
-					<div class="cs-bar is-two" data-show="incoming" hidden>
-						<button type="button" class="cs-btn is-no is-big" data-action="decline">
-							@svgHangup()
-							<span>Decline</span>
-						</button>
-						<button type="button" class="cs-btn is-yes is-big" data-action="accept">
-							@svgPhone()
-							<span>Answer</span>
-						</button>
-					</div>
-					<div class="cs-bar is-two" data-show="connecting talking" hidden>
-						<button type="button" class="cs-btn" data-action="mute" aria-pressed="false">
-							@svgMute()
-							<span>Mute</span>
-						</button>
-						<button type="button" class="cs-btn is-no" data-action="hangup" aria-label="Hang up">
-							@svgHangup()
-							<span>Hang up</span>
-						</button>
-					</div>
-				</div>
-			</div>
-			<audio class="cs-remote" data-remote autoplay playsinline></audio>
-		</div>
-		<script src="/assets/js/voicemail.js" defer></script>
-		<script src="/assets/js/phone.js" defer></script>
-	}
-}
-
-// AppLogin is the phone app's own log in screen (the app never shows the
-// website's pages).
+// AppLogin is the app's own log in screen (the app never shows the
+// website's pages). Same look as the app (app.css).
 templ AppLogin(f AccountForm) {
 	@layouts.Base("minivoip", "") {
-		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
-		<div class="cs">
-			<main class="cs-app">
-				<div class="cs-top">
-					<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24"/>
-				</div>
-				<h1 class="cs-title">Your phone app</h1>
-				<p class="cs-sub">Log in with your minivoip account to receive your calls on this phone.</p>
-				<form method="post" action="/login" class="cs-form">
+		<link rel="stylesheet" href="/assets/css/app.css"/>
+		<div class="ap ap-login" data-app-login>
+			<main class="ap-login-in">
+				<img src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="121" height="22"/>
+				<h1>Log in to your app</h1>
+				<p class="ap-muted">Answer your website's calls on this phone or computer.</p>
+				<form method="post" action="/login" class="ap-card ap-form">
 					if f.Error != "" {
-						<p class="cs-err" role="alert">{ f.Error }</p>
+						<p class="ap-err" role="alert">{ f.Error }</p>
 					}
 					<input type="hidden" name="next" value={ f.Next }/>
-					<label>
-						Email
-						<input id="email" name="email" type="email" value={ f.Email } required autocomplete="email"/>
-					</label>
-					<label>
-						Password
-						<input id="password" name="password" type="password" required autocomplete="current-password"/>
-					</label>
-					<button type="submit" class="cs-pillbtn is-main">Log in</button>
+					<label for="email">Email</label>
+					<input id="email" name="email" type="email" value={ f.Email } required autocomplete="email"/>
+					<label for="password">Password</label>
+					<input id="password" name="password" type="password" required autocomplete="current-password"/>
+					<button type="submit" class="ap-btn is-ink">Log in</button>
 				</form>
-				<p class="cs-hint">No account yet? Sign up on a computer at the minivoip website first.</p>
+				<p class="ap-note">No account yet? Sign up on a computer at the minivoip website first.</p>
 			</main>
 		</div>
 	}

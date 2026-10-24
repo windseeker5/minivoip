@@ -56,6 +56,19 @@ type call struct {
 	owner    *peer // set when answered
 	timer    *time.Timer
 	stopRing func()
+	started  time.Time
+	answered time.Time
+}
+
+// Record is a finished call, for the owner's call history.
+type Record struct {
+	ID      string
+	Option  string
+	Outcome string // answered, missed (rang out or the caller hung up), declined, away (the owner was set to away)
+	Started time.Time
+	// Answered is zero when nobody answered.
+	Answered time.Time
+	Ended    time.Time
 }
 
 func (c *call) quiet() {
@@ -87,6 +100,14 @@ type Hub struct {
 	OnRing     func(line, callID, option string) (stop func())
 	OnMissed   func(line, callID string)
 	OnAnswered func(line, callID string)
+	// OnEnd records a finished call (call history). It runs with the hub
+	// locked, before the phone apps hear the call ended, so a phone that
+	// reloads its history sees it. Nil skips it.
+	OnEnd func(line string, r Record)
+	// Available says whether the owner takes calls now (the phone app's
+	// Available switch). When not, callers go straight to voicemail. Nil
+	// means always.
+	Available func(line string) bool
 
 	mu       sync.Mutex
 	lines    map[string]*line
@@ -94,9 +115,15 @@ type Hub struct {
 }
 
 type vmToken struct {
-	line    string
-	option  string
+	VoicemailPass
 	expires time.Time
+}
+
+// VoicemailPass says what a voicemail upload is for.
+type VoicemailPass struct {
+	Line   string
+	Option string
+	CallID string // the unanswered call it follows; "" for a voicemail choice
 }
 
 // voicemailWindow is how long a caller has to record and send a message.
@@ -165,7 +192,15 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 			me.send(Message{Type: "busy"})
 			return
 		}
-		c = &call{id: newID(), option: m.Option, visitor: me}
+		if h.Available != nil && !h.Available(name) {
+			now := time.Now()
+			id := newID()
+			h.record(name, Record{ID: id, Option: m.Option, Outcome: "away", Started: now, Ended: now})
+			log.Printf("calls: %s: call %s while away, sent to voicemail", name, id)
+			me.send(Message{Type: "no-answer", ID: id, Token: h.issueToken(name, m.Option, id)})
+			return
+		}
+		c = &call{id: newID(), option: m.Option, visitor: me, started: time.Now()}
 		l.current = c
 		c.timer = time.AfterFunc(h.RingTimeout, func() { h.noAnswer(name, c) })
 		if h.OnRing != nil {
@@ -179,7 +214,7 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 
 	case !me.owner && m.Type == "voicemail":
 		// The caller picked a "take a voicemail" choice.
-		me.send(Message{Type: "voicemail", Token: h.issueToken(name, m.Option)})
+		me.send(Message{Type: "voicemail", Token: h.issueToken(name, m.Option, "")})
 
 	case me.owner && m.Type == "hello":
 		me.send(Message{Type: "ready"})
@@ -193,6 +228,7 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 			return
 		}
 		c.owner = me
+		c.answered = time.Now()
 		c.timer.Stop()
 		c.quiet()
 		if h.OnAnswered != nil {
@@ -208,7 +244,7 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 
 	case me.owner && m.Type == "decline":
 		if c != nil && c.owner == nil {
-			h.endUnanswered(name, c)
+			h.endUnanswered(name, c, "declined")
 		}
 
 	case m.Type == "offer" || m.Type == "answer" || m.Type == "ice":
@@ -229,6 +265,19 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 	}
 }
 
+// Decline turns down a ringing call from outside the socket (the Android
+// app's ring screen). It reports whether that call was ringing.
+func (h *Hub) Decline(name, callID string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	c := h.line(name).current
+	if c == nil || c.id != callID || c.owner != nil {
+		return false
+	}
+	h.endUnanswered(name, c, "declined")
+	return true
+}
+
 // leave runs when a socket closes: it ends that peer's call.
 func (h *Hub) leave(name string, me *peer) {
 	h.mu.Lock()
@@ -245,22 +294,23 @@ func (h *Hub) noAnswer(name string, c *call) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.line(name).current == c && c.owner == nil {
-		h.endUnanswered(name, c)
+		h.endUnanswered(name, c, "missed")
 	}
 }
 
 // endUnanswered stops the ringing. The visitor is offered voicemail.
-// Caller holds h.mu.
-func (h *Hub) endUnanswered(name string, c *call) {
+// outcome is "missed" (rang out) or "declined". Caller holds h.mu.
+func (h *Hub) endUnanswered(name string, c *call, outcome string) {
 	l := h.line(name)
 	c.timer.Stop()
 	c.quiet()
 	if h.OnMissed != nil {
 		h.OnMissed(name, c.id)
 	}
+	h.record(name, Record{ID: c.id, Option: c.option, Outcome: outcome, Started: c.started, Ended: time.Now()})
 	l.current = nil
 	log.Printf("calls: %s: call %s not answered", name, c.id)
-	c.visitor.send(Message{Type: "no-answer", ID: c.id, Token: h.issueToken(name, c.option)})
+	c.visitor.send(Message{Type: "no-answer", ID: c.id, Token: h.issueToken(name, c.option, c.id)})
 	for o := range l.owners {
 		o.send(Message{Type: "missed", ID: c.id})
 	}
@@ -275,6 +325,11 @@ func (h *Hub) end(name string, c *call, by *peer) {
 	if c.owner == nil && h.OnMissed != nil {
 		h.OnMissed(name, c.id)
 	}
+	r := Record{ID: c.id, Option: c.option, Outcome: "missed", Started: c.started, Answered: c.answered, Ended: time.Now()}
+	if c.owner != nil {
+		r.Outcome = "answered"
+	}
+	h.record(name, r)
 	l.current = nil
 	log.Printf("calls: %s: call %s ended", name, c.id)
 	if by != c.visitor {
@@ -290,8 +345,14 @@ func (h *Hub) end(name string, c *call, by *peer) {
 	}
 }
 
+func (h *Hub) record(name string, r Record) {
+	if h.OnEnd != nil {
+		h.OnEnd(name, r)
+	}
+}
+
 // issueToken makes a one-time voicemail pass. Caller holds h.mu.
-func (h *Hub) issueToken(line, option string) string {
+func (h *Hub) issueToken(line, option, callID string) string {
 	now := time.Now()
 	for t, v := range h.vmTokens {
 		if now.After(v.expires) {
@@ -299,21 +360,20 @@ func (h *Hub) issueToken(line, option string) string {
 		}
 	}
 	t := newID() + newID()
-	h.vmTokens[t] = vmToken{line: line, option: option, expires: now.Add(voicemailWindow)}
+	h.vmTokens[t] = vmToken{VoicemailPass: VoicemailPass{Line: line, Option: option, CallID: callID}, expires: now.Add(voicemailWindow)}
 	return t
 }
 
-// UseVoicemailToken spends a voicemail pass and says which line (and menu
-// choice) it was for.
-func (h *Hub) UseVoicemailToken(token string) (line, option string, ok bool) {
+// UseVoicemailToken spends a voicemail pass and says what it was for.
+func (h *Hub) UseVoicemailToken(token string) (VoicemailPass, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	v, found := h.vmTokens[token]
 	delete(h.vmTokens, token)
 	if !found || time.Now().After(v.expires) {
-		return "", "", false
+		return VoicemailPass{}, false
 	}
-	return v.line, v.option, true
+	return v.VoicemailPass, true
 }
 
 // NotifyOwners sends a message to every open phone app of a line.

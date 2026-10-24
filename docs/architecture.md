@@ -73,11 +73,12 @@ flowchart LR
 6. **Test** with the "Make a test call" button in the dashboard.
 
 ## Installing the phone app
-The phone app is a web app that installs from the browser (a PWA, or "progressive web app"). There's no app store and no Apple or Google account needed.
+The phone app is a web app that installs from the browser (a PWA, or "progressive web app"). On Android, the minivoip app (`android/`, downloaded from the Me tab at `/download/minivoip.apk`) shows the same pages and rings like a real phone call; see `docs/vision.md`.
 
 | Joe's device | Steps | How ringing works |
 |---|---|---|
-| **Android** (Chrome) | Open `minivoip.example/app`, log in, tap "Install", allow notifications and microphone | Good. Notifications arrive even when the app is closed, repeated every ~10 s like a ring (faster repeats make Android quiet them down). |
+| **Android** (the minivoip app) | Open `minivoip.example/app` in Chrome, Me tab, "Get the Android app", install it, log in, allow notifications and microphone | Rings like a phone call (ringtone until answered, call screen over the lock screen), through Firebase. |
+| **Android** (Chrome only) | Open `minivoip.example/app`, log in, tap "Install", allow notifications and microphone | Weak: a silent notification (Ken's Pixel 9 test, 2026-10-24). |
 | **iPhone** (iOS 16.4 or newer) | Open `minivoip.example/app` in **Safari**, tap Share, then "Add to Home Screen". Open it **from the home-screen icon**, log in, allow notifications and microphone | Weaker. A single notification sound, no ringtone, no full-screen call screen. Joe taps it, the app opens in a few seconds, and Joe answers. |
 | **Computer** (Chrome, Edge, Firefox) | Open `minivoip.example/app`, log in, allow notifications and microphone | Good while the browser is running |
 

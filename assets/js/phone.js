@@ -1,23 +1,39 @@
-// Owner's phone app (/app). Stays connected to the call socket, rings on
-// "incoming" and answers with a direct WebRTC call. Ported from the Python
-// proof of concept's owner.js. Push notifications (sw.js) wake it when closed.
+// Owner's app (/app), on the phone and the computer. Stays connected to the
+// call socket, rings on "incoming" and answers with a direct WebRTC call
+// (ported from the Python proof of concept's owner.js). Also runs the tabs,
+// the Available switch, the call and voicemail lists, and installing. Push
+// notifications (sw.js) wake it when closed. Inside the Android app
+// (android/), window.MinivoipAndroid is the app, which rings natively.
 (function () {
   var root = document.querySelector("[data-phone]");
   if (!root) return;
   var $ = function (sel) { return root.querySelector(sel); };
 
-  var ws, pc, mic, ac, ringStop, timerIv;
-  var ringingId = null, liveId = null, wsDelay = 1000;
+  var ws, pc, mic, ac, ringStop, timerIv, ringIv;
+  var ringingId = null, liveId = null, wsDelay = 1000, offlineTimer = null;
+  var wide = matchMedia("(min-width: 900px)");
+  var android = window.MinivoipAndroid || null;
+  // The Android app's ring screen answers by opening /app?answer=<call id>:
+  // answer that call as soon as the socket offers it.
+  var answerId = new URLSearchParams(location.search).get("answer");
+  if (answerId) history.replaceState(null, "", location.pathname + location.hash);
 
   function show(p) {
-    var call = $(".cs-call");
-    if (call) {
-      call.classList.toggle("is-ringing", p === "incoming");
-      call.classList.toggle("is-talking", p === "talking");
-    }
+    var call = $("[data-call-screen]");
+    call.classList.toggle("is-ringing", p === "incoming");
+    call.classList.toggle("is-talking", p === "talking");
     root.querySelectorAll("[data-show]").forEach(function (el) {
       el.hidden = el.dataset.show.split(" ").indexOf(p) === -1;
     });
+  }
+
+  function online(on) {
+    root.dataset.online = String(on);
+    $("[data-conn]").textContent = on ? "online" : "offline, reconnecting…";
+    // A short drop (a page reload, a network switch) shouldn't flash the banner.
+    clearTimeout(offlineTimer);
+    if (on) $("[data-offline]").hidden = true;
+    else offlineTimer = setTimeout(function () { $("[data-offline]").hidden = false; }, 2500);
   }
 
   // ----------------------------------------------------------- socket
@@ -28,13 +44,12 @@
     ws = new WebSocket(proto + "//" + location.host + "/ws?role=owner&line=" + encodeURIComponent(root.dataset.line));
     ws.onopen = function () {
       wsDelay = 1000;
-      $("[data-dot]").className = "is-on";
-      $("[data-conn]").textContent = "Online";
+      online(true);
       send({ type: "hello" });
     };
     ws.onclose = function () {
-      $("[data-dot]").className = "";
-      $("[data-conn]").textContent = "Offline, reconnecting…";
+      online(false);
+      if (ringingId) { stopRinging(); ringingId = null; show("ready"); }
       if (liveId) endCall();
       setTimeout(connectWs, wsDelay);
       wsDelay = Math.min(wsDelay * 2, 15000);
@@ -44,21 +59,148 @@
       if (m.type === "incoming") incoming(m);
       else if (m.type === "missed" || m.type === "taken") {
         if (ringingId === m.id) { stopRinging(); ringingId = null; show("ready"); }
+        refreshCalls();
       } else if (m.type === "offer") answer(m);
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
       else if (m.type === "hangup" && m.id === liveId) endCall();
-      else if (m.type === "voicemail") refreshVoicemail();
+      else if (m.type === "voicemail") { refreshVoicemail(); refreshCalls(); }
     };
   }
 
   function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
 
-  // A caller left a message: reload the list under the call card.
-  function refreshVoicemail() {
-    fetch("/app/voicemails").then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
-      if (html) document.querySelector("[data-voicemail-box]").innerHTML = html;
+  // ----------------------------------------------------------- lists
+
+  // Reload a list from the server, unless a message in it is playing.
+  function refresh(url, box) {
+    fetch(url).then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
+      if (!html || box.querySelector(".ap-play.is-playing")) return;
+      box.innerHTML = html;
+      newDot();
     });
   }
+  function refreshCalls() { refresh("/app/calls", $("[data-calls-box]")); }
+  function refreshVoicemail() { refresh("/app/voicemails", $("[data-voicemail-box]")); }
+
+  // The red dot on the Voicemail tab: messages not played yet.
+  function newDot() {
+    $("[data-vm-dot]").hidden = !$("[data-voicemail-box] [data-new]");
+  }
+
+  // Play buttons: one message at a time; the audio element sits next to its
+  // button. voicemail.js marks a message played when it starts.
+  var playing = null;
+  function playPause(btn, audio) {
+    if (playing && playing.audio !== audio) { playing.audio.pause(); }
+    if (audio.paused) {
+      audio.play().catch(function () {});
+      playing = { btn: btn, audio: audio };
+    } else {
+      audio.pause();
+    }
+  }
+  root.addEventListener("play", function (e) { mark(e.target, true); }, true);
+  root.addEventListener("pause", function (e) { mark(e.target, false); }, true);
+  root.addEventListener("ended", function (e) { mark(e.target, false); }, true);
+  function mark(audio, on) {
+    if (audio.tagName !== "AUDIO") return;
+    var btn = audio === vmAudio ? $("[data-vm-play]") : audio.previousElementSibling;
+    if (btn && btn.classList.contains("ap-play")) btn.classList.toggle("is-playing", on);
+    // Played: the message isn't new any more, in both lists.
+    var row = audio.closest("[data-voicemail]");
+    if (on && row) {
+      root.querySelectorAll('[data-voicemail="' + row.dataset.voicemail + '"] [data-new]').forEach(function (b) { b.remove(); });
+      newDot();
+    }
+  }
+
+  // On a computer, a voicemail opens on the right with a bigger player.
+  var vmAudio = null;
+  function openVoicemail(row) {
+    root.querySelectorAll(".ap-row.is-open").forEach(function (r) { r.classList.remove("is-open"); });
+    row.classList.add("is-open");
+    if (vmAudio) vmAudio.pause();
+    vmAudio = row.querySelector("audio");
+    $("[data-detail-idle]").hidden = true;
+    $("[data-detail-vm]").hidden = false;
+    $("[data-vm-when]").textContent = row.dataset.when;
+    $("[data-vm-title]").textContent = row.dataset.title;
+    var opt = $("[data-vm-option]");
+    opt.textContent = "";
+    if (row.dataset.option) {
+      opt.append("The caller chose ");
+      var em = document.createElement("em");
+      em.textContent = "“" + row.dataset.option + "”";
+      opt.append(em);
+    } else {
+      opt.textContent = "Left from your website";
+    }
+    $("[data-vm-delete]").action = "/voicemail/" + row.dataset.voicemail + "/delete";
+    vmTime();
+  }
+  function vmTime() {
+    if (!vmAudio) return;
+    var d = vmAudio.duration, t = vmAudio.currentTime || 0;
+    $("[data-vm-bar]").style.width = d > 0 && isFinite(d) ? (100 * t / d) + "%" : "0";
+    $("[data-vm-time]").textContent = mmss(t);
+  }
+  root.addEventListener("timeupdate", function (e) { if (e.target === vmAudio) vmTime(); }, true);
+
+  function mmss(s) {
+    s = Math.floor(s);
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  // ----------------------------------------------------------- tabs
+
+  var tabs = ["calls", "voicemail", "menu", "me"];
+  function openTab(name) {
+    if (tabs.indexOf(name) === -1) name = "calls";
+    root.querySelectorAll("[data-tab]").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === name)); });
+    root.querySelectorAll("[data-panel]").forEach(function (p) { p.hidden = p.dataset.panel !== name; });
+    if (history.replaceState) history.replaceState(null, "", name === "calls" ? location.pathname + location.search : "#" + name);
+    if (!wide.matches) window.scrollTo(0, 0);
+  }
+  openTab(location.hash.slice(1));
+
+  // ----------------------------------------------------------- available
+
+  var availBtn = $("[data-avail-btn]"), availMenu = $("[data-avail-menu]");
+  function availOpen(on) {
+    availMenu.hidden = !on;
+    availBtn.setAttribute("aria-expanded", String(on));
+    if (on) {
+      var mode = $("[data-avail-state]").dataset.mode;
+      availMenu.querySelectorAll("[data-mode]").forEach(function (b) { b.setAttribute("aria-current", String(b.dataset.mode === mode)); });
+    }
+  }
+  function setAvailable(mode) {
+    availOpen(false);
+    var body = new URLSearchParams({ mode: mode });
+    fetch("/app/available", { method: "POST", body: body }).then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
+      if (html) $("[data-avail-state]").outerHTML = html;
+      pauseTimer();
+    });
+  }
+  // A pause ends by itself on the server; show it here too.
+  var pauseT = null;
+  function pauseTimer() {
+    clearTimeout(pauseT);
+    var el = $("[data-avail-state]"), end = Date.parse(el.dataset.until || "");
+    if (!end) return;
+    pauseT = setTimeout(function () {
+      el.dataset.mode = "on";
+      el.dataset.until = "";
+      el.querySelector("span").textContent = "Available";
+    }, Math.max(0, end - Date.now()) + 1000);
+  }
+  pauseTimer();
+  document.addEventListener("click", function (e) {
+    if (!availMenu.hidden && !e.target.closest(".ap-avail")) availOpen(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !availMenu.hidden) { availOpen(false); availBtn.focus(); }
+  });
 
   // ----------------------------------------------------------- ringing
 
@@ -100,18 +242,75 @@
   }
   ["pointerdown", "keydown"].forEach(function (ev) { document.addEventListener(ev, unlockAudio, true); });
 
-  function stopRinging() { if (ringStop) { ringStop(); ringStop = null; } }
+  function stopRinging() {
+    clearInterval(ringIv);
+    stopFlash();
+    if (ringStop) { ringStop(); ringStop = null; }
+  }
 
+  // The call screen says what the caller chose: "Someone chose “Book a room”".
+  function callText(title, option, sub) {
+    var h = $("[data-call-title]");
+    h.textContent = title;
+    if (option) {
+      h.append(" ");
+      var em = document.createElement("em");
+      em.textContent = "“" + option + "”";
+      h.append(em);
+    }
+    $("[data-call-sub]").textContent = sub;
+  }
+
+  var callOption = "";
   function incoming(m) {
     if (liveId) return;
     ringingId = m.id;
+    callOption = m.option || "";
     show("incoming");
-    $("[data-status]").textContent = "Website call";
-    $("[data-option]").textContent = m.option ? "Pressed: " + m.option : "";
-    $("[data-timer]").textContent = "";
+    $("[data-status]").textContent = "Incoming call";
+    if (m.option) callText("Someone chose", m.option, "A visitor on your website heard your greeting and picked this choice.");
+    else callText("Someone is calling", "", "A visitor on your website is calling you.");
+    var start = Date.now(), ring = +root.dataset.ring || 30;
+    function tick() {
+      var s = Math.floor((Date.now() - start) / 1000), left = Math.max(0, ring - s);
+      $("[data-timer]").textContent = mmss(s);
+      $("[data-countdown]").textContent = left > 0 ? "voicemail in " + mmss(left) : "going to voicemail…";
+    }
     stopRinging();
+    tick();
+    ringIv = setInterval(tick, 500);
+    if (answerId === m.id) { answerId = null; return accept(); }
     ringStop = ringtone();
     $('[data-action="accept"]').focus();
+    if (!document.hasFocus()) callMeOver(m);
+  }
+
+  // The app is open but behind other windows (a computer at work): show an
+  // alert that brings it to the front, and flash the tab title. The alert
+  // has the push's tag, so it replaces the push instead of adding a second.
+  var title = document.title, flashIv = null;
+  function callMeOver(m) {
+    try { window.focus(); } catch (e) {}
+    var on = false;
+    clearInterval(flashIv);
+    flashIv = setInterval(function () {
+      on = !on;
+      document.title = on ? "📞 Incoming call" : title;
+    }, 900);
+    if (!reg || !window.Notification || Notification.permission !== "granted") return;
+    reg.showNotification("Incoming call", {
+      body: (m.option ? "Someone chose “" + m.option + "”. " : "A website visitor is calling. ") + "Click to answer.",
+      tag: "call-" + m.id,
+      renotify: true,
+      requireInteraction: true,
+      icon: "/assets/brand/app-icon-192.png",
+      data: { url: "/app" },
+    }).catch(function () {});
+  }
+  function stopFlash() {
+    clearInterval(flashIv);
+    flashIv = null;
+    document.title = title;
   }
 
   // ----------------------------------------------------------- answering
@@ -121,11 +320,12 @@
     var id = ringingId;
     stopRinging();
     clearNotifications();
-    $("[data-status]").textContent = "Connecting…";
+    $("[data-status]").textContent = "Allow the microphone…";
     var ice = fetch("/api/ice").then(function (r) { return r.json(); }).catch(function () { return { iceServers: [] }; });
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(function (stream) {
         mic = stream;
+        $("[data-status]").textContent = "Connecting…";
         return ice;
       }).then(function (cfg) {
         if (ringingId !== id) { endCall(); return; }
@@ -166,11 +366,12 @@
   function talking() {
     show("talking");
     $("[data-status]").textContent = "On the line";
+    callText("Talking with a website caller", "", callOption ? "They chose “" + callOption + "”." : "");
     var start = Date.now();
     clearInterval(timerIv);
+    $("[data-timer]").textContent = "0:00";
     timerIv = setInterval(function () {
-      var s = Math.floor((Date.now() - start) / 1000);
-      $("[data-timer]").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+      $("[data-timer]").textContent = mmss((Date.now() - start) / 1000);
     }, 500);
   }
 
@@ -182,6 +383,7 @@
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     liveId = null;
     show("ready");
+    refreshCalls();
   }
 
   // For tests and support: how the live call is connected and how much
@@ -202,12 +404,31 @@
   };
 
   root.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-action]");
+    var t = e.target;
+    var tabBtn = t.closest("[data-tab]");
+    if (tabBtn) return openTab(tabBtn.dataset.tab);
+    if (t.closest("[data-avail-btn]")) return availOpen(availMenu.hidden);
+    var mode = t.closest("[data-avail-menu] [data-mode]");
+    if (mode) return setAvailable(mode.dataset.mode);
+    var play = t.closest("[data-play]");
+    if (play) return playPause(play, play.nextElementSibling);
+    if (t.closest("[data-vm-play]")) return vmAudio && playPause($("[data-vm-play]"), vmAudio);
+    var open = t.closest("[data-open]");
+    if (open) {
+      var row = open.closest("[data-voicemail]");
+      if (wide.matches) return openVoicemail(row);
+      var a = row.querySelector("audio");
+      return playPause(a.previousElementSibling, a);
+    }
+    if (t.closest("[data-copy]")) return copyLink(t.closest("[data-copy]"));
+    if (t.closest("[data-install-btn]")) return install();
+    var b = t.closest("[data-action]");
     if (!b) return;
     if (b.dataset.action === "accept") accept();
     else if (b.dataset.action === "decline") {
       if (ringingId) send({ type: "decline", id: ringingId });
       stopRinging();
+      clearNotifications();
       ringingId = null;
       show("ready");
     } else if (b.dataset.action === "hangup") {
@@ -263,7 +484,25 @@
     pushUI("off", "Off. Calls only ring while this page is open.");
   }
 
-  if (box && "serviceWorker" in navigator) {
+  // The Android app rings through Firebase, not web push. MinivoipAndroid
+  // .start() asks the phone for its permissions and Firebase token, then
+  // calls minivoipAndroid(token, ready); ready means calls can fill the
+  // lock screen.
+  var androidToken = "";
+  window.minivoipAndroid = function (token, ready) {
+    androidToken = token;
+    if (!token) return pushUI("none", "Ringing isn't set up on this server yet.");
+    post("/app/push/subscribe", { endpoint: "fcm:" + token }).then(function (r) {
+      if (!r.ok) throw new Error("save");
+      if (ready) pushUI("on", "On. This phone rings like a phone call, even when it's locked.");
+      else pushUI("off", "Almost: allow minivoip to send notifications and show calls on the lock screen.");
+    }).catch(function () { pushUI("off", "Turning on failed. Try again."); });
+  };
+
+  if (box && android) {
+    pushUI("busy", "Checking this phone…");
+    android.start();
+  } else if (box && "serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").then(function (r) {
       reg = r;
       return navigator.serviceWorker.ready;
@@ -275,7 +514,11 @@
   if (box) box.addEventListener("click", function (e) {
     var b = e.target.closest("button");
     if (!b) return;
-    if (b.hasAttribute("data-push-on")) {
+    if (b.hasAttribute("data-push-on") && android) {
+      android.settings();
+    } else if (b.hasAttribute("data-push-off") && android) {
+      post("/app/push/unsubscribe", { endpoint: "fcm:" + androidToken }).then(function () { pushUI("off", "Off on this phone."); });
+    } else if (b.hasAttribute("data-push-on")) {
       Notification.requestPermission().then(function (p) {
         if (p !== "granted") return pushState();
         pushUI("busy", "Turning on…");
@@ -294,10 +537,56 @@
     }
   });
 
+  // ----------------------------------------------------------- call link
+
+  function copyLink(btn) {
+    var text = "https://" + $("[data-call-url]").textContent.trim();
+    var done = function () {
+      btn.textContent = "Copied";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {});
+  }
+
+  // ----------------------------------------------------------- install
+  // Chrome (Android and computers) offers its own install prompt; iPhone
+  // needs Share → Add to Home Screen.
+
+  var installEvt = null;
+  function installState() {
+    var text = $("[data-install-text]"), btn = $("[data-install-btn]");
+    var standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    // On Android, the app (android/) rings like a phone call; the web app can't.
+    var androidWeb = !android && /Android/.test(navigator.userAgent);
+    $("[data-android-get]").hidden = !androidWeb;
+    btn.hidden = !installEvt || androidWeb;
+    if (android) text.textContent = "Installed. You're using the minivoip Android app.";
+    else if (androidWeb) text.textContent = "Get the minivoip Android app: it rings like a phone call, even when your phone is locked.";
+    else if (standalone) text.textContent = "Installed. You're using the minivoip app.";
+    else if (installEvt) text.textContent = "Install the app to open it from your home screen or dock, in its own window.";
+    else if (ios) text.textContent = "In Safari, tap Share, then “Add to Home Screen”.";
+    else text.textContent = "In Chrome, open the browser menu and pick “Install minivoip” (or “Add to Home screen”).";
+  }
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    installEvt = e;
+    installState();
+  });
+  window.addEventListener("appinstalled", function () { installEvt = null; installState(); });
+  function install() {
+    if (!installEvt) return;
+    installEvt.prompt();
+    installEvt.userChoice.finally(function () { installEvt = null; installState(); });
+  }
+  installState();
+
   // Answering here: clear the ringing notifications.
   function clearNotifications() {
+    if (android) android.clearRing();
     if (reg && reg.getNotifications) reg.getNotifications().then(function (l) { l.forEach(function (n) { n.close(); }); });
   }
 
+  newDot();
   connectWs();
 })();

@@ -59,6 +59,9 @@ type Line struct {
 	// so the owner says the choices in it.
 	GreetingAudio string
 	Options       []Option
+	// AwayUntil is when the owner's Available switch turns back on (UTC
+	// "YYYY-MM-DD HH:MM:SS"); "" means available.
+	AwayUntil string
 }
 
 // Menu is the spoken menu: "Press 1 for bookings, press 2 ...".

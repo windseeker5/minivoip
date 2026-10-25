@@ -11,7 +11,7 @@ import (
 
 // sampleCallLine is an example business with one choice of each kind.
 func sampleCallLine() lines.Line {
-	return lines.Line{Name: "auberge", Business: "Auberge des Pins", Owner: "Marie", Greeting: "Hi, you've reached Auberge des Pins.",
+	return lines.Line{Name: "auberge", Business: "Auberge des Pins", Owner: "Marie", Greeting: "Hi, you've reached Auberge des Pins.", Premium: true,
 		Options: []lines.Option{
 			{Key: "1", Label: "Book a room", Action: lines.Ring, Say: "Please hold, I'm getting Marie."},
 			{Key: "2", Label: "Hours and directions", Action: lines.Play, Say: "We're at 12 chemin du Lac in Magog. Check-in from 3 pm."},
@@ -43,6 +43,23 @@ func TestCallRenders(t *testing.T) {
 	menu := page[strings.Index(page, `data-show="menu"`):strings.Index(page, `data-show="ringing connecting"`)]
 	if strings.Contains(menu, `data-action="mute"`) {
 		t.Error("the menu must not show Mute")
+	}
+	for _, want := range []string{`data-action="camera"`, `data-action="board"`, "is-meet"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("a Premium line's call is missing %q", want)
+		}
+	}
+	// Basic: voice only.
+	basic := sampleCallLine()
+	basic.Premium = false
+	page = render(t, Call(basic, 30))
+	for _, not := range []string{`data-action="camera"`, `data-action="screen"`, `data-action="board"`, "is-meet"} {
+		if strings.Contains(page, not) {
+			t.Errorf("a Basic line's call shows %q", not)
+		}
+	}
+	if !strings.Contains(page, `data-action="mute"`) || !strings.Contains(page, `data-action="hangup"`) {
+		t.Error("a Basic call still has Mute and Hang up")
 	}
 }
 

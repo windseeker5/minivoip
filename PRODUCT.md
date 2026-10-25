@@ -36,7 +36,7 @@ It rings the cell phone the owner already has, with the owner's own voice, and n
 - Several phones per line; all ring, first to answer wins.
 - Voicemail after 30 s without answer, with a push notification.
 - Limits to state honestly: no calls from regular phones yet (real number planned later); on iPhone the ring is a notification with sound, not a full-screen ringing call.
-- Pricing: free while in beta. Later two plans, Basic and Premium; the landing page shows $2 and $5 a month as placeholders (`docs/vision.md`). Basic never gets video, whiteboard or AI. Promo codes make a line free forever and can be revoked.
+- Pricing: free while in beta. Later two plans, Basic and Premium; the landing page shows $2 and $5 a month as placeholders (`docs/vision.md`). Basic never gets video, whiteboard or AI. Promo codes make a line free forever on the plan the code gives (Basic or Premium) and can be revoked. Since 2026-10-25 the app enforces the plans: video, screens, the whiteboard and the meeting room are Premium only; new accounts without a code are Basic; Ken switches plans on `/admin/promo`.
 - Page language: English for now; French later.
 - Stack: Go, templ, shadcn-templ components, Tailwind v4, SQLite (see `docs/architecture.md`).
 

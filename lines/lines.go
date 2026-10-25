@@ -62,6 +62,9 @@ type Line struct {
 	// AwayUntil is when the owner's Available switch turns back on (UTC
 	// "YYYY-MM-DD HH:MM:SS"); "" means available.
 	AwayUntil string
+	// Premium: the owner's account is on Premium, so calls offer video,
+	// screen sharing and the whiteboard, and the line has a meeting room.
+	Premium bool
 }
 
 // Menu is the spoken menu: "Press 1 for bookings, press 2 ...".

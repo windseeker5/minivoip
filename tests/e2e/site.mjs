@@ -6,9 +6,11 @@
 //    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
 //    then voicemail (unanswered call and a voicemail choice), listen, delete.
-//    Video through the relay. The meeting room: a guest waits, the app says so,
+//    A new account is Basic (voice only, no meeting room); then Premium:
+//    video through the relay. The meeting room: a guest waits, the app says so,
 //    the owner opens it, a third person, the whiteboard, leaving.
-// 4. Promo codes: admins only; create, sign up with it, used up, revoke.
+// 4. Promo codes and plans: admins only; a Premium code, sign up with it, used
+//    up, revoke, switch an account between Basic and Premium.
 // 5. A stranger can't open the phone app; log out works.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
 //
@@ -276,6 +278,10 @@ try {
   step = "dashboard";
   await owner.goto(BASE + "/dashboard");
   await owner.screenshot({ path: `${SHOTS}/dashboard.png`, fullPage: true });
+  // A new account without a promo code is Basic: no meeting room.
+  check((await owner.textContent("[data-plan]")).includes("Plan: Basic"), "a new account is on Basic");
+  check(await owner.isVisible("[data-room-locked]") && (await owner.locator("#room-link").count()) === 0, "a Basic dashboard says the meeting room comes with Premium");
+  check((await owner.request.get(BASE + `/room/${LINE}`)).status() === 404, "a Basic line has no meeting room page");
   const phoneSize = await newPage(390, 844);
   await phoneSize.context().addCookies(await owner.context().cookies());
   for (const p of ["/", "/dashboard", "/dashboard/menu", "/app", `/call/${LINE}`]) {
@@ -352,6 +358,8 @@ try {
   const direct = await caller.evaluate(() => window.minivoipCallStats());
   check(direct && direct.bytesIn > 1000, `the call connects and the caller hears the phone (${direct && direct.route}, ${direct && direct.bytesIn} bytes)`);
   await caller.screenshot({ path: `${SHOTS}/call.png` });
+  check((await caller.locator('[data-action="camera"], [data-action="board"]').count()) === 0 && (await owner.locator('[data-call-screen] [data-action="camera"]').count()) === 0,
+    "a Basic line's call is voice only: no Camera or Whiteboard on either side");
   await owner.setViewportSize({ width: 390, height: 844 });
   await owner.screenshot({ path: `${SHOTS}/phone-talking.png` });
   await owner.setViewportSize({ width: 1280, height: 900 });
@@ -365,6 +373,17 @@ try {
   check(true, "hanging up reaches the phone");
   await owner.waitForSelector('[data-panel="calls"] .ap-row[data-kind="answered"]', { timeout: 5000 });
   check(/Talk to us/.test(await owner.textContent('[data-panel="calls"] .ap-row[data-kind="answered"]')), "the answered call shows in the call list, with the caller's choice");
+
+  step = "basic room tab";
+  await owner.click('[data-tab="room"]');
+  check(await owner.isVisible("[data-room-locked]") && (await owner.locator("[data-room-open]").count()) === 0, "a Basic app's Room tab says what Premium adds");
+  await owner.click('[data-tab="calls"]');
+
+  // From here the account is Premium (what the admin's "Move to Premium"
+  // does; the admin part below clicks that button for another account).
+  const planDB = new DatabaseSync(DB);
+  planDB.prepare("UPDATE account SET plan = 'premium' WHERE name = ?").run(EMAIL);
+  planDB.close();
 
   step = "relay call";
   // Both sides forced through the relay (TURN) at the public address: the
@@ -488,6 +507,7 @@ try {
   // Meeting room ----------------------------------------------------------
   step = "meeting room links";
   await owner.goto(BASE + "/dashboard");
+  check((await owner.textContent("[data-plan]")).includes("Plan: Premium"), "the dashboard says the account is on Premium");
   check((await owner.inputValue("#room-link")).endsWith(`/room/${LINE}`), "the dashboard shows the meeting room link");
   await owner.goto(BASE + "/app");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
@@ -582,10 +602,12 @@ try {
   step = "create code";
   const CODE = `E2E-${stamp.toUpperCase()}`;
   await owner.fill("#code", CODE.toLowerCase());
+  await owner.selectOption("#plan", "premium");
   await owner.fill("#max_uses", "1");
   await owner.click("main button[type=submit]");
   await owner.waitForSelector(`text=${CODE} is ready`);
   check(await owner.isVisible(`[data-promo="${CODE}"] >> text=0 of 1 used`), "the new code is listed, unused");
+  check(await owner.isVisible(`[data-promo="${CODE}"] [data-plan-badge="premium"]`), "the code says it gives Premium");
   await owner.fill("#code", CODE);
   await owner.click("main button[type=submit]");
   check(await owner.isVisible("text=already exists"), "the same code can't be made twice");
@@ -603,7 +625,8 @@ try {
   await friend.click("form[data-new-line] button[type=submit]");
   await friend.waitForSelector("[data-add-choice]");
   await friend.goto(BASE + "/dashboard");
-  check((await friend.textContent("[data-plan]")).includes(`free forever, with the code ${CODE}`), "a friend who used the code is free forever");
+  check((await friend.textContent("[data-plan]")).includes(`Plan: Premium, free forever with the code ${CODE}`), "a friend who used the code gets its plan, Premium, free forever");
+  check(await friend.isVisible("#room-link"), "the friend's Premium dashboard has a meeting room");
 
   step = "code used up";
   const late = await newPage();
@@ -627,6 +650,18 @@ try {
   await owner.waitForSelector(`[data-promo="${CODE}"] >> text=Revoked`);
   await friend.reload();
   check((await friend.textContent("[data-plan]")).includes("was revoked"), "revoking a code shows on the friend's dashboard");
+
+  step = "switch plan";
+  const row = `[data-account="${FRIEND}"]`;
+  check(await owner.isVisible(`${row} [data-plan-badge="premium"]`) && await owner.isVisible(`${row} >> text=${CODE} (revoked)`), "the Accounts list shows the friend on Premium, with their code");
+  await owner.click(`${row} button[type=submit]`);
+  await owner.waitForSelector(`text=${FRIEND} is on Basic now.`);
+  check(await owner.isVisible(`${row} [data-plan-badge="basic"]`), "Move to Basic switches the friend's plan");
+  await friend.reload();
+  check((await friend.textContent("[data-plan]")).includes("Plan: Basic") && await friend.isVisible("[data-room-locked]"), "the friend's dashboard is Basic now: no meeting room");
+  await owner.click(`${row} button[type=submit]`);
+  await owner.waitForSelector(`text=${FRIEND} is on Premium now.`);
+  check(await owner.isVisible(`${row} [data-plan-badge="premium"]`), "and Move to Premium switches it back");
 
   // 4. Strangers and log out ----------------------------------------------
   step = "stranger";

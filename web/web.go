@@ -90,6 +90,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/promo", s.admin(s.promoPage))
 	mux.Handle("POST /admin/promo", s.admin(s.createPromo))
 	mux.Handle("POST /admin/promo/{code}/revoke", s.admin(s.revokePromo))
+	mux.Handle("POST /admin/accounts/{id}/plan", s.admin(s.setPlan))
 	mux.HandleFunc("GET /prompt/{name}", s.prompt)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))

@@ -82,7 +82,8 @@ type Rooms struct {
 	// OriginPatterns lists the hosts allowed to open a socket besides the
 	// page's own host.
 	OriginPatterns []string
-	// LineExists says whether a line name is real.
+	// LineExists says whether a line name is real and has a meeting room
+	// (main.go: Premium lines only).
 	LineExists func(name string) bool
 	// IsOwner says whether this request (its login) is the line's owner,
 	// who opens the room. Nil makes nobody the owner.

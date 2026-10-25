@@ -77,7 +77,7 @@ B&B and may become a SaaS.
   used by `call.js`, `phone.js` and `room.js`. Every connection opens two video lanes (camera, screen) and a data
   channel up front, so turning a camera on is a track swap, never a new offer; the data channel carries who has what
   on and the whiteboard's lines. Nothing new goes through the server for calls.
-- Meeting rooms: `/room/{line}` (`roomPage` in `web/dashboard.go`, `pages/room.templ`, `assets/js/room.js`,
+- Meeting rooms (Premium lines only): `/room/{line}` (`roomPage` in `web/dashboard.go`, `pages/room.templ`, `assets/js/room.js`,
   `assets/css/room.css`) and their socket `/ws/room` (`calls/room.go`, `Rooms`): guests wait until the line's
   logged-in owner opens the room, then everyone connects to everyone (up to `RoomSize`, 4). The owner's apps get a
   "room" message on the call socket with who waits (the app's alert and Room tab), and phones a "room" push
@@ -110,8 +110,12 @@ B&B and may become a SaaS.
 - Landing page "Call us now" buttons call a real line: `MINIVOIP_CALL_LINE`, default `ken` (Ken's own account);
   hidden if that line doesn't exist. Tests must never press Call on it: it rings Ken's phone.
 - Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
-  `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. The dashboard shows each
-  account's plan (`store.Plan`).
+  `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. Promo codes (each gives a plan) and the
+  Accounts list, where Ken moves an account between Basic and Premium.
+- Plans: `account.plan` is `basic` or `premium` (`store.Plan`, `store.Billing`; sign up takes the promo code's plan,
+  else Basic). `lines.Line.Premium` gates video in calls (`call.templ`, `app.templ` leave out Camera, Screen and
+  Whiteboard on Basic), the meeting room (`roomPage` 404s, `Rooms` gets `store.HasRoom`) and the dashboard's and
+  app's room panels. Basic owners see a "Premium" tag there; visitors never see an upsell.
 - `android/`: the Android app (Kotlin, no Compose; see `android/README.md`): a web view on `/app` (the page finds it
   as `window.MinivoipAndroid` in `phone.js`) plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
   call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,

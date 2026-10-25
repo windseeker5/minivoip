@@ -255,31 +255,33 @@ templ Call(l lines.Line, ringSeconds int) {
 					</div>
 					<div class="cw-stage" data-stage></div>
 					<p class="cw-meet-note" data-meet-note role="status" hidden></p>
-					<div class="cw-round-row is-meet">
+					<div class={ "cw-round-row", templ.KV("is-meet", l.Premium) }>
 						<button type="button" class="cw-round" data-action="mute" aria-pressed="false">
 							<span>
 								@iconMic()
 							</span>
 							<span>Mute</span>
 						</button>
-						<button type="button" class="cw-round" data-action="camera" aria-pressed="false">
-							<span>
-								@iconCamera()
-							</span>
-							<span>Camera</span>
-						</button>
-						<button type="button" class="cw-round" data-action="screen" aria-pressed="false" data-share-btn hidden>
-							<span>
-								@iconScreen()
-							</span>
-							<span>Screen</span>
-						</button>
-						<button type="button" class="cw-round" data-action="board" aria-pressed="false">
-							<span>
-								@iconBoard()
-							</span>
-							<span>Whiteboard</span>
-						</button>
+						if l.Premium {
+							<button type="button" class="cw-round" data-action="camera" aria-pressed="false">
+								<span>
+									@iconCamera()
+								</span>
+								<span>Camera</span>
+							</button>
+							<button type="button" class="cw-round" data-action="screen" aria-pressed="false" data-share-btn hidden>
+								<span>
+									@iconScreen()
+								</span>
+								<span>Screen</span>
+							</button>
+							<button type="button" class="cw-round" data-action="board" aria-pressed="false">
+								<span>
+									@iconBoard()
+								</span>
+								<span>Whiteboard</span>
+							</button>
+						}
 						<button type="button" class="cw-round is-end" data-action="hangup">
 							<span>
 								@iconHangup()

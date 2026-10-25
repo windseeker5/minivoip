@@ -62,6 +62,11 @@ body:has(> .ap), html:has(.ap) { background: #f6f5f1; color-scheme: light; }
 .ap-room-open .ap-btn { height: 46px; padding: 0 20px; text-decoration: none; }
 .ap-room-open svg { width: 18px; height: 18px; }
 .ap-row-sub.ap-wrap { white-space: normal; }
+/* Basic accounts: the Room tab says what Premium adds */
+.ap-locked { display: grid; gap: 8px; margin-top: 4px; }
+.ap-locked-tag { justify-self: start; padding: 3px 10px; border-radius: 999px; background: var(--ap-ink); color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.ap-locked-text { font-weight: 500; text-wrap: pretty; }
+.ap-locked-sub { color: var(--ap-muted); font-size: 13px; }
 
 /* ------------------------------------------------------------ tabs */
 

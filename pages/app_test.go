@@ -23,7 +23,7 @@ func sampleApp() AppData {
 	}
 	v1, v2, v3 := vm(3, 20*time.Minute, 42000, false, "Book a room"), vm(2, 26*time.Hour, 19000, true, ""), vm(1, 30*time.Hour, 8000, true, "Leave a message")
 	return AppData{
-		Line: lines.Line{Name: "joesbnb", Business: "Joe's B&B", Greeting: "Hi, you've reached Joe's B&B.", Options: []lines.Option{
+		Line: lines.Line{Name: "joesbnb", Business: "Joe's B&B", Greeting: "Hi, you've reached Joe's B&B.", Premium: true, Options: []lines.Option{
 			{Key: "1", Label: "Book a room", Action: lines.Ring},
 			{Key: "2", Label: "Opening hours", Action: lines.Play},
 			{Key: "3", Label: "Our website", Action: lines.Link, URL: "https://joesbnb.ca"},
@@ -81,6 +81,17 @@ func TestAppRenders(t *testing.T) {
 	if got := render(t, Phone(d)); !strings.Contains(got, "Ana and 2 others are waiting in your meeting room") {
 		t.Error("the app doesn't say who waits in the meeting room")
 	}
+	// Basic: no video tools in calls; the Room tab says what Premium adds.
+	d.Line.Premium = false
+	basic := render(t, Phone(d))
+	for _, not := range []string{`data-action="camera"`, `data-action="board"`, `data-room-open`, `data-room-url`, `data-room-alert`, "/room/"} {
+		if strings.Contains(basic, not) {
+			t.Errorf("a Basic app shows %q", not)
+		}
+	}
+	if !strings.Contains(basic, `data-room-locked`) || !strings.Contains(basic, "You're on Basic") {
+		t.Error("a Basic app's Room tab should say what Premium adds")
+	}
 }
 
 // With MINIVOIP_PREVIEW=<dir>, writes the app and its fragments there for a
@@ -93,9 +104,12 @@ func TestAppPreview(t *testing.T) {
 	d := sampleApp()
 	empty := d
 	empty.History, empty.Voicemails = nil, nil
+	basic := d
+	basic.Line.Premium = false
 	files := map[string]templ.Component{
 		"app.html":         Phone(d),
 		"app-empty.html":   Phone(empty),
+		"app-basic.html":   Phone(basic),
 		"calls.html":       AppCalls(d.History),
 		"voicemails.html":  AppVoicemails(d.Voicemails),
 		"avail-on.html":    Availability(""),

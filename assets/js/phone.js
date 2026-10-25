@@ -371,7 +371,8 @@
     pressed("board", m.boardOpen);
   }
   function pressed(action, on) {
-    $('[data-action="' + action + '"]').setAttribute("aria-pressed", String(on));
+    var b = $('[data-action="' + action + '"]');
+    if (b) b.setAttribute("aria-pressed", String(on));
   }
   function meetNote(t) {
     var n = $("[data-meet-note]");
@@ -469,8 +470,9 @@
       meet.board();
     }
   });
-  // Showing a screen needs a computer.
-  if (window.MinivoipMeet && MinivoipMeet.canShare) $("[data-share-btn]").hidden = false;
+  // Showing a screen needs a computer (and a Premium line: Basic has no button).
+  var shareBtn = $("[data-share-btn]");
+  if (shareBtn && window.MinivoipMeet && MinivoipMeet.canShare) shareBtn.hidden = false;
 
   // ----------------------------------------------------------- push
   // Push notifications wake the phone when this page is closed or asleep.
@@ -574,6 +576,7 @@
   // Join link; pages/app.templ waitingText says the same.
   function roomWaiting(names) {
     var alert = $("[data-room-alert]"), t = "";
+    if (!alert) return; // Basic: no meeting room
     if (names.length === 1) t = names[0] + " is waiting in your meeting room";
     else if (names.length === 2) t = names[0] + " and " + names[1] + " are waiting in your meeting room";
     else if (names.length > 2) t = names[0] + " and " + (names.length - 1) + " others are waiting in your meeting room";

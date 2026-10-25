@@ -47,7 +47,7 @@ func main() {
 
 	// The relay carries the voice when phones can't connect directly.
 	// Meeting rooms (see calls/room.go); a guest waiting wakes the owner.
-	rooms := calls.NewRooms(db.LineExists)
+	rooms := calls.NewRooms(db.HasRoom) // Premium lines only
 	rooms.OriginPatterns = hub.OriginPatterns
 	rooms.OnKnock = sender.RoomKnock
 

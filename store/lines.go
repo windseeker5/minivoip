@@ -57,11 +57,19 @@ func (s *Store) LineExists(name string) bool {
 	return n > 0
 }
 
+// HasRoom says whether a line has a meeting room: its account is Premium.
+func (s *Store) HasRoom(name string) bool {
+	var n int
+	s.db.QueryRow("SELECT count(*) FROM line l JOIN account a ON a.id = l.account_id WHERE l.name = ? AND a.plan = 'premium'", name).Scan(&n)
+	return n > 0
+}
+
 func (s *Store) line(where string, arg any) (lines.Line, error) {
 	var l lines.Line
 	var id int64
-	err := s.db.QueryRow("SELECT id, name, business, owner_name, greeting, greeting_audio, away_until FROM line WHERE "+where, arg).
-		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio, &l.AwayUntil)
+	err := s.db.QueryRow(`SELECT id, name, business, owner_name, greeting, greeting_audio, away_until,
+		(SELECT plan FROM account WHERE account.id = line.account_id) = 'premium' FROM line WHERE `+where, arg).
+		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio, &l.AwayUntil, &l.Premium)
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, ErrNotFound
 	}

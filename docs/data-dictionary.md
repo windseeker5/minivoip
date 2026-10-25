@@ -1,6 +1,6 @@
 # Data dictionary
 
-Last update: 2026-10-21 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
+Last update: 2026-10-25 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
 
 ## account
 One customer (a business). Created at sign up.
@@ -10,6 +10,7 @@ One customer (a business). Created at sign up.
 | `id` | integer, key | |
 | `name` | text | For now the sign-up email; a business name later |
 | `promo_code` | text, nullable → `promo_code.code` | The code used at sign up. Set = free forever (while the code isn't revoked) |
+| `plan` | text: `basic` or `premium` | What the account gets. Basic: calls, voice menu, voicemail. Premium adds video, screen sharing, the whiteboard and the meeting room (`store.Plan`). From the promo code at sign up, else `basic`; admins switch it on `/admin/promo` |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 
 ## user
@@ -64,7 +65,7 @@ One choice in a line's voice menu.
 | `say_audio` | text | The owner's recording of `say` (file under `prompts/`), or empty |
 
 ## promo_code
-Codes that make a line free forever. Admins manage them at `/admin/promo` (create, see who used them, revoke or restore). Revoking also ends "free forever" for the accounts that used the code.
+Codes that make a line free forever, on a plan. Admins manage them at `/admin/promo` (create, see who used them, revoke or restore). Revoking also ends "free forever" for the accounts that used the code; it doesn't change their plan.
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -74,6 +75,7 @@ Codes that make a line free forever. Admins manage them at `/admin/promo` (creat
 | `max_uses` | integer | 0 = unlimited |
 | `times_used` | integer | Raised by one at each sign up that uses it |
 | `revoked` | integer 0/1 | 1 = no longer accepted |
+| `plan` | text: `basic` or `premium` | The plan accounts signing up with it get |
 | `created_at` | text (UTC) | |
 
 ## voicemail
@@ -154,3 +156,4 @@ Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, mad
 | 3 | 2026-10-21 | `line.greeting_audio`, `menu_option.say_audio` (recorded prompts in `<data dir>/prompts/`, public at `/prompt/<name>`, random names; saving the menu deletes recordings it no longer uses) |
 | 6 | 2026-10-22 | `push_log` (delivery receipts) |
 | 7 | 2026-10-24 | `call_log` (call history), `voicemail.call_id`, `line.away_until` (Available switch) |
+| 8 | 2026-10-25 | `account.plan`, `promo_code.plan` (Basic or Premium); admins' accounts start on Premium |

@@ -423,11 +423,13 @@ templ Phone(d AppData) {
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
 		<div class="ap" data-phone data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) }>
 			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
-			<a class="ap-room-alert" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-alert hidden={ len(d.RoomWaiting) == 0 } role="status">
-				<i class="ap-dot" aria-hidden="true"></i>
-				<span data-room-who>{ waitingText(d.RoomWaiting) }</span>
-				<b>Join</b>
-			</a>
+			if d.Line.Premium {
+				<a class="ap-room-alert" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-alert hidden={ len(d.RoomWaiting) == 0 } role="status">
+					<i class="ap-dot" aria-hidden="true"></i>
+					<span data-room-who>{ waitingText(d.RoomWaiting) }</span>
+					<b>Join</b>
+				</a>
+			}
 			<img class="ap-logo" src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="110" height="20"/>
 			<div class="ap-avail">
 				<button type="button" class="ap-avail-btn" data-avail-btn aria-haspopup="true" aria-expanded="false" aria-label="Change whether calls ring">
@@ -505,23 +507,31 @@ templ Phone(d AppData) {
 						<h1>Meeting room</h1>
 						<p>Video meetings with your customers, in the browser.</p>
 					</header>
-					<h2 class="ap-day">Your room link</h2>
-					<div class="ap-card ap-link">
-						<span class="ap-link-url" data-room-url>{ d.RoomURL }</span>
-						<button type="button" class="ap-btn" data-copy-room>Copy</button>
-					</div>
-					<div class="ap-actions ap-room-open">
-						<a class="ap-btn is-ink" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-open>
-							@icCamera()
-							Open the room
-						</a>
-					</div>
-					<h2 class="ap-day">How it works</h2>
-					<ul class="ap-group ap-steps">
-						<li class="ap-row"><span class="ap-key">1</span><span class="ap-row-main"><span class="ap-row-title">Send the link</span><span class="ap-row-sub ap-wrap">By email or text. People join from their browser, nothing to install.</span></span></li>
-						<li class="ap-row"><span class="ap-key">2</span><span class="ap-row-main"><span class="ap-row-title">They wait for you</span><span class="ap-row-sub ap-wrap">This app tells you when someone is waiting.</span></span></li>
-						<li class="ap-row"><span class="ap-key">3</span><span class="ap-row-main"><span class="ap-row-title">Open the room</span><span class="ap-row-sub ap-wrap">Talk, turn cameras on, show your screen, draw on the whiteboard. Up to 4 people.</span></span></li>
-					</ul>
+					if d.Line.Premium {
+						<h2 class="ap-day">Your room link</h2>
+						<div class="ap-card ap-link">
+							<span class="ap-link-url" data-room-url>{ d.RoomURL }</span>
+							<button type="button" class="ap-btn" data-copy-room>Copy</button>
+						</div>
+						<div class="ap-actions ap-room-open">
+							<a class="ap-btn is-ink" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-open>
+								@icCamera()
+								Open the room
+							</a>
+						</div>
+						<h2 class="ap-day">How it works</h2>
+						<ul class="ap-group ap-steps">
+							<li class="ap-row"><span class="ap-key">1</span><span class="ap-row-main"><span class="ap-row-title">Send the link</span><span class="ap-row-sub ap-wrap">By email or text. People join from their browser, nothing to install.</span></span></li>
+							<li class="ap-row"><span class="ap-key">2</span><span class="ap-row-main"><span class="ap-row-title">They wait for you</span><span class="ap-row-sub ap-wrap">This app tells you when someone is waiting.</span></span></li>
+							<li class="ap-row"><span class="ap-key">3</span><span class="ap-row-main"><span class="ap-row-title">Open the room</span><span class="ap-row-sub ap-wrap">Talk, turn cameras on, show your screen, draw on the whiteboard. Up to 4 people.</span></span></li>
+						</ul>
+					} else {
+						<div class="ap-card ap-locked" data-room-locked>
+							<p class="ap-locked-tag">Premium</p>
+							<p class="ap-locked-text">Your own room for video meetings, plus a camera, screen sharing and a whiteboard in your calls. Up to 4 people, nothing to install.</p>
+							<p class="ap-locked-sub">You're on Basic. Premium opens after the beta.</p>
+						</div>
+					}
 				</section>
 				<section class="ap-panel" id="panel-me" role="tabpanel" data-panel="me" hidden>
 					<header class="ap-head">
@@ -609,18 +619,20 @@ templ Phone(d AppData) {
 							@icMic()
 							<span>Mute</span>
 						</button>
-						<button type="button" class="ap-btn ap-tool" data-action="camera" aria-pressed="false">
-							@icCamera()
-							<span>Camera</span>
-						</button>
-						<button type="button" class="ap-btn ap-tool" data-action="screen" aria-pressed="false" data-share-btn hidden>
-							@icScreen()
-							<span>Screen</span>
-						</button>
-						<button type="button" class="ap-btn ap-tool" data-action="board" aria-pressed="false">
-							@icBoard()
-							<span>Whiteboard</span>
-						</button>
+						if d.Line.Premium {
+							<button type="button" class="ap-btn ap-tool" data-action="camera" aria-pressed="false">
+								@icCamera()
+								<span>Camera</span>
+							</button>
+							<button type="button" class="ap-btn ap-tool" data-action="screen" aria-pressed="false" data-share-btn hidden>
+								@icScreen()
+								<span>Screen</span>
+							</button>
+							<button type="button" class="ap-btn ap-tool" data-action="board" aria-pressed="false">
+								@icBoard()
+								<span>Whiteboard</span>
+							</button>
+						}
 						<button type="button" class="ap-hangup" data-action="hangup">
 							@icHangup()
 							<span>Hang up</span>

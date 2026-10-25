@@ -41,7 +41,7 @@ const server = createServer((req, res) => {
   req.on("end", () => {
     const send = (code, type, data) => { res.writeHead(code, { "Content-Type": type }); res.end(data); };
     const pre = (f) => send(200, "text/html", readFileSync(join(PRE, f)));
-    if (u.pathname === "/app") return pre(u.searchParams.has("empty") ? "app-empty.html" : "app.html");
+    if (u.pathname === "/app") return pre(u.searchParams.has("empty") ? "app-empty.html" : u.searchParams.has("basic") ? "app-basic.html" : "app.html");
     if (u.pathname === "/app/calls") return pre("calls.html");
     if (u.pathname === "/login") return pre("login.html");
     if (u.pathname === "/app/voicemails") return pre("voicemails.html");
@@ -240,6 +240,18 @@ for (const [w, h, name] of [[390, 844, "phone"], [1280, 800, "desk"]]) {
 }
 
 for (const e of errors) failures.push("browser error: " + e);
+// --- Basic plan: no video tools, the Room tab says what Premium adds ------
+{
+  const { page } = await open(390, 844, "/app?basic");
+  await page.click('[data-tab="room"]');
+  check(await page.isVisible("[data-room-locked]") && await page.locator("[data-room-open]").count() === 0, "basic: the Room tab says the meeting room comes with Premium");
+  check(await page.locator('[data-call-screen] [data-action="camera"], [data-call-screen] [data-action="board"]').count() === 0, "basic: calls have no Camera or Whiteboard");
+  check(await overflow(page) <= 0, "basic: no sideways scroll");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${SHOTS}/app-phone-room-basic.png` });
+  await page.context().close();
+}
+
 console.log(failures.length ? `\n${failures.length} problem(s):\n- ${failures.join("\n- ")}` : "\nAll good.");
 await browser.close();
 server.close();

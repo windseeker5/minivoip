@@ -15,8 +15,9 @@
   var MAX_MESSAGE_MS = 120000;
   var waveBars = $$("[data-wave] i"), liveBars = $$("[data-live] i"), recBars = $$("[data-rec-wave] i");
 
-  // Showing a screen needs a computer.
-  if (window.MinivoipMeet && MinivoipMeet.canShare) $("[data-share-btn]").hidden = false;
+  // Showing a screen needs a computer (and a Premium line: Basic has no button).
+  var shareBtn = $("[data-share-btn]");
+  if (shareBtn && window.MinivoipMeet && MinivoipMeet.canShare) shareBtn.hidden = false;
 
   // "Back to the website" returns to the page that sent the visitor here.
   if (document.referrer) {

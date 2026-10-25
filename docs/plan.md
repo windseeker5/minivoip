@@ -12,8 +12,11 @@ Last update: 2026-10-25 · Design: [architecture.md](architecture.md) · Goal: [
   the business's website instead of a new tab, then the business's own colour and logo.
 - **Premium, first pieces** (2026-10-25): in a call, both sides can turn on their camera, show their screen (on a
   computer) and draw on a shared whiteboard. Each line has a meeting room, `/room/<line>`, for up to 4 people;
-  guests wait until the owner opens it, and the owner's app says who is waiting. Not yet: limiting them to the
-  Premium plan, recording and meeting notes, the AI front desk.
+  guests wait until the owner opens it, and the owner's app says who is waiting. Not yet: recording and meeting
+  notes, the AI front desk.
+- **Plans** (2026-10-25, branch `plans`): every account is Basic or Premium. Video, screens, the whiteboard and the
+  meeting room are Premium only. A promo code gives the plan Ken picks; his admin page switches any account. No
+  payments yet: everyone is free in the beta.
 - **Next, most important first:**
   1. **Security:** anyone who knows a call link can call, robots too.
   2. Container and home server (Phase 6).

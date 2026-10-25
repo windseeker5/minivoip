@@ -69,6 +69,69 @@ func TestPromoCodes(t *testing.T) {
 	}
 }
 
+func TestPlans(t *testing.T) {
+	s := open(t)
+	u, err := s.CreateAccount("basic@example.com", "password1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateLine(u.AccountID, "shop", "The Shop"); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := s.Billing(u.AccountID); b.Plan != Basic {
+		t.Fatalf("a new account without a code is Basic, got %q", b.Plan)
+	}
+	if l, _ := s.LineByName("shop"); l.Premium || s.HasRoom("shop") {
+		t.Fatal("a Basic line has no video and no meeting room")
+	}
+	if err := s.SetPlan(u.AccountID, Premium); err != nil {
+		t.Fatal(err)
+	}
+	if l, _ := s.LineByName("shop"); !l.Premium || !s.HasRoom("shop") {
+		t.Fatal("a Premium line has video and a meeting room")
+	}
+	if s.HasRoom("nope") {
+		t.Fatal("no room for a line that doesn't exist")
+	}
+	if err := s.SetPlan(u.AccountID, "gold"); err == nil {
+		t.Fatal("unknown plan accepted")
+	}
+	if err := s.SetPlan(999, Basic); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown account: %v", err)
+	}
+	list, err := s.Accounts()
+	if err != nil || len(list) != 1 || list[0].Plan != Premium || list[0].Line != "shop" || list[0].Emails[0] != "basic@example.com" {
+		t.Fatalf("accounts: %+v %v", list, err)
+	}
+}
+
+// An admin's account becomes Premium when the plans migration runs.
+func TestPlansMigration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin, _ := s.CreateAccount("admin@example.com", "password1", "")
+	other, _ := s.CreateAccount("other@example.com", "password1", "")
+	s.SetAdmin(admin.ID, true)
+	s.db.Exec("UPDATE account SET plan = 'basic'")
+	s.db.Exec("PRAGMA user_version = 7")
+	s.db.Exec("ALTER TABLE account DROP COLUMN plan")
+	s.db.Exec("ALTER TABLE promo_code DROP COLUMN plan")
+	s.Close()
+	if s, err = Open(path); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if b, _ := s.Billing(admin.AccountID); b.Plan != Premium {
+		t.Errorf("admin's account: %q", b.Plan)
+	}
+	if b, _ := s.Billing(other.AccountID); b.Plan != Basic {
+		t.Errorf("other account: %q", b.Plan)
+	}
+}
+
 func TestLineAndMenu(t *testing.T) {
 	s := open(t)
 	u, _ := s.CreateAccount("joe@example.com", "password1", "")
@@ -144,13 +207,13 @@ func TestPromoAdmin(t *testing.T) {
 	if err := CheckPromoCode("family"); err == nil {
 		t.Fatal("codes are capitals")
 	}
-	if err := s.CreatePromoCode("FAMILY", 2, "", ""); err != nil {
+	if err := s.CreatePromoCode("FAMILY", Premium, 2, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreatePromoCode("FAMILY", 0, "", ""); !errors.Is(err, ErrPromoExists) {
+	if err := s.CreatePromoCode("FAMILY", Basic, 0, "", ""); !errors.Is(err, ErrPromoExists) {
 		t.Fatalf("duplicate: %v", err)
 	}
-	s.CreatePromoCode("LATER", 0, "2999-01-01", "")
+	s.CreatePromoCode("LATER", Basic, 0, "2999-01-01", "")
 	if _, err := s.CreateAccount("b@example.com", "password1", "LATER"); !errors.Is(err, ErrBadPromo) {
 		t.Fatalf("a code that isn't valid yet: %v", err)
 	}
@@ -158,8 +221,8 @@ func TestPromoAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code, revoked, _ := s.Plan(u.AccountID); code != "FAMILY" || revoked {
-		t.Fatalf("plan: %s %v", code, revoked)
+	if b, _ := s.Billing(u.AccountID); b.Code != "FAMILY" || b.Revoked || b.Plan != Premium {
+		t.Fatalf("billing: %+v", b)
 	}
 	list, _ := s.PromoCodes()
 	var fam PromoCode
@@ -174,7 +237,7 @@ func TestPromoAdmin(t *testing.T) {
 	if err := s.SetPromoRevoked("FAMILY", true); err != nil {
 		t.Fatal(err)
 	}
-	if _, revoked, _ := s.Plan(u.AccountID); !revoked {
+	if b, _ := s.Billing(u.AccountID); !b.Revoked {
 		t.Fatal("revoking shows on the account's plan")
 	}
 	if _, err := s.CreateAccount("c@example.com", "password1", "FAMILY"); !errors.Is(err, ErrBadPromo) {

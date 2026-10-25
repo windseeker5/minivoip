@@ -223,10 +223,10 @@ func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // roomPage is a line's meeting room. Its owner opens it; guests wait until
-// then (calls/room.go).
+// then (calls/room.go). Only Premium lines have one.
 func (s *Server) roomPage(w http.ResponseWriter, r *http.Request) {
 	l, err := s.Store.LineByName(r.PathValue("line"))
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, store.ErrNotFound) || err == nil && !l.Premium {
 		http.NotFound(w, r)
 		return
 	}

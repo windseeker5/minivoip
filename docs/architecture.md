@@ -198,7 +198,7 @@ Exact columns: [data-dictionary.md](data-dictionary.md). Built so far: `account`
 | `menu_option` | One menu choice: key, name, action, message, web address (one level for now; sub-menus later) |
 | `voicemail` | Caller, time, length, audio file, listened yes/no |
 | `call_log` | Time, line, answered/missed/voicemail, length |
-| `promo_code` | Code, valid from/to, max uses, times used, revoked yes/no. A valid code makes a line free forever. Created and revoked by Ken on an admin page. |
+| `promo_code` | Code, plan it gives (Basic or Premium), valid from/to, max uses, times used, revoked yes/no. A valid code makes a line free forever. Created and revoked by Ken on an admin page, where he also switches any account between Basic and Premium (`account.plan`). |
 | `session` | A login (cookie token, expiry) |
 | *later:* `sip_login` | Username and password for a desk phone or SIP app (step 2) |
 | *later:* `phone_number` | A real number from the SIP provider, pointing to a line (step 3) |

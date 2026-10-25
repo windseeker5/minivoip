@@ -126,6 +126,9 @@ white, Funnel, ink, red only for Leave), not a new look.
   link while alone, the stage, then Mute, Camera, Screen, Whiteboard and a red Leave.
 - **The owner's app:** a Room tab (the link, Copy, "Open the room", three steps) and, when a guest waits, a dark pill
   on top of every tab, "Ana is waiting in your meeting room · Join".
+- **Basic accounts** (2026-10-25): no room and no Camera, Screen or Whiteboard in calls, on either side (the visitor
+  never sees an upsell). The owner's Room tab and the dashboard's Meeting room panel show a small ink "Premium" tag
+  and one line on what it adds, "You're on Basic. Premium opens after the beta."
 
 ## Motion
 

@@ -6,8 +6,8 @@ First built on the landing page (`pages/home.templ`) on 2026-10-21; the other sc
 ## Direction
 
 Clean, lean and modern, at the craft level of top product sites (Quo, Aircall, Linear). The product explains
-itself: the hero is a working diagram of one call, from the website's Call button to the owner's cell. No themed
-metaphors (answering machines, key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
+itself: the landing hero shows a real minivoip call with a shared screen. No themed metaphors (answering machines,
+key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
 
 ## Tokens
 
@@ -19,18 +19,26 @@ metaphors (answering machines, key tags, lanterns) and no objects drawn as decor
   - the logo's bar colours (orange #f3840f to blue #143495) for the live call path and played voice waves only;
   - orange #f46422 for the caller's chosen option;
   - green for Answer and check marks, red for Decline, recording and hang up.
-- **Shape:** cards 14px radius with a 1px hairline ring and a soft offset shadow (`.flow-node`); buttons 10 to
-  12px radius; pills only for small controls. One elevation per element (ring + shadow, never border + shadow).
+- **Shape:** cards 14 to 20px radius with a 1px hairline ring (`shadow-[0_0_0_1px_var(--border)]`), a soft
+  offset shadow only on the hero picture; buttons 10 to 12px radius (pills on the landing page). One elevation per element (ring + shadow, never border + shadow).
 - **Layout:** `max-w-6xl` content, `px-4` gutter. Lists use hairline rows (`border-t`), not grids of icon cards.
 
-## Components (landing page)
+## Landing page (chosen 2026-10-24: option B "The call grows")
 
-- **Call diagram** (`callFlow`, `.flow-*` in globals.css, `landing.js`): dotted canvas, four steps (site, greeting,
-  choices, phone) joined by SVG wires drawn from the nodes' positions; the wires on the call's path light up in
-  the logo colours. On phones the steps stack and short gradient wires join them. It is also the demo: pressing
-  Call us walks the states idle → greeting → menu → book / hours / ringing → voicemail → recording → sent.
-- **Phone** (`joesPhone`, `setupPhone`, `.lp-phone`): an Android-style frame (the iPhone rings with a notification
-  instead, so never show an iPhone ringing full screen). Size it with `zoom`.
+Ken picked B from three options (canvas https://claude.ai/artifact/KZH1jv7iRV2u99cKPYKvya; he hesitated with C, a
+dark stage). Built in `pages/home.templ`; the words are in `docs/landing-copy.md`.
+
+- **Look:** warm light like the owner app (ground #f6f5f1, white cards, ink #1a1a17, muted #6b6a64); in dark mode
+  a near-black stage (#0b0b0d, cards #141418). The `.lp` wrapper in `globals.css` sets the shadcn tokens for the
+  page, so the components follow. Inverted ink blocks (the "They see" card, the Premium card, the footer band)
+  mark Premium and the last call to action.
+- **Hero:** headline left, a picture of a Premium call on the right (`callWindow`: screen shared, small video
+  tile, controls), with a caption saying it's coming soon. Nothing in it is a control.
+- **The call grows** (`callGrows`, `stages`): three cards, They ask / They talk / They see, each with a small
+  piece of the real screens (`stageSnippet`) and the plan that has it.
+- **Plans** (`plans`, `planCard`), the maker's quote (`maker`), three steps, four questions, then the ink footer
+  band with the last call to action.
+- **"Call us now"** calls minivoip's own line (Ken's), in the hero and the footer band. The Joe's B&B demo is gone.
 - **Voice wave** (`waveform` + `pages/wave.go`): bars drawn server-side from a seed; played bars take the logo
   colours, the rest the border colour.
 
@@ -56,5 +64,5 @@ https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app
 
 ## Motion
 
-One authored moment: the demo call. Fades in each state, animates the wave while a voice speaks and pulses the
-Answer button while ringing. All of it stops under `prefers-reduced-motion`.
+The landing page is still (2026-10-24, option B). Smooth scrolling to the sections, off under
+`prefers-reduced-motion`.

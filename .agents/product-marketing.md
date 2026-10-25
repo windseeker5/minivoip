@@ -1,19 +1,19 @@
 # Product Marketing Context
 
-**Document version:** v5
-**Last updated:** 2026-10-21
+**Document version:** v6
+**Last updated:** 2026-10-24
 
 Draft from `docs/architecture.md`, `docs/research.md` and Ken's own words. Items marked **OPEN** still need Ken's answer.
 
 ## Product Overview
-**One-liner:** A virtual receptionist for your website: it answers every call in your voice, sends it to the right person, page or voicemail, and rings the cell phone you already have. No phone line needed.
+**One-liner (elevator sentence, agreed 2026-10-24):** minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install.
 **What it does:** A visitor clicks "Call us" on your website (or a call link or QR code). They hear your recorded menu ("press 1 for bookings…"), then your phone rings through a small app installed from the browser. If you don't answer, they leave a voicemail and you get a notification.
 **Product category:** Website call button / virtual business line (people search for "business phone line for small business", "call button for website", "business voicemail without a phone line").
 **Product type:** Hosted web service (small SaaS), self-hosted on Ken's server.
-**Business model:** Free while in beta. Later: $3/month per line, billed yearly ($30/year), no per-minute charges (calls go directly between the two devices, so they cost almost nothing to carry). Promo codes make a line free forever (Ken gives them to family and friends and can revoke them). For now the landing page is a test; pricing is there so the project looks complete.
+**Business model:** Free while in beta. Later two plans (amounts are placeholders): **Basic** about $2/month ("Your website answers the phone for you": button, voice menu, rings your devices, voicemail; never video, whiteboard or AI) and **Premium** about $5/month ("From a question to a live demo, in one click": plus AI front desk from your FAQ, video, screen sharing, whiteboard, team room; coming soon). No per-minute charges (calls go directly between the two devices, so they cost almost nothing to carry). Promo codes make a line free forever (Ken gives them to family and friends and can revoke them). For now the landing page is a test; pricing is there so the project looks complete.
 
 ## Target Audience
-**Target companies:** One-person or very small businesses: freelancers and contractors (like Ken after retiring from TELUS), B&Bs and small lodgings, trades, small shops, local services. Mostly Quebec and Canada at first.
+**Target companies:** Premium: solo founders and small teams who sell by showing (Ken with minipass is customer number one). Basic: one-person or very small businesses: freelancers and contractors (like Ken after retiring from TELUS), B&Bs and small lodgings, trades, small shops, local services. Mostly Quebec and Canada at first.
 **Decision-makers:** The owner, who is also the person who answers the phone.
 **Primary use case:** Look like a real business on the phone (menu, voicemail, a "Call us" button) without paying for a second line or giving out a personal cell number.
 **Jobs to be done:**
@@ -76,7 +76,7 @@ Not B2B; one buyer who is also the user (the owner).
 **How they describe us:** None yet; gather from the first family-and-friends users.
 **Page language:** English for now (French later).
 **Core frame:** the virtual receptionist (Ken, 2026-10-21): owners understand "a receptionist that answers and sends calls to the right person or online process", not IVR/PBX/VoIP.
-**Roadmap to mention:** AI receptionist, always labelled "Coming soon" until built.
+**Roadmap to mention:** everything in Premium (AI front desk, video, screen sharing, whiteboard, team room), always labelled "Coming soon" until built.
 **Words to use:** receptionist, answers, sends the call, the right person, the right page, call button, your phone, your voice, voicemail, no phone line, link, QR code.
 **Words to avoid:** VoIP, WebRTC, SIP, PBX, IVR, TURN, codec, "platform" (jargon that loses the audience).
 **Glossary:**
@@ -122,10 +122,12 @@ Not B2B; one buyer who is also the user (the owner).
 *Decisions and tested lessons. Newest first. Keep it to about 20 active entries.*
 | Date | Learning | Evidence | Applies to | Status |
 |------|----------|----------|------------|--------|
+| 2026-10-24 | "Virtual receptionist" alone isn't the killer feature; the gap between "I'm interested" and "I'm talking to a real person" is. Basic shortens it, Premium removes it (live demo in one click). | Brainstorm with Ken; he picked the demo pain over team meetings | Landing page, all copy | active |
 | 2026-10-21 | Explain in plain words what happens on whose phone; telecom jargon loses people. | Ken got lost in jargon during the proof of concept | All copy | active |
 
 ## Changelog
 *Newest first. One line per revision: what changed and why.*
+- v6 (2026-10-24) — New elevator sentence; two plans Basic and Premium with their pains; Premium audience is solo founders who sell by showing; landing page rebuilt (look B).
 - v5 (2026-10-21) — Repositioned around the virtual receptionist (Ken's words); features rewritten as receptionist tasks; AI receptionist added as "Coming soon".
 - v4 (2026-10-21) — Name is always lowercase: minivoip (like minipass, minicrm).
 - v3 (2026-10-21) — Pricing set: free in beta, then $3/month billed yearly; promo codes = free forever, revocable.

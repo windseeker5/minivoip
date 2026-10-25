@@ -8,11 +8,13 @@ Last update: 2026-10-24 · Design: [architecture.md](architecture.md) · Goal: [
 - **Owner's app** (look C): call history, voicemails, Available / Pause / Off, menu editor. On a computer it rings
   and fills the window; on Android the minivoip app rings like a real phone call, even locked (Ken's Pixel 9).
 - **Next, most important first:**
-  1. **iPhone app** that rings (same idea as Android: Apple's call screen; $99 USD a year Apple account, built on a
-     rented Mac; the family's iPhones to test).
-  2. **Security:** anyone who knows a call link can call, robots too.
-  3. **Landing page:** the demo phone isn't good looking (Ken).
-  4. Container and home server (Phase 6).
+  1. **Security:** anyone who knows a call link can call, robots too.
+  2. Container and home server (Phase 6).
+  3. **iPhone app** that rings, last (Ken, 2026-10-24): until then iPhone owners use the web app with a short
+     warning. Same idea as Android: Apple's call screen; $99 USD a year Apple account, built on a rented Mac; the
+     family's iPhones to test.
+- **Landing page** (2026-10-24, branch `landing-b`): reworked around the new pitch and two plans, Basic and
+  Premium (look B, `DESIGN.md` "Landing page"). The Joe's B&B demo is gone; "Call us now" reaches Ken for a demo.
 
 The rule: **build it locally with auto-reload first, like Flask debug mode. The container comes last.**
 

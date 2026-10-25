@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy, all on `main` (PR #1, 2026-10-24). Calls work end to end; the owner's app (look C) rings on the computer, and the Android app (`android/`, Firebase, project `minivoip-push-kd`, files in `data/firebase/`) rings like a real call on Ken's locked Pixel 9. Plan and progress: `docs/plan.md` "Where we are".
-- Next action: Ken picks the next piece (recommended: iPhone app that rings; then security of call links; then the landing page demo phone). Work on a branch, ship with a PR when Ken says "ship it" (CLAUDE.md rule 3). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-24. Look C owner app, call history, Available switch, Android app with native ring, landing page links the Android app, vision and plan updated (native shells around the same pages). Shipped as PR #1. Android app installs over USB (`adb install -r data/android/minivoip.apk`) or from `/download/minivoip.apk`.
+- Status: healthy. `main` has calls end to end, the owner's app (look C) and the Android app that rings. Branch `landing-b` (not pushed) has the new landing page: look B "The call grows", the agreed pitch, two plans Basic and Premium, the Joe's B&B demo removed and "Call us now" on minivoip's own line. Plan and progress: `docs/plan.md` "Where we are".
+- Next action: Ken looks at the new landing page and says "ship it" for `landing-b` (CLAUDE.md rule 3), and records his line's menu for demos (1 Book a demo, rings Ken; 2 How it works and prices, opens the Plans section; 0 Leave a message). Then the next piece: security of call links (the iPhone app is now last). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-24. Brainstormed the pitch and plans with Ken (`docs/vision.md`, `PRODUCT.md`, `.agents/product-marketing.md`), picked landing look B from three options (canvas https://claude.ai/artifact/KZH1jv7iRV2u99cKPYKvya), built it on `landing-b` (`pages/home.templ`, `docs/landing-copy.md`, DESIGN.md "Landing page"). Tests: `go test`, `site.mjs` all good.
 
 ## Rules
 

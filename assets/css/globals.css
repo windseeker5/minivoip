@@ -142,70 +142,161 @@
   }
 }
 
-/* The landing page (pages/home.templ, DESIGN.md "Landing page"): warm light
-   like the owner app, a near-black stage in dark mode. It sets the shadcn
-   tokens for its own subtree, so the components follow. */
+/* The landing page (pages/home.templ, DESIGN.md "Landing page"): pure white
+   with one cool grey band colour and one blue for actions, a near-black stage
+   in dark mode. It sets the shadcn tokens for its own subtree, so the
+   components follow. */
 .lp {
-  --background: #f6f5f1;
-  --foreground: #1a1a17;
+  --background: #ffffff;
+  --foreground: #1d1d1f;
   --card: #ffffff;
-  --card-foreground: #1a1a17;
-  --primary: #1a1a17;
+  --card-foreground: #1d1d1f;
+  --primary: #1f4fd1;
   --primary-foreground: #ffffff;
-  --secondary: #efede7;
-  --secondary-foreground: #1a1a17;
-  --muted: #f1efe9;
-  --muted-foreground: #6b6a64;
-  --accent: #efede7;
-  --accent-foreground: #1a1a17;
-  --border: #e6e3dc;
-  --input: #e6e3dc;
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f5f5f7;
+  --muted-foreground: #6e6e73;
+  --accent: #f5f5f7;
+  --accent-foreground: #1d1d1f;
+  --border: #e5e5ea;
+  --input: #e5e5ea;
+  --ring: #1f4fd1;
+  --soft: #86868b;  /* "in one click." in the headline; large text only */
+  --band: #f5f5f7;  /* the grey sections */
+  --rule: #d2d2d7;  /* hairlines on the grey band */
+  /* The closing band, the page's one dark moment. */
+  --ink-bg: #1d1d1f;
+  --ink-fg: #f5f5f7;
+  --ink-muted: #a1a1a6;
+  --ink-rule: #3a3a3c;
 }
 .dark .lp {
   --background: #0b0b0d;
-  --foreground: #f2f2f4;
-  --card: #141418;
-  --card-foreground: #f2f2f4;
-  --primary: #f2f2f4;
+  --foreground: #f5f5f7;
+  --card: #161618;
+  --card-foreground: #f5f5f7;
+  --primary: #5b86ff;
   --primary-foreground: #0b0b0d;
-  --secondary: #1f1f25;
-  --secondary-foreground: #f2f2f4;
-  --muted: #1b1b20;
-  --muted-foreground: #9b9ba5;
-  --accent: #1f1f25;
-  --accent-foreground: #f2f2f4;
-  --border: #26262c;
-  --input: #2c2c33;
+  --secondary: #1c1c1f;
+  --secondary-foreground: #f5f5f7;
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1a6;
+  --accent: #1c1c1f;
+  --accent-foreground: #f5f5f7;
+  --border: #2a2a2e;
+  --input: #2c2c31;
+  --ring: #5b86ff;
+  --soft: #8e8e93;
+  --band: #141416;
+  --rule: #333338;
+  --ink-bg: #161618;
+  --ink-fg: #f5f5f7;
+  --ink-muted: #a1a1a6;
+  --ink-rule: #333338;
 }
 body:has(> .lp) {
-  background: #f6f5f1;
+  background: #ffffff;
 }
 .dark body:has(> .lp) {
   background: #0b0b0d;
 }
+.lp p,
+.lp li {
+  text-wrap: pretty;
+}
+.lp ::selection {
+  background: #dbe4fb;
+  color: #1d1d1f;
+}
 
 /* In the components layer, so Tailwind utilities on the same element win. */
 @layer components {
-  /* The hero's picture of a call with a shared screen. */
-  .lp-window {
-    box-shadow: 0 0 0 1px var(--border), 0 40px 80px -50px rgb(26 26 23 / 0.45);
+  .lp-ink {
+    background: var(--ink-bg);
+    color: var(--ink-fg);
   }
-  .dark .lp-window {
-    box-shadow: 0 0 0 1px var(--border), 0 60px 120px -60px rgb(227 26 90 / 0.25);
+
+  /* The hero's two phone screens (callPair): the visitor's call window,
+     always dark like callscreen.css, and the owner's phone app ringing. */
+  .lp-dev figcaption {
+    margin-top: 1.125rem;
+    font-size: 14px;
+    color: var(--muted-foreground);
   }
-  .lp-bar {
-    display: block;
-    border-radius: 4px;
-    background: color-mix(in oklab, var(--foreground) 9%, transparent);
+  .lp-screen {
+    position: relative;
+    width: 300px;
+    height: 600px;
+    overflow: hidden;
+    border-radius: 46px;
+    text-align: left;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 30px 60px -20px rgb(0 0 0 / 0.25);
   }
-  .lp-ctl {
-    display: inline-flex;
+  .dark .lp-screen {
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 30px 60px -20px rgb(0 0 0 / 0.8);
+  }
+  .lp-visitor {
+    background: #121316;
+    color: #f2f2f4;
+    padding: 56px 24px 28px;
+  }
+  .lp-visitor .wave > i {
+    background: #3a3b40;
+  }
+  .lp-owner {
+    background: #ffffff;
+    color: #1d1d1f;
+    padding: 52px 22px 24px;
+  }
+  .lp-opt {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    color: #d4d4d8;
+  }
+  .lp-opt b {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 26px;
+    height: 26px;
     border-radius: 999px;
-    background: var(--muted);
+    background: #26272c;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  .lp-opt-on {
+    background: rgb(244 100 34 / 0.14);
+    color: #ffffff;
+  }
+  .lp-opt-on b {
+    background: #c9461a;
+  }
+  /* On a phone the two screens shrink together, contents and all, and the
+     owner's phone overlaps the visitor's so both stay readable. */
+  @media (max-width: 639px) {
+    .lp-dev {
+      zoom: 0.68;
+    }
+    .lp-dev + .lp-dev {
+      position: relative;
+      z-index: 1;
+      margin-left: -90px;
+    }
+    .lp-dev figcaption {
+      font-size: 17px;
+      line-height: 1.35;
+      text-align: left;
+    }
+    .lp-dev + .lp-dev figcaption {
+      margin-left: auto;
+      text-align: right;
+    }
   }
 
   /* A drawn voice recording (waveform in pages/home.templ). */

@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy. `main` has calls end to end, the owner's app (look C) and the Android app that rings. Branch `landing-b` (not pushed) has the new landing page: look B "The call grows", the agreed pitch, two plans Basic and Premium, the Joe's B&B demo removed and "Call us now" on minivoip's own line. Plan and progress: `docs/plan.md` "Where we are".
-- Next action: Ken looks at the new landing page and says "ship it" for `landing-b` (CLAUDE.md rule 3), and records his line's menu for demos (1 Book a demo, rings Ken; 2 How it works and prices, opens the Plans section; 0 Leave a message). Then the next piece: security of call links (the iPhone app is now last). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-24. Brainstormed the pitch and plans with Ken (`docs/vision.md`, `PRODUCT.md`, `.agents/product-marketing.md`), picked landing look B from three options (canvas https://claude.ai/artifact/KZH1jv7iRV2u99cKPYKvya), built it on `landing-b` (`pages/home.templ`, `docs/landing-copy.md`, DESIGN.md "Landing page"). Tests: `go test`, `site.mjs` all good.
+- Status: healthy. `main` has calls end to end, the owner's app (look C) and the Android app that rings. Branch `landing-b` (not pushed, changes not committed yet) has the landing page redesigned on 2026-10-25 as option A "Keynote": pure white, Apple-like, one blue for actions, the hero shows both ends of a real call. Plan and progress: `docs/plan.md` "Where we are".
+- Next action: Ken rejected the Keynote look too (2026-10-25: "always the same", he dislikes the font and the style; only the words are good). PRODUCT.md was reset (visual direction not decided). Ken had the Keynote page shipped as a stop-gap. Next: `/impeccable redesign` of the landing page on its own branch, with a new font and a new layout, at the craft level of a 5 to 10 thousand dollar site. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-25. Critiqued the look-B landing page (score 22/36, `.impeccable/critique/`), showed three white options on a canvas (https://claude.ai/artifact/XWsCHyUp822kvL6EfHgioS), built A in `pages/home.templ` + `globals.css` `.lp`, updated DESIGN.md "Landing page", PRODUCT.md, `docs/landing-copy.md`. Tests: `go vet`, `go test`, `site.mjs` all good.
 
 ## Rules
 

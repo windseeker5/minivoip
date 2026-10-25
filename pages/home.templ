@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"minivoip/components/badge"
 	"minivoip/components/button"
 	"minivoip/components/icon"
 	"minivoip/layouts"
@@ -9,19 +8,19 @@ import (
 
 // The words come from docs/landing-copy.md; change them there first.
 
-// stage is one card of "the call grows": what the visitor does, what
+// stage is one step of "the call grows": what the visitor does, what
 // minivoip does for it, and the plan that has it.
 type stage struct {
-	Label string
 	Title string
 	Text  string
 	Plan  string
+	Soon  bool
 }
 
 var stages = []stage{
-	{"They ask", "Your menu answers the easy questions", "Hours, prices, directions, or a link to the right page of your site. In your own voice.", "Basic"},
-	{"They talk", "A real customer reaches you", "Your phone or computer rings. Busy? They leave a voicemail.", "Basic"},
-	{"They see", "You show them, right now", "Turn on video, share your screen or open the whiteboard. The demo happens while they're still interested.", "Premium · coming soon"},
+	{"They ask.", "Your menu answers the easy questions. Hours, prices, directions, or a link to the right page of your site. In your own voice.", "Basic", false},
+	{"They talk.", "A real customer reaches you. Your phone or computer rings. Busy? They leave a voicemail.", "Basic", false},
+	{"They see.", "Turn on video, share your screen or open the whiteboard. The demo happens while they're still interested.", "Premium · coming soon", true},
 }
 
 type plan struct {
@@ -96,23 +95,23 @@ templ Home(loggedIn bool, callLine string) {
 // brand is the mini-family logo (same bars and wordmark as minipass and
 // minicrm), one artwork per theme. Only the height is set.
 templ brand() {
-	<a href="/" class="flex shrink-0 items-center" aria-label="minivoip home">
-		<img src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="132" height="24" class="h-5 w-auto sm:h-6 dark:hidden"/>
-		<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24" class="hidden h-5 w-auto sm:h-6 dark:block"/>
+	<a href="/" class="flex min-h-11 shrink-0 items-center" aria-label="minivoip home">
+		<img src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="132" height="24" class="h-5 w-auto sm:h-[22px] dark:hidden"/>
+		<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24" class="hidden h-5 w-auto sm:h-[22px] dark:block"/>
 	</a>
 }
 
 templ siteNav(loggedIn bool) {
-	<nav class="sticky top-0 z-50 bg-background/90 backdrop-blur-md">
-		<div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:gap-4">
+	<nav class="sticky top-0 z-50 border-b bg-background">
+		<div class="mx-auto flex h-14 max-w-[1080px] items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
 			@brand()
-			<div class="hidden items-center gap-8 text-[15px] text-muted-foreground md:flex">
+			<div class="hidden items-center gap-8 text-[13px] text-foreground/80 md:flex">
 				<a href="#how" class="transition-colors hover:text-foreground">How it works</a>
 				<a href="#pricing" class="transition-colors hover:text-foreground">Plans</a>
 				<a href="#faq" class="transition-colors hover:text-foreground">Questions</a>
 			</div>
-			<div class="flex items-center gap-0.5 sm:gap-2">
-				@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIconSm, Attributes: templ.Attributes{"data-theme-toggle": "", "aria-label": "Switch light or dark mode"}}) {
+			<div class="flex items-center gap-1 sm:gap-3">
+				@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-11 rounded-full text-muted-foreground", Attributes: templ.Attributes{"data-theme-toggle": "", "aria-label": "Switch light or dark mode"}}) {
 					<span class="hidden dark:block">
 						@icon.Sun()
 					</span>
@@ -121,14 +120,12 @@ templ siteNav(loggedIn bool) {
 					</span>
 				}
 				if loggedIn {
-					@button.Button(button.Props{Href: "/dashboard", Size: button.SizeSm, Class: "h-9 rounded-full px-4"}) {
+					@button.Button(button.Props{Href: "/dashboard", Size: button.SizeSm, Class: "h-11 rounded-full px-4 text-[13px] sm:h-8"}) {
 						My dashboard
 					}
 				} else {
-					@button.Button(button.Props{Href: "/login", Variant: button.VariantGhost, Size: button.SizeSm, Class: "h-9"}) {
-						Log in
-					}
-					@button.Button(button.Props{Href: "/signup", Size: button.SizeSm, Class: "h-9 rounded-full px-3 sm:px-4"}) {
+					<a href="/login" class="hidden min-h-11 items-center px-2 text-[13px] text-foreground/80 transition-colors hover:text-foreground sm:flex">Log in</a>
+					@button.Button(button.Props{Href: "/signup", Size: button.SizeSm, Class: "h-11 rounded-full px-4 text-[13px] sm:h-8"}) {
 						Get my free line
 					}
 				}
@@ -138,99 +135,83 @@ templ siteNav(loggedIn bool) {
 }
 
 templ hero(callLine string) {
-	<section class="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-12 pb-20 sm:pt-16 lg:grid-cols-2 lg:gap-14 lg:pb-24">
-		<div class="min-w-0">
-			<h1 class="text-[2.5rem] leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-[3.25rem] sm:leading-[1.04] xl:text-[3.5rem]">
-				From a question on your website to a real conversation, in one click.
-			</h1>
-			<p class="mt-6 max-w-xl text-lg/relaxed text-pretty text-muted-foreground">
-				Your voice menu answers the common questions. When a visitor wants more, you talk to them and show them your screen. No phone line, nothing to install.
-			</p>
-			<div class="mt-8 flex flex-col gap-2.5 sm:flex-row">
-				@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "h-12 rounded-full px-6 text-[15px]"}) {
-					Get my free line
-					@icon.ArrowRight()
-				}
-				if callLine != "" {
-					@button.Button(button.Props{Href: "/call/" + callLine, Target: "_blank", Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-12 rounded-full bg-card px-6 text-[15px]", Attributes: templ.Attributes{"data-call-us": ""}}) {
-						@icon.Phone()
-						Call us now
-					}
-				} else {
-					@button.Button(button.Props{Href: "#how", Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-12 rounded-full bg-card px-6 text-[15px]"}) {
-						See how it works
-					}
-				}
-			</div>
-			<p class="mt-5 text-sm text-muted-foreground">Free while in beta · No card required</p>
+	<section class="overflow-hidden px-4 pt-14 pb-14 text-center sm:px-6 sm:pt-20 sm:pb-20 lg:pt-[88px] lg:pb-24">
+		<h1 class="mx-auto max-w-[980px] text-[2.75rem] leading-[1.04] font-semibold tracking-[-0.035em] text-balance sm:text-6xl lg:text-[4.75rem] lg:leading-[1.03]">
+			From a question on your website to a real conversation, <span class="text-[var(--soft)]">in one click.</span>
+		</h1>
+		<p class="mx-auto mt-6 max-w-[640px] text-lg/relaxed text-pretty text-muted-foreground sm:text-[21px]/[1.45]">
+			Your voice menu answers the common questions. When a visitor wants more, you talk to them and show them your screen. No phone line, nothing to install.
+		</p>
+		<div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-7">
+			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "h-12 rounded-full px-6 text-[17px] font-medium"}) {
+				Get my free line
+			}
 			if callLine != "" {
-				<p class="mt-1.5 text-sm text-muted-foreground">"Call us now" is a real minivoip call. Press 1 and you reach Ken, who builds it.</p>
+				<a href={ templ.SafeURL("/call/" + callLine) } target="_blank" data-call-us class="inline-flex min-h-12 items-center gap-1 px-2 text-[17px] font-medium text-primary underline-offset-4 hover:underline">
+					Call us now
+					@icon.ChevronRight(icon.Props{Class: "size-4"})
+				</a>
+			} else {
+				<a href="#how" class="inline-flex min-h-12 items-center gap-1 px-2 text-[17px] font-medium text-primary underline-offset-4 hover:underline">
+					See how it works
+					@icon.ChevronRight(icon.Props{Class: "size-4"})
+				</a>
 			}
 		</div>
-		@callWindow()
+		<p class="mt-4 text-[13px] text-muted-foreground">
+			Free while in beta · No card required
+			if callLine != "" {
+				<span class="block sm:inline"><span class="hidden sm:inline"> · </span>“Call us now” rings Ken, who builds it.</span>
+			}
+		</p>
+		@callPair()
 	</section>
 }
 
-// callWindow is a picture of a Premium call: the owner shares their screen
-// with a website visitor who asked for a demo. Nothing in it is a control.
-templ callWindow() {
-	<figure class="min-w-0">
-		<div class="lp-window overflow-hidden rounded-[20px] bg-card" role="img" aria-label="A minivoip call: the owner shares their screen with a website visitor who asked for a demo">
-			<div class="flex items-center justify-between gap-3 border-b px-4 py-3.5 text-[13.5px] sm:px-5">
-				<span class="flex min-w-0 items-center gap-2 font-semibold">
-					<span class="size-2 shrink-0 rounded-full bg-emerald-600"></span>
-					<span class="truncate">Website visitor · pressed 1, Book a demo</span>
-				</span>
-				<span class="text-muted-foreground tabular-nums">04:12</span>
-			</div>
-			<div class="relative m-3 flex h-56 flex-col gap-3.5 rounded-xl bg-muted p-4 shadow-[inset_0_0_0_1px_var(--border)] sm:m-4 sm:h-72 sm:p-5">
-				<span class="self-start rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background">You're sharing your screen</span>
-				<div class="flex flex-1 gap-3">
-					<div class="hidden w-24 flex-col gap-2 sm:flex">
-						<span class="lp-bar h-2.5"></span>
-						<span class="lp-bar h-2.5 w-4/5 opacity-70"></span>
-						<span class="lp-bar h-2.5 w-3/4 opacity-70"></span>
-						<span class="lp-bar h-2.5 w-5/6 opacity-70"></span>
-					</div>
-					<div class="flex flex-1 flex-col gap-2.5 rounded-lg bg-card p-3.5 shadow-[0_0_0_1px_var(--border)]">
-						<span class="lp-bar h-3 w-2/5"></span>
-						<div class="flex flex-1 items-end gap-2">
-							<i class="lp-bar h-[30%] flex-1 rounded-b-none opacity-70"></i>
-							<i class="lp-bar h-[45%] flex-1 rounded-b-none opacity-70"></i>
-							<i class="lp-bar h-[38%] flex-1 rounded-b-none opacity-70"></i>
-							<i class="lp-bar h-[62%] flex-1 rounded-b-none opacity-70"></i>
-							<i class="lp-bar h-[55%] flex-1 rounded-b-none opacity-70"></i>
-							<i class="h-[80%] flex-1 rounded-t-[4px] bg-[#f46422]"></i>
-						</div>
-					</div>
+// callPair is a picture of one call from both ends: the visitor hearing the
+// voice menu in their browser, and the owner's phone ringing with the choice
+// they made. Nothing in it is a control.
+templ callPair() {
+	<div class="mx-auto mt-14 flex justify-center sm:mt-[72px] sm:gap-14" role="img" aria-label="One minivoip call from both ends: the visitor hears the voice menu and presses 1, Book a demo; the owner's phone rings with that choice">
+		<figure class="lp-dev">
+			<div class="lp-screen lp-visitor" aria-hidden="true">
+				<div class="mx-auto grid size-[72px] place-items-center rounded-full border border-[#f3840f] text-3xl font-semibold text-[#f3840f]">m</div>
+				<p class="mt-4 text-center text-[22px] font-semibold tracking-[-0.01em]">minivoip</p>
+				<p class="mt-1.5 text-center text-[13px] text-[#a1a1aa]">Hi, this is Ken. Press a number…</p>
+				@waveform(44, 34, 11, 0.62, "mx-auto my-6 w-[220px]")
+				<div class="flex flex-col gap-1">
+					<span class="lp-opt lp-opt-on"><b>1</b>Book a demo</span>
+					<span class="lp-opt"><b>2</b>How it works and prices</span>
+					<span class="lp-opt"><b>0</b>Leave a message</span>
 				</div>
-				<span class="absolute right-4 bottom-4 grid h-16 w-24 place-items-center rounded-lg bg-[#2a2a26] text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgb(0_0_0/0.5)] sm:right-5 sm:bottom-5 sm:h-20 sm:w-28">MA</span>
+				<p class="absolute inset-x-0 bottom-6 text-center text-[11px] text-[#8a8a93]">Free web call · nothing to install</p>
 			</div>
-			<div class="flex flex-wrap justify-center gap-2.5 px-4 pb-4">
-				<span class="lp-ctl">
-					@icon.Mic(icon.Props{Class: "size-[18px]"})
-				</span>
-				<span class="lp-ctl">
-					@icon.Video(icon.Props{Class: "size-[18px]"})
-				</span>
-				<span class="lp-ctl w-auto gap-2 bg-foreground px-4 text-sm font-semibold text-background">
-					@icon.ScreenShare(icon.Props{Class: "size-[18px]"})
-					Sharing
-				</span>
-				<span class="lp-ctl">
-					@icon.PenLine(icon.Props{Class: "size-[18px]"})
-				</span>
-				<span class="lp-ctl bg-red-600 text-white">
-					@icon.PhoneOff(icon.Props{Class: "size-[18px]"})
-				</span>
+			<figcaption>Your visitor, in their browser</figcaption>
+		</figure>
+		<figure class="lp-dev">
+			<div class="lp-screen lp-owner" aria-hidden="true">
+				<p class="flex items-center gap-2 text-[13px] text-[#424245]">
+					<span class="size-2 rounded-full bg-[#1f9d55] shadow-[0_0_0_4px_#dcf2e4]"></span>
+					Incoming call · <span class="tabular-nums">0:04</span>
+				</p>
+				<p class="mt-[22px] text-[30px] leading-[1.08] font-semibold tracking-[-0.03em]">
+					Someone chose
+					<span class="block text-[#c9461a]">“Book a demo”</span>
+				</p>
+				<p class="mt-3 text-[13.5px]/[1.45] text-[#6e6e73]">A visitor on your website heard your greeting and picked this choice.</p>
+				<p class="mt-[18px] rounded-[14px] px-3.5 py-3 text-[12.5px] text-[#6e6e73] shadow-[inset_0_0_0_1px_#e5e5ea]">If nobody answers: <b class="font-semibold text-[#1d1d1f]">voicemail in <span class="tabular-nums">0:26</span></b></p>
+				<div class="absolute inset-x-[22px] bottom-[26px] flex flex-col gap-2">
+					<span class="rounded-[14px] bg-[#157a3f] p-[15px] text-center text-base font-semibold text-white">Answer</span>
+					<span class="rounded-[14px] p-3 text-center text-sm font-medium text-[#b4321f] shadow-[inset_0_0_0_1px_#e5e5ea]">Decline</span>
+				</div>
 			</div>
-		</div>
-		<figcaption class="mt-3 text-center text-[13px] text-muted-foreground">Video and screen sharing come with Premium, coming soon.</figcaption>
-	</figure>
+			<figcaption>You, on your own phone</figcaption>
+		</figure>
+	</div>
 }
 
 templ waveform(n, height, seed int, played float64, class string) {
-	<div class={ "wave flex items-center justify-between gap-[3px]", class } style={ "height:" + px(height) } aria-hidden="true">
+	<div class={ "wave flex items-center justify-between gap-[2px]", class } style={ "height:" + px(height) } aria-hidden="true">
 		for _, b := range wave(n, height, seed, played) {
 			<i style={ b.style() }></i>
 		}
@@ -238,10 +219,10 @@ templ waveform(n, height, seed int, played float64, class string) {
 }
 
 templ sectionHead(title, lead string) {
-	<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
-		<h2 class="max-w-xl text-[2rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance sm:text-[2.75rem]">{ title }</h2>
+	<div class="mx-auto max-w-[820px] text-center">
+		<h2 class="text-[2.25rem] leading-[1.06] font-semibold tracking-[-0.03em] text-balance sm:text-[3.5rem]">{ title }</h2>
 		if lead != "" {
-			<p class="max-w-md text-base/relaxed text-muted-foreground">{ lead }</p>
+			<p class="mx-auto mt-5 max-w-[620px] text-lg/relaxed text-pretty text-muted-foreground sm:text-[21px]/[1.45]">{ lead }</p>
 		}
 	</div>
 }
@@ -249,17 +230,15 @@ templ sectionHead(title, lead string) {
 // callGrows tells the story in three steps: answers, then the owner, then
 // the owner's screen. The last one is Premium.
 templ callGrows() {
-	<section id="how" class="border-y bg-card">
-		<div class="mx-auto max-w-6xl px-4 py-20 sm:py-24">
+	<section id="how" class="scroll-mt-14 bg-[var(--band)] px-4 py-20 sm:px-6 sm:py-[120px]">
+		<div class="mx-auto max-w-[1080px]">
 			@sectionHead("One click, and the call grows with the question.", "Most visitors only need an answer. Some need you. A few need to see it. minivoip handles all three in the same call.")
-			<div class="mt-12 grid gap-4 md:grid-cols-3">
-				for i, s := range stages {
-					<div class={ "flex flex-col gap-3.5 rounded-[18px] p-6 sm:p-7", templ.KV("bg-muted", i < 2), templ.KV("bg-foreground text-background", i == 2) }>
-						@stageSnippet(i)
-						<p class={ "mt-2 text-[13px] font-semibold", templ.KV("text-muted-foreground", i < 2), templ.KV("text-background/60", i == 2) }>{ s.Label }</p>
-						<h3 class="text-[21px] leading-snug font-semibold tracking-[-0.02em] text-balance">{ s.Title }</h3>
-						<p class={ "text-[15px]/relaxed", templ.KV("text-muted-foreground", i < 2), templ.KV("text-background/70", i == 2) }>{ s.Text }</p>
-						<span class={ "mt-auto self-start rounded-full px-2.5 py-1 text-xs font-semibold", templ.KV("shadow-[inset_0_0_0_1px_var(--border)]", i < 2), templ.KV("bg-background text-foreground", i == 2) }>{ s.Plan }</span>
+			<div class="mt-12 grid gap-9 sm:mt-20 md:grid-cols-3 md:gap-12">
+				for _, s := range stages {
+					<div class="flex flex-col border-t border-[var(--rule)] pt-7">
+						<h3 class="text-[2rem] font-semibold tracking-[-0.025em]">{ s.Title }</h3>
+						<p class="mt-3 text-[17px]/[1.5] text-muted-foreground">{ s.Text }</p>
+						<p class={ "mt-auto pt-[18px] text-[13px] font-medium", templ.KV("text-muted-foreground", s.Soon) }>{ s.Plan }</p>
 					</div>
 				}
 			</div>
@@ -267,125 +246,83 @@ templ callGrows() {
 	</section>
 }
 
-// stageSnippet is a small piece of the real screens for each stage.
-templ stageSnippet(i int) {
-	switch i {
-		case 0:
-			<div class="rounded-xl bg-card p-3 shadow-[0_0_0_1px_var(--border)]" aria-hidden="true">
-				@waveform(30, 20, 5, 0.6, "")
-				<div class="mt-3 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold shadow-[inset_0_0_0_1.5px_#f46422]">
-					<span class="grid size-5 place-items-center rounded-md bg-[#f46422] text-[11px] text-white">2</span>
-					Hours and prices
-				</div>
-			</div>
-		case 1:
-			<div class="flex items-center gap-3 rounded-xl bg-card p-3 shadow-[0_0_0_1px_var(--border)]" aria-hidden="true">
-				<span class="grid size-9 shrink-0 place-items-center rounded-full bg-muted">
-					@icon.Globe(icon.Props{Class: "size-4"})
-				</span>
-				<span class="min-w-0 flex-1">
-					<span class="block text-[13px] font-semibold">Website caller</span>
-					<span class="block text-xs text-muted-foreground">Pressed 1 · Talk to you</span>
-				</span>
-				<span class="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">
-					@icon.Phone(icon.Props{Class: "size-4"})
-				</span>
-			</div>
-		default:
-			<div class="flex items-center gap-2.5 rounded-xl bg-background/10 p-3" aria-hidden="true">
-				<span class="grid size-9 shrink-0 place-items-center rounded-full bg-background text-foreground">
-					@icon.ScreenShare(icon.Props{Class: "size-4"})
-				</span>
-				<span class="text-[13px] font-semibold">Sharing your screen</span>
-				<span class="ml-auto text-xs text-background/60 tabular-nums">04:12</span>
-			</div>
-	}
-}
-
 templ pricing() {
-	<section id="pricing" class="mx-auto max-w-6xl px-4 py-20 sm:py-24">
-		<div class="mx-auto mb-12 max-w-2xl text-center">
-			<h2 class="text-[2rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance sm:text-[2.75rem]">Start with Basic. Grow into Premium.</h2>
-			<p class="mt-3 text-muted-foreground">Free while in beta. No per-minute charges.</p>
+	<section id="pricing" class="scroll-mt-14 px-4 py-20 sm:px-6 sm:py-[120px]">
+		<div class="mx-auto max-w-[1080px]">
+			@sectionHead("Start with Basic. Grow into Premium.", "Free while in beta. No per‑minute charges.")
+			<div class="mx-auto mt-12 grid max-w-[880px] gap-5 sm:mt-16 md:grid-cols-2">
+				for _, p := range plans {
+					@planCard(p)
+				}
+			</div>
+			<p class="mt-8 text-center text-sm text-muted-foreground">Have a promo code? Enter it when you sign up.</p>
 		</div>
-		<div class="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
-			for _, p := range plans {
-				@planCard(p)
-			}
-		</div>
-		<p class="mt-6 text-center text-sm text-muted-foreground">Have a promo code? Enter it when you sign up.</p>
 	</section>
 }
 
 templ planCard(p plan) {
-	<div class={ "flex flex-col gap-5 rounded-[20px] p-7 sm:p-8", templ.KV("bg-card shadow-[0_0_0_1px_var(--border)]", !p.Premium), templ.KV("bg-foreground text-background", p.Premium) }>
-		<div class="flex items-center justify-between">
-			<h3 class="font-semibold">{ p.Name }</h3>
+	<div class="flex flex-col rounded-2xl bg-card p-7 shadow-[0_0_0_1px_var(--border)] sm:p-9">
+		<div class="flex items-baseline justify-between gap-3">
+			<h3 class="text-xl font-semibold tracking-[-0.01em]">{ p.Name }</h3>
 			if p.Premium {
-				<span class="rounded-full bg-background/15 px-2.5 py-0.5 text-xs font-semibold">Coming soon</span>
+				<span class="text-[13px] font-medium text-muted-foreground">Coming soon</span>
 			} else {
-				@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-					Free in beta
-				}
+				<span class="text-[13px] font-medium text-muted-foreground">Free in beta</span>
 			}
 		</div>
-		<p class="flex items-baseline gap-1.5">
+		<p class="mt-6 flex items-baseline gap-2">
 			<span class="text-5xl font-semibold tracking-[-0.03em]">{ p.Price }</span>
-			<span class={ templ.KV("text-muted-foreground", !p.Premium), templ.KV("text-background/60", p.Premium) }>/ month</span>
+			<span class="text-muted-foreground">/ month after beta, planned</span>
 		</p>
-		<p class={ "-mt-2", templ.KV("text-muted-foreground", !p.Premium), templ.KV("text-background/80", p.Premium) }>{ p.Line }</p>
-		<ul class={ "flex flex-col gap-3 border-t pt-5 text-[15px]", templ.KV("border-background/15", p.Premium) }>
+		<p class="mt-2 text-[17px]">{ p.Line }</p>
+		<ul class="mt-7 mb-8 flex flex-col border-b text-[15px]">
 			for _, item := range p.Items {
-				<li class="flex items-start gap-2.5">
-					@icon.Check(icon.Props{Class: "mt-0.5 size-4 shrink-0 " + checkColor(p.Premium)})
+				<li class="flex items-start gap-3 border-t py-3">
+					@icon.Check(icon.Props{Class: "mt-0.5 size-4 shrink-0 text-foreground"})
 					{ item }
 				</li>
 			}
 		</ul>
 		if p.Premium {
-			<a href="mailto:kdresdell@minipass.me?subject=minivoip%20Premium" class="mt-auto flex h-12 items-center justify-center rounded-full bg-background text-[15px] font-semibold text-foreground transition-opacity hover:opacity-90">Tell me when it's ready</a>
+			@button.Button(button.Props{Href: "mailto:kdresdell@minipass.me?subject=minivoip%20Premium", Variant: button.VariantOutline, Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full text-[15px] font-medium"}) {
+				Tell me when it's ready
+			}
 		} else {
-			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full text-[15px]"}) {
+			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full text-[15px] font-medium"}) {
 				Get my free line
 			}
 		}
 	</div>
 }
 
-func checkColor(premium bool) string {
-	if premium {
-		return "text-emerald-400"
-	}
-	return "text-emerald-600"
-}
-
 // maker is Ken's own reason for minivoip: he uses it on his businesses first.
 templ maker() {
-	<section class="mx-auto max-w-6xl px-4 pb-20 sm:pb-24">
-		<figure class="flex flex-col gap-6 rounded-3xl bg-card p-7 shadow-[0_0_0_1px_var(--border)] sm:p-12 lg:flex-row lg:items-center lg:gap-14">
-			<blockquote class="flex-1 text-[1.4rem] leading-[1.4] font-medium tracking-[-0.02em] text-pretty sm:text-[1.7rem]">
+	<section class="bg-[var(--band)] px-4 py-20 sm:px-6 sm:py-[120px]">
+		<figure class="mx-auto max-w-[860px] text-center">
+			<blockquote class="text-[1.6rem] leading-[1.3] font-semibold tracking-[-0.025em] text-balance sm:text-[2.5rem] sm:leading-[1.2]">
 				“I built minivoip for my own businesses first. A visitor on my site asks a question, and a minute later I'm showing them the product.”
 			</blockquote>
-			<figcaption class="lg:w-60">
-				<span class="block font-semibold">Ken Dresdell</span>
-				<span class="block text-[15px] text-muted-foreground">Maker of minipass and minivoip</span>
+			<figcaption class="mt-8 text-[15px]">
+				<span class="font-semibold">Ken Dresdell</span>
+				<span class="text-muted-foreground">· Maker of minipass and minivoip</span>
 			</figcaption>
 		</figure>
 	</section>
 }
 
 templ howItWorks() {
-	<section class="mx-auto max-w-6xl px-4 pb-20 sm:pb-24">
-		<h2 class="text-[2rem] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[2.75rem]">Ready in three steps</h2>
-		<ol class="mt-10 grid gap-8 md:grid-cols-3">
-			for i, s := range steps {
-				<li class="flex flex-col gap-1.5 border-t pt-5">
-					<span class="text-[13px] font-semibold text-muted-foreground">Step { stepNumber(i) }</span>
-					<h3 class="text-lg font-semibold tracking-[-0.01em]">{ s.Title }</h3>
-					<p class="text-[15px]/relaxed text-muted-foreground">{ s.Text }</p>
-				</li>
-			}
-		</ol>
+	<section id="steps" class="scroll-mt-14 px-4 py-20 sm:px-6 sm:py-[120px]">
+		<div class="mx-auto max-w-[1080px]">
+			@sectionHead("Ready in three steps", "")
+			<ol class="mt-12 grid gap-9 sm:mt-16 md:grid-cols-3 md:gap-12">
+				for i, s := range steps {
+					<li class="border-t pt-7">
+						<h3 class="text-[1.375rem] font-semibold tracking-[-0.02em]"><span class="mr-2.5 text-muted-foreground tabular-nums">{ stepNumber(i) }</span>{ s.Title }</h3>
+						<p class="mt-2 text-[17px]/[1.5] text-muted-foreground">{ s.Text }</p>
+					</li>
+				}
+			</ol>
+		</div>
 	</section>
 }
 
@@ -394,17 +331,17 @@ func stepNumber(i int) string {
 }
 
 templ faqList() {
-	<section id="faq" class="pb-20 sm:pb-24">
-		<div class="mx-auto max-w-3xl px-4">
-			<h2 class="mb-8 text-[2rem] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[2.5rem]">Questions</h2>
-			<div class="divide-y border-y">
+	<section id="faq" class="scroll-mt-14 px-4 pb-20 sm:px-6 sm:pb-[120px]">
+		<div class="mx-auto max-w-[760px]">
+			@sectionHead("Questions", "")
+			<div class="mt-10 divide-y border-y sm:mt-14">
 				for _, f := range faqs {
-					<details class="group py-5">
-						<summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-medium [&::-webkit-details-marker]:hidden">
+					<details class="group">
+						<summary class="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-[17px] font-medium [&::-webkit-details-marker]:hidden">
 							{ f.Q }
-							@icon.Plus(icon.Props{Class: "size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-45"})
+							@icon.Plus(icon.Props{Class: "size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-45"})
 						</summary>
-						<p class="mt-3 leading-relaxed text-muted-foreground">{ f.A }</p>
+						<p class="max-w-[34rem] pb-6 text-[17px]/[1.55] text-muted-foreground">{ f.A }</p>
 					</details>
 				}
 			</div>
@@ -413,35 +350,34 @@ templ faqList() {
 }
 
 // finalCall is the last call to action, with the footer inside the same
-// ink band.
+// ink band: the page's one dark moment.
 templ finalCall(callLine string) {
-	<footer class="bg-foreground text-background">
-		<div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-16 sm:py-20 lg:flex-row lg:items-center lg:justify-between">
-			<div>
-				<h2 class="text-[2rem] leading-[1.1] font-semibold tracking-[-0.03em] text-balance sm:text-[2.75rem]">Put a Call button on your website.</h2>
-				<p class="mt-3 text-background/70">Free while in beta. Start with Basic, move to Premium when it's ready.</p>
-			</div>
-			<div class="flex flex-col gap-2.5 sm:flex-row">
-				<a href="/signup" class="flex h-12 items-center justify-center rounded-full bg-background px-6 text-[15px] font-semibold text-foreground transition-opacity hover:opacity-90">Get my free line</a>
+	<footer class="lp-ink">
+		<div class="mx-auto flex max-w-[1080px] flex-col items-center px-4 py-20 text-center sm:px-6 sm:py-28">
+			<h2 class="text-[2.25rem] leading-[1.06] font-semibold tracking-[-0.03em] text-balance sm:text-[3.5rem]">Put a Call button on your website.</h2>
+			<p class="mt-5 text-lg text-[var(--ink-muted)]">Free while in beta. Start with Basic, move to Premium when it's ready.</p>
+			<div class="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:gap-7">
+				<a href="/signup" class="flex h-12 items-center justify-center rounded-full bg-[var(--ink-fg)] px-6 text-[17px] font-medium text-[var(--ink-bg)] transition-opacity hover:opacity-90">Get my free line</a>
 				if callLine != "" {
-					<a href={ templ.SafeURL("/call/" + callLine) } target="_blank" class="flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--background)_25%,transparent)] transition-colors hover:bg-background/10">
-						@icon.Phone(icon.Props{Class: "size-4"})
+					<a href={ templ.SafeURL("/call/" + callLine) } target="_blank" class="inline-flex min-h-12 items-center gap-1 px-2 text-[17px] font-medium underline-offset-4 hover:underline">
 						Call us now
+						@icon.ChevronRight(icon.Props{Class: "size-4"})
 					</a>
 				}
 			</div>
 		</div>
-		<div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-background/15 px-4 py-8 text-sm text-background/60 sm:flex-row">
-			<div class="flex items-center gap-3">
-				<a href="/" class="flex shrink-0 items-center" aria-label="minivoip home">
-					<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24" class="h-5 w-auto dark:hidden"/>
-					<img src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="132" height="24" class="hidden h-5 w-auto dark:block"/>
-				</a>
-				<span>Part of the mini family, with minipass and minicrm.</span>
-			</div>
-			<div class="flex items-center gap-5">
-				<a href="/download/minivoip.apk" class="underline-offset-4 hover:text-background hover:underline">Get the Android app</a>
-				<a href="mailto:kdresdell@minipass.me" class="underline-offset-4 hover:text-background hover:underline">kdresdell@minipass.me</a>
+		<div class="mx-auto max-w-[1080px] px-4 sm:px-6">
+			<div class="flex flex-col items-center justify-between gap-2 border-t border-[var(--ink-rule)] py-6 text-[13px] text-[var(--ink-muted)] sm:flex-row">
+				<div class="flex flex-col items-center gap-1 sm:flex-row sm:gap-3">
+					<a href="/" class="flex min-h-11 shrink-0 items-center" aria-label="minivoip home">
+						<img src="/assets/brand/logo-minivoip-dark.svg" alt="minivoip" width="132" height="24" class="h-5 w-auto"/>
+					</a>
+					<span>Part of the mini family, with minipass and minicrm.</span>
+				</div>
+				<div class="flex items-center gap-5">
+					<a href="/download/minivoip.apk" class="flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline">Get the Android app</a>
+					<a href="mailto:kdresdell@minipass.me" class="flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline">kdresdell@minipass.me</a>
+				</div>
 			</div>
 		</div>
 	</footer>

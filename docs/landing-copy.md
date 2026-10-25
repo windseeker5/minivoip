@@ -1,7 +1,7 @@
 # Landing page copy
 
-Last update: 2026-10-24 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
-Look: option B "The call grows", picked by Ken on 2026-10-24 (DESIGN.md "Landing page").
+Last update: 2026-10-25 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
+Look: option A "Keynote", white and Apple-like, built on 2026-10-25 (DESIGN.md "Landing page"). The words stayed; the changes are noted below.
 
 ## Elevator sentence (agreed with Ken, 2026-10-24)
 minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install.
@@ -15,22 +15,22 @@ FR : minivoip ajoute un bouton « Appelez-nous » à votre site. Votre menu voca
 ## Hero
 - Headline: From a question on your website to a real conversation, in one click.
 - Sub: Your voice menu answers the common questions. When a visitor wants more, you talk to them and show them your screen. No phone line, nothing to install.
-- CTA: Get my free line · secondary: Call us now (minivoip's own line, `MINIVOIP_CALL_LINE`; without it: See how it works)
-- Microcopy: Free while in beta · No card required
-- Under it, when the line exists: "Call us now" is a real minivoip call. Press 1 and you reach Ken, who builds it.
-- Picture: a call with a shared screen ("Website visitor · pressed 1, Book a demo", "You're sharing your screen").
-  Caption: Video and screen sharing come with Premium, coming soon.
+- CTA: Get my free line · secondary, a text link: Call us now › (minivoip's own line, `MINIVOIP_CALL_LINE`; without it: See how it works ›)
+- Microcopy, one line: Free while in beta · No card required · “Call us now” rings Ken, who builds it. (the last part only when the line exists)
+- Picture: one call from both ends, two phone screens. Left, "Your visitor, in their browser": minivoip, "Hi, this is Ken. Press a number…", the voice wave, 1 Book a demo (chosen), 2 How it works and prices, 0 Leave a message. Right, "You, on your own phone": Incoming call · 0:04, Someone chose “Book a demo”, "A visitor on your website heard your greeting and picked this choice.", If nobody answers: voicemail in 0:26, Answer, Decline.
 
 ## The call grows (`stages`)
 - Heading: One click, and the call grows with the question.
 - Sub: Most visitors only need an answer. Some need you. A few need to see it. minivoip handles all three in the same call.
+- Each stage is a short title and one paragraph (2026-10-25):
 - **They ask.** Your menu answers the easy questions. Hours, prices, directions, or a link to the right page of your site. In your own voice. (Basic)
 - **They talk.** A real customer reaches you. Your phone or computer rings. Busy? They leave a voicemail. (Basic)
-- **They see.** You show them, right now. Turn on video, share your screen or open the whiteboard. The demo happens while they're still interested. (Premium · coming soon)
+- **They see.** Turn on video, share your screen or open the whiteboard. The demo happens while they're still interested. (Premium · coming soon)
 
 ## Plans (`plans`)
 - Heading: Start with Basic. Grow into Premium. · Sub: Free while in beta. No per-minute charges.
-- **Basic** · $2 / month (placeholder) · Your website answers the phone for you.
+- Prices read "/ month after beta" (placeholders, 2026-10-25).
+- **Basic** · $2 / month (placeholder) · tag Free in beta · Your website answers the phone for you.
   Call button, call link and QR code · Voice menu in your own voice · Sends callers to the right page of your site · Rings your phone and your computer · Voicemail with an alert. CTA: Get my free line
 - **Premium** · $5 / month (placeholder) · badge Coming soon · From a question to a live demo, in one click.
   Everything in Basic · AI front desk that answers from your FAQ · Video and screen sharing · Whiteboard to draw together · A meeting room for your team, no time limit. CTA: Tell me when it's ready (email to Ken)

@@ -6,7 +6,7 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy. `main` has calls end to end, the owner's app (look C), the Android app that rings, the landing page in look "Voice" and the visitor's call window (`/call/<line>`) in look A. Nothing waiting on a branch. Plan and progress: `docs/plan.md` "Where we are".
+- Status: healthy. `main` has calls end to end, the owner's app (look C), the Android app that rings, the landing page in look "Voice" and the visitor's call window (`/call/<line>`) in look A. Branch `landing-voice-fix` waits for "ship it": on a second visit (recording cached) the landing hero's words didn't follow the voice; fixed in `landing.js`, `site.mjs` now checks it. Plan and progress: `docs/plan.md` "Where we are".
 - Next action: step 2 of the call window: the call window as a panel in the corner of the business's website (`w.js`); then the meeting room (video and screen sharing in the call first). Ken re-records his line's greeting and menu (it still says "Hi, you've reached OMT", one choice). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
 - Last update: 2026-10-25. Shipped the call window (PR #5) after `go vet`, `go test`, `call.mjs`, `app.mjs` and `site.mjs` all passed. Before that: critique + audit of the old call window (21/40 design, 10/20 code, `.impeccable/critique/`), three propositions (https://claude.ai/artifact/UefEpYx2avVwMxAyRekqLS), Ken picked A. Built in `pages/call.templ`, `assets/css/callscreen.css`, `assets/js/call.js`, new `layouts/plain.templ`; DESIGN.md "Call window", CLAUDE.md updated; new `tests/e2e/call.mjs`, `site.mjs` updated.
 

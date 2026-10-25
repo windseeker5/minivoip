@@ -109,17 +109,22 @@ document.querySelectorAll("[data-copy-code]").forEach(function (btn) {
     return true;
   }
 
-  audio.addEventListener("loadedmetadata", function () {
+  function measure() {
     if (learn()) return;
     // Recordings made in a browser often don't say how long they are: jump
-    // to the end once to find out, then come back.
+    // to the end once to find out, then come back (to where the voice
+    // starts, if the visitor already pressed play).
     audio.addEventListener("durationchange", function found() {
       if (!learn()) return;
       audio.removeEventListener("durationchange", found);
-      audio.currentTime = 0;
+      audio.currentTime = box.classList.contains("heard") ? from : 0;
     });
     audio.currentTime = 1e9;
-  });
+  }
+  // On a second visit the recording comes from the browser's cache and is
+  // often ready before this script runs, so "loadedmetadata" never comes.
+  if (audio.readyState >= 1) measure();
+  else audio.addEventListener("loadedmetadata", measure);
   audio.addEventListener("timeupdate", function () {
     if (length && box.classList.contains("heard")) show(progress());
   });
@@ -207,6 +212,8 @@ document.querySelectorAll("[data-copy-code]").forEach(function (btn) {
       from = a / sound.sampleRate;
       to = b / sound.sampleRate;
       if (length) learn();
+      // Pressed play before this was known: skip the quiet start.
+      if (box.classList.contains("playing") && audio.currentTime < from) audio.currentTime = from;
     })
     .catch(function () {});
 })();

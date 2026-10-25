@@ -208,6 +208,18 @@ templ icPlay() {
 	<svg class="ap-ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4.5" width="4" height="15" rx="1"></rect><rect x="14" y="4.5" width="4" height="15" rx="1"></rect></svg>
 }
 
+templ icCamera() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"></rect><path d="m15.5 10.5 6-3.5v10l-6-3.5"></path></svg>
+}
+
+templ icScreen() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2.5"></rect><path d="M8 21h8M12 17v4M9 10.5l3-3 3 3M12 7.5v6"></path></svg>
+}
+
+templ icBoard() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19.2 8.8a2.8 2.8 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>
+}
+
 templ icChevron() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
 }
@@ -390,7 +402,8 @@ templ tab(name, label string) {
 templ Phone(d AppData) {
 	@layouts.Base("minivoip", "") {
 		<link rel="stylesheet" href="/assets/css/app.css"/>
-		<div class="ap" data-phone data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) }>
+		<link rel="stylesheet" href="/assets/css/stage.css"/>
+		<div class="ap" data-phone data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) }>
 			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
 			<img class="ap-logo" src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="110" height="20"/>
 			<div class="ap-avail">
@@ -542,10 +555,24 @@ templ Phone(d AppData) {
 						<button type="button" class="ap-decline" data-action="decline">Decline</button>
 						<p class="ap-call-note">Declined callers can leave a voicemail.</p>
 					</div>
+					<div class="ap-stage" data-stage></div>
+					<p class="ap-meet-note" data-meet-note role="status" hidden></p>
 					<div class="ap-call-bar is-live" data-show="connecting talking" hidden>
-						<button type="button" class="ap-btn ap-mute" data-action="mute" aria-pressed="false">
+						<button type="button" class="ap-btn ap-tool" data-action="mute" aria-pressed="false">
 							@icMic()
 							<span>Mute</span>
+						</button>
+						<button type="button" class="ap-btn ap-tool" data-action="camera" aria-pressed="false">
+							@icCamera()
+							<span>Camera</span>
+						</button>
+						<button type="button" class="ap-btn ap-tool" data-action="screen" aria-pressed="false" data-share-btn hidden>
+							@icScreen()
+							<span>Screen</span>
+						</button>
+						<button type="button" class="ap-btn ap-tool" data-action="board" aria-pressed="false">
+							@icBoard()
+							<span>Whiteboard</span>
 						</button>
 						<button type="button" class="ap-hangup" data-action="hangup">
 							@icHangup()
@@ -557,6 +584,7 @@ templ Phone(d AppData) {
 			<audio data-remote autoplay playsinline></audio>
 		</div>
 		<script src="/assets/js/voicemail.js" defer></script>
+		<script src="/assets/js/meet.js" defer></script>
 		<script src="/assets/js/phone.js" defer></script>
 	}
 }

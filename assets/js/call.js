@@ -11,9 +11,12 @@
 
   var phase = "idle"; // idle, menu, ringing, connecting, talking, voicemail, recording, sending, ended
   var seq = 0;        // bumps on every new call or hang-up, so old callbacks stop
-  var ws, pc, mic, callId, choice, stopRing, timerIv, countIv, ac, recorder, vmToken, stopMeter, unsent;
+  var ws, pc, mic, callId, choice, stopRing, timerIv, countIv, ac, recorder, vmToken, stopMeter, unsent, meet, link;
   var MAX_MESSAGE_MS = 120000;
   var waveBars = $$("[data-wave] i"), liveBars = $$("[data-live] i"), recBars = $$("[data-rec-wave] i");
+
+  // Showing a screen needs a computer.
+  if (window.MinivoipMeet && MinivoipMeet.canShare) $("[data-share-btn]").hidden = false;
 
   // "Back to the website" returns to the page that sent the visitor here.
   if (document.referrer) {
@@ -197,10 +200,14 @@
   }
 
   function startTimer() {
-    var start = Date.now(), el = $("[data-timer]");
+    var start = Date.now(), els = $$("[data-timer]");
+    function tick() {
+      var t = clock(Math.floor((Date.now() - start) / 1000));
+      els.forEach(function (el) { el.textContent = t; });
+    }
     clearInterval(timerIv);
-    el.textContent = "0:00";
-    timerIv = setInterval(function () { el.textContent = clock(Math.floor((Date.now() - start) / 1000)); }, 500);
+    tick();
+    timerIv = setInterval(tick, 500);
   }
 
   // ----------------------------------------------------------- the menu
@@ -470,13 +477,14 @@
   function offer(s, cfg) {
     var remote;
     pc = new RTCPeerConnection(cfg);
-    mic.getTracks().forEach(function (t) { pc.addTrack(t, mic); });
-    pc.ontrack = function (e) {
+    // The voice, plus cameras, screens and the whiteboard (meet.js).
+    meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: "Caller", initials: "" }, mic: mic, onChange: meetChanged });
+    link = meet.link("owner", pc, { name: line.owner, initials: line.ownerInitials, onAudio: function (stream) {
       var el = $("[data-remote]");
-      remote = e.streams[0];
+      remote = stream;
       el.srcObject = remote;
       el.play().catch(function () {});
-    };
+    } });
     pc.onicecandidate = function (e) {
       if (e.candidate) send({ type: "ice", candidate: e.candidate.toJSON() });
     };
@@ -492,8 +500,36 @@
         end("ended", "Couldn't connect the call", "Please call again. If it keeps happening, try another network.");
       }
     };
-    pc.createOffer().then(function (offer) { return pc.setLocalDescription(offer); }).then(function () {
-      send({ type: "offer", sdp: pc.localDescription.sdp });
+    link.offer().then(function (sdp) { send({ type: "offer", sdp: sdp }); });
+  }
+
+  // meetChanged follows the stage: it opens wide while a camera, a screen or
+  // the whiteboard is on, and the buttons say what's on.
+  function meetChanged(m) {
+    root.dataset.stageOn = m.active() ? "on" : "";
+    pressed("camera", !!m.cam);
+    pressed("screen", !!m.scr);
+    pressed("board", m.boardOpen);
+  }
+  function pressed(action, on) {
+    var b = $('[data-action="' + action + '"]');
+    if (b) b.setAttribute("aria-pressed", String(on));
+  }
+  function meetNote(t) {
+    var n = $("[data-meet-note]");
+    n.textContent = t || "";
+    n.hidden = !t;
+  }
+  function camera() {
+    if (!meet) return;
+    meetNote("");
+    meet.camera().catch(function () { meetNote("Your browser blocked the camera. Allow it next to the web address, then try again."); });
+  }
+  function screen() {
+    if (!meet) return;
+    meetNote("");
+    meet.screen().catch(function (e) {
+      if (e && e.name !== "NotAllowedError") meetNote("Your screen couldn't be shown. Try again.");
     });
   }
 
@@ -502,7 +538,8 @@
     var on = b.getAttribute("aria-pressed") !== "true";
     b.setAttribute("aria-pressed", String(on));
     b.lastElementChild.textContent = on ? "Muted" : "Mute";
-    if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
+    if (meet) meet.mute(on);
+    else if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
   }
 
   function hangup() {
@@ -522,6 +559,8 @@
     clearInterval(timerIv);
     clearInterval(countIv);
     if (ws) { ws.onclose = null; ws.close(); ws = null; }
+    if (meet) { meet.end(); meet = null; link = null; }
+    meetNote("");
     if (pc) { pc.close(); pc = null; }
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     callId = null;
@@ -552,13 +591,14 @@
   window.minivoipCallStats = function () {
     if (!pc) return Promise.resolve(null);
     return pc.getStats().then(function (st) {
-      var out = { route: null, bytesIn: 0 };
+      var out = { route: null, bytesIn: 0, videoIn: 0 };
       st.forEach(function (x) {
         if (x.type === "candidate-pair" && x.nominated && x.state === "succeeded") {
           var l = st.get(x.localCandidateId), r = st.get(x.remoteCandidateId);
           out.route = (l && l.candidateType) + ">" + (r && r.candidateType);
         }
         if (x.type === "inbound-rtp" && x.kind === "audio") out.bytesIn = x.bytesReceived;
+        if (x.type === "inbound-rtp" && x.kind === "video") out.videoIn += x.bytesReceived;
       });
       return out;
     });
@@ -571,6 +611,9 @@
     switch (b.dataset.action) {
       case "call": start(); break;
       case "mute": mute(); break;
+      case "camera": camera(); break;
+      case "screen": screen(); break;
+      case "board": if (meet) meet.board(); break;
       case "hangup": hangup(); break;
       case "leave-message": leaveNow(); break;
       case "retry-mic": if (choice) press(choice.key); break;

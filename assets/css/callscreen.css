@@ -197,6 +197,37 @@
 
 .cw-remote { display: none; }
 
+/* ------------------------------------------------------------ cameras, screen, whiteboard */
+
+/* While a camera, a screen or the whiteboard is on (meet.js), the stage takes
+   the place of the voice wave and the window opens wide on a computer. */
+.cw-stage { display: none; }
+.cw-talk-head { display: none; }
+.cw-screen[data-stage-on="on"] { height: 100dvh; }
+.cw-screen[data-stage-on="on"] [data-show="talking"] .cw-center { display: none; }
+.cw-screen[data-stage-on="on"] .cw-talk-head { display: flex; margin-bottom: .75rem; }
+.cw-screen[data-stage-on="on"] .cw-stage { display: flex; flex: 1; }
+.cw-screen[data-stage-on="on"] .cw-round-row { padding-top: .875rem; }
+.cw-talk-head .cw-head-status { font-variant-numeric: tabular-nums; }
+.cw-meet-note { margin: .75rem 0 0; padding: .625rem .875rem; border-radius: .875rem; background: var(--cw-end-soft); font-size: .875rem; line-height: 1.45; }
+
+/* Five round buttons: smaller, in even columns. */
+.cw-round-row.is-meet { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: .25rem; }
+.cw-round-row.is-meet .cw-round { font-size: .75rem; text-align: center; }
+.cw-round-row.is-meet .cw-round > span:first-child { width: 3.5rem; height: 3.5rem; }
+.cw-round-row.is-meet .cw-round svg { width: 1.5rem; height: 1.5rem; }
+/* Very narrow (zoomed in): two rows. */
+@media (max-width: 20rem) {
+  .cw-round-row.is-meet { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row; row-gap: .875rem; }
+  .cw-round-row.is-meet .cw-round > span:first-child { width: 3.25rem; height: 3.25rem; }
+  .cw-round-row.is-meet .cw-round > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (min-width: 35rem) and (min-height: 42rem) {
+  .cw-screen { transition: width .35s var(--cw-ease), height .35s var(--cw-ease); }
+  .cw-screen[data-stage-on="on"] { width: min(78rem, calc(100vw - 3rem)); height: calc(100dvh - 3rem); min-height: 0; }
+  .cw-screen[data-stage-on="on"] .cw-round-row.is-meet { width: 26rem; margin: 0 auto; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cw *, .cw *::before, .cw *::after { animation: none !important; transition: none !important; }
 }

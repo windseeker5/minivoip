@@ -9,7 +9,7 @@
   if (!root) return;
   var $ = function (sel) { return root.querySelector(sel); };
 
-  var ws, pc, mic, ac, ringStop, timerIv, ringIv;
+  var ws, pc, mic, ac, ringStop, timerIv, ringIv, meet, link;
   var ringingId = null, liveId = null, wsDelay = 1000, offlineTimer = null;
   var wide = matchMedia("(min-width: 900px)");
   var android = window.MinivoipAndroid || null;
@@ -335,12 +335,13 @@
         liveId = id;
         show("connecting");
         pc = new RTCPeerConnection(cfg);
-        mic.getTracks().forEach(function (t) { pc.addTrack(t, mic); });
-        pc.ontrack = function (e) {
+        // The voice, plus cameras, screens and the whiteboard (meet.js).
+        meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials }, mic: mic, onChange: meetChanged });
+        link = meet.link(id, pc, { name: "Caller", onAudio: function (stream) {
           var el = $("[data-remote]");
-          el.srcObject = e.streams[0];
+          el.srcObject = stream;
           el.play().catch(function () {});
-        };
+        } });
         pc.onicecandidate = function (e) {
           if (e.candidate) send({ type: "ice", id: liveId, candidate: e.candidate.toJSON() });
         };
@@ -356,11 +357,25 @@
   }
 
   function answer(m) {
-    if (!pc || m.id !== liveId) return;
-    pc.setRemoteDescription({ type: "offer", sdp: m.sdp })
-      .then(function () { return pc.createAnswer(); })
-      .then(function (a) { return pc.setLocalDescription(a); })
-      .then(function () { send({ type: "answer", id: liveId, sdp: pc.localDescription.sdp }); });
+    if (!pc || !link || m.id !== liveId) return;
+    link.answer(m.sdp).then(function (sdp) { send({ type: "answer", id: liveId, sdp: sdp }); });
+  }
+
+  // meetChanged follows the stage: the call screen makes room for it while a
+  // camera, a screen or the whiteboard is on, and the buttons say what's on.
+  function meetChanged(m) {
+    $("[data-call-screen]").dataset.stageOn = m.active() ? "on" : "";
+    pressed("camera", !!m.cam);
+    pressed("screen", !!m.scr);
+    pressed("board", m.boardOpen);
+  }
+  function pressed(action, on) {
+    $('[data-action="' + action + '"]').setAttribute("aria-pressed", String(on));
+  }
+  function meetNote(t) {
+    var n = $("[data-meet-note]");
+    n.textContent = t || "";
+    n.hidden = !t;
   }
 
   function talking() {
@@ -379,6 +394,8 @@
     clearInterval(timerIv);
     $("[data-timer]").textContent = "";
     $('[data-action="mute"]').setAttribute("aria-pressed", "false");
+    if (meet) { meet.end(); meet = null; link = null; }
+    meetNote("");
     if (pc) { pc.close(); pc = null; }
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     liveId = null;
@@ -391,13 +408,14 @@
   window.minivoipCallStats = function () {
     if (!pc) return Promise.resolve(null);
     return pc.getStats().then(function (st) {
-      var out = { route: null, bytesIn: 0 };
+      var out = { route: null, bytesIn: 0, videoIn: 0 };
       st.forEach(function (x) {
         if (x.type === "candidate-pair" && x.nominated && x.state === "succeeded") {
           var l = st.get(x.localCandidateId), r = st.get(x.remoteCandidateId);
           out.route = (l && l.candidateType) + ">" + (r && r.candidateType);
         }
         if (x.type === "inbound-rtp" && x.kind === "audio") out.bytesIn = x.bytesReceived;
+        if (x.type === "inbound-rtp" && x.kind === "video") out.videoIn += x.bytesReceived;
       });
       return out;
     });
@@ -437,9 +455,20 @@
     } else if (b.dataset.action === "mute") {
       var on = b.getAttribute("aria-pressed") !== "true";
       b.setAttribute("aria-pressed", String(on));
-      if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
+      if (meet) meet.mute(on);
+      else if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
+    } else if (b.dataset.action === "camera" && meet) {
+      meetNote("");
+      meet.camera().catch(function () { meetNote("The camera is blocked. Allow it for this app, then try again."); });
+    } else if (b.dataset.action === "screen" && meet) {
+      meetNote("");
+      meet.screen().catch(function (e) { if (e && e.name !== "NotAllowedError") meetNote("Your screen couldn't be shown. Try again."); });
+    } else if (b.dataset.action === "board" && meet) {
+      meet.board();
     }
   });
+  // Showing a screen needs a computer.
+  if (window.MinivoipMeet && MinivoipMeet.canShare) $("[data-share-btn]").hidden = false;
 
   // ----------------------------------------------------------- push
   // Push notifications wake the phone when this page is closed or asleep.

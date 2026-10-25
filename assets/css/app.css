@@ -160,7 +160,7 @@ body:has(> .ap), html:has(.ap) { background: #f6f5f1; color-scheme: light; }
   color: var(--ap-muted); font-size: 14px; }
 .ap-call-fact b { color: var(--ap-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ap-call-bar { display: grid; gap: 10px; margin-top: auto; padding-top: 32px; }
-.ap-call-bar.is-live { grid-template-columns: 1fr 1fr; }
+.ap-call-bar.is-live { grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 8px; }
 .ap-answer, .ap-hangup { display: flex; align-items: center; justify-content: center; gap: 12px; height: 64px; border: 0; border-radius: 18px;
   color: #fff; font-size: 18px; font-weight: 600; }
 .ap-answer { background: var(--ap-green); box-shadow: 0 16px 34px -14px rgb(31 157 85 / .7); animation: ap-glow 1.6s ease-in-out infinite; }
@@ -168,9 +168,25 @@ body:has(> .ap), html:has(.ap) { background: #f6f5f1; color-scheme: light; }
 .ap-answer svg, .ap-hangup svg { width: 22px; height: 22px; }
 .ap-decline { height: 52px; border: 0; border-radius: 16px; background: var(--ap-surface); box-shadow: 0 0 0 1px #e2e0d9; color: var(--ap-red); font-size: 15px; font-weight: 600; }
 .ap-call-note { color: var(--ap-muted); font-size: 13px; text-align: center; }
-.ap-mute { height: 64px; border-radius: 18px; font-size: 16px; }
-.ap-mute svg { width: 20px; height: 20px; }
-.ap-mute[aria-pressed="true"] { background: var(--ap-ink); color: #fff; box-shadow: none; }
+/* During a call: Mute, Camera, Screen, Whiteboard, Hang up, in even columns. */
+.ap-tool, .is-live .ap-hangup { flex-direction: column; gap: 5px; height: 64px; padding: 0 4px; border-radius: 18px; font-size: 12px; font-weight: 500; }
+.ap-tool svg, .is-live .ap-hangup svg { width: 21px; height: 21px; }
+.ap-tool[aria-pressed="true"] { background: var(--ap-ink); color: #fff; box-shadow: none; }
+.ap-tool > span, .is-live .ap-hangup > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 420px) {
+  .ap-call-bar.is-live { gap: 6px; }
+  .ap-tool, .is-live .ap-hangup { padding: 0 2px; font-size: 11px; letter-spacing: -.01em; }
+}
+
+/* Cameras, a screen or the whiteboard (meet.js): the stage fills the call
+   screen, the words shrink to the line on top. */
+.ap-stage { display: none; }
+.ap-meet-note { margin-top: 12px; padding: 10px 14px; border-radius: 12px; background: var(--ap-red-soft); color: var(--ap-red); font-size: 14px; }
+.ap-call[data-stage-on="on"] .ap-call-in { max-width: none; height: 100%; min-height: 0;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+.ap-call[data-stage-on="on"] :is(.ap-call-title, .ap-call-sub) { display: none; }
+.ap-call[data-stage-on="on"] .ap-stage { display: flex; flex: 1; margin-top: 12px; }
+.ap-call[data-stage-on="on"] .ap-call-bar { margin-top: 0; padding-top: 12px; }
 .ap-call.is-talking .ap-call-state .ap-dot { animation: none; }
 
 @keyframes ap-in { from { opacity: 0; translate: 0 12px; } }
@@ -222,6 +238,9 @@ body:has(> .ap), html:has(.ap) { background: #f6f5f1; color-scheme: light; }
   .ap-call-in { min-height: 0; max-width: 520px; padding: 48px 24px; }
   .ap-call-title { font-size: 52px; }
   .ap-call-bar { margin-top: 0; padding-top: 40px; }
+  .ap-call[data-stage-on="on"] { align-items: stretch; }
+  .ap-call[data-stage-on="on"] .ap-call-in { padding: 18px; }
+  .ap-call[data-stage-on="on"] .ap-call-bar { width: 100%; max-width: 560px; margin: 0 auto; }
   .ap.ap-login { grid-template-rows: none; height: auto; min-height: 100dvh; overflow: visible; padding: 24px; }
 }
 

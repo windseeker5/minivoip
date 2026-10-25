@@ -18,6 +18,7 @@ type callData struct {
 	Menu          string       `json:"menu"`
 	Options       []callOption `json:"options"`
 	RingSeconds   int          `json:"ringSeconds"` // the owner's phones ring this long, then voicemail
+	OwnerInitials string       `json:"ownerInitials"` // the owner's face on the stage until their camera is on
 }
 
 type callOption struct {
@@ -38,7 +39,7 @@ func promptURL(name string) string {
 
 func newCallData(l lines.Line, ringSeconds int) callData {
 	d := callData{Line: l.Name, Business: l.Business, Owner: ownerName(l), Greeting: l.Greeting,
-		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds}
+		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l))}
 	for _, o := range l.Options {
 		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, SayAudio: promptURL(o.SayAudio), URL: o.URL})
 	}
@@ -113,6 +114,18 @@ templ iconMic() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M19 11a7 7 0 0 1-14 0M12 18v3"></path></svg>
 }
 
+templ iconCamera() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"></rect><path d="m15.5 10.5 6-3.5v10l-6-3.5"></path></svg>
+}
+
+templ iconScreen() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2.5"></rect><path d="M8 21h8M12 17v4M9 10.5l3-3 3 3M12 7.5v6"></path></svg>
+}
+
+templ iconBoard() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19.2 8.8a2.8 2.8 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>
+}
+
 templ iconBack() {
 	<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
 }
@@ -140,6 +153,7 @@ templ Call(l lines.Line, ringSeconds int) {
 	@layouts.Plain("Call " + l.Business) {
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
 		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
+		<link rel="stylesheet" href="/assets/css/stage.css"/>
 		<main class="cw">
 			<div class="cw-screen" data-call data-state="idle">
 				<p class="cw-sr" data-status role="status" aria-live="polite"></p>
@@ -222,6 +236,13 @@ templ Call(l lines.Line, ringSeconds int) {
 					</div>
 				</section>
 				<section class="cw-view" data-show="talking" hidden aria-label="On the call">
+					<header class="cw-head cw-talk-head">
+						<span class="cw-badge" aria-hidden="true">{ initials(owner) }</span>
+						<div>
+							<p class="cw-head-name">On the line with { owner }</p>
+							<p class="cw-head-status" data-timer aria-hidden="true">0:00</p>
+						</div>
+					</header>
 					<div class="cw-center">
 						<span class="cw-badge is-round" aria-hidden="true">{ initials(owner) }</span>
 						<h2 class="cw-title" tabindex="-1" data-focus>On the line with { owner }</h2>
@@ -232,12 +253,32 @@ templ Call(l lines.Line, ringSeconds int) {
 							}
 						</div>
 					</div>
-					<div class="cw-round-row">
+					<div class="cw-stage" data-stage></div>
+					<p class="cw-meet-note" data-meet-note role="status" hidden></p>
+					<div class="cw-round-row is-meet">
 						<button type="button" class="cw-round" data-action="mute" aria-pressed="false">
 							<span>
 								@iconMic()
 							</span>
 							<span>Mute</span>
+						</button>
+						<button type="button" class="cw-round" data-action="camera" aria-pressed="false">
+							<span>
+								@iconCamera()
+							</span>
+							<span>Camera</span>
+						</button>
+						<button type="button" class="cw-round" data-action="screen" aria-pressed="false" data-share-btn hidden>
+							<span>
+								@iconScreen()
+							</span>
+							<span>Screen</span>
+						</button>
+						<button type="button" class="cw-round" data-action="board" aria-pressed="false">
+							<span>
+								@iconBoard()
+							</span>
+							<span>Whiteboard</span>
 						</button>
 						<button type="button" class="cw-round is-end" data-action="hangup">
 							<span>
@@ -294,6 +335,7 @@ templ Call(l lines.Line, ringSeconds int) {
 			</div>
 		</main>
 		@templ.JSONScript("line", newCallData(l, ringSeconds))
+		<script src="/assets/js/meet.js" defer></script>
 		<script src="/assets/js/call.js" defer></script>
 	}
 }

@@ -1,0 +1,96 @@
+/* The stage: cameras, a shown screen and the whiteboard (assets/js/meet.js),
+   shared by the visitor's call window, the owner's app and the meeting room.
+   Dark tiles on whatever page holds it; the page gives the stage its size and
+   shows it (display: flex) only while it's in use.
+   Layouts (data-layout): "pair" (the other person fills it, me in the
+   corner), "grid" (three people or more) and "present" (a screen or the
+   whiteboard fills it, people in a strip under it). */
+
+.mv-stage {
+  --mv-tile: #18181b; --mv-face: #2c2c31; --mv-ink: #0c0c0d; --mv-red: #d33a2c;
+  position: relative; flex-direction: column; gap: 8px; min-height: 0; min-width: 0;
+}
+.mv-stage [hidden] { display: none !important; }
+.mv-main { position: relative; display: grid; flex: 1; gap: 8px; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); }
+.mv-stage[data-layout="grid"] .mv-main[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mv-stage[data-layout="grid"] .mv-main:is([data-count="3"], [data-count="4"]) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.mv-stage[data-layout="grid"] .mv-main:is([data-count="5"], [data-count="6"]) { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+/* A tall phone: people stack instead of side by side. */
+@media (max-aspect-ratio: 4/5) {
+  .mv-stage[data-layout="grid"] .mv-main[data-count="2"] { grid-template-columns: minmax(0, 1fr); }
+  .mv-stage[data-layout="grid"] .mv-main:is([data-count="5"], [data-count="6"]) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ------------------------------------------------------------ tiles */
+
+.mv-tile { position: relative; display: grid; place-items: center; min-width: 0; min-height: 0; overflow: hidden;
+  border-radius: 18px; background: var(--mv-tile); color: #fff; isolation: isolate; }
+.mv-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s; }
+.mv-tile.has-video video { opacity: 1; }
+.mv-tile.is-self video { transform: scaleX(-1); }
+.mv-tile.is-screen { background: var(--mv-ink); }
+.mv-tile.is-screen video { object-fit: contain; }
+.mv-tile.is-lost { opacity: .6; }
+.mv-face { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--mv-face);
+  font: 600 30px/1 "Funnel Display", Onest, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; }
+.mv-face svg { width: 36px; height: 36px; color: #c9c9ce; }
+.mv-tile.has-video .mv-face { visibility: hidden; }
+.mv-name { position: absolute; z-index: 1; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 5px; max-width: calc(100% - 20px);
+  padding: 4px 9px; border-radius: 999px; background: rgb(12 12 13 / .62); color: #fff; font-size: 12.5px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.mv-name svg { flex: none; width: 13px; height: 13px; color: #ff8a7a; }
+
+/* Me in the corner while two people talk. */
+.mv-tile.is-pip { position: absolute; z-index: 2; right: 12px; bottom: 12px; width: min(30%, 220px); aspect-ratio: 4 / 3;
+  border-radius: 14px; box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 14px 30px -12px rgb(0 0 0 / .6); }
+.mv-tile.is-pip .mv-face { width: 44px; height: 44px; font-size: 16px; }
+.mv-tile.is-pip .mv-name { left: 6px; bottom: 6px; padding: 2px 7px; font-size: 11px; }
+@media (max-aspect-ratio: 4/5) { .mv-tile.is-pip { width: min(34%, 150px); aspect-ratio: 3 / 4; } }
+
+/* People under a screen or the whiteboard. */
+.mv-strip { display: flex; flex: none; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.mv-strip:empty { display: none; }
+.mv-strip .mv-tile { flex: none; width: 150px; aspect-ratio: 16 / 10; border-radius: 14px; }
+.mv-strip .mv-face { width: 40px; height: 40px; font-size: 15px; }
+.mv-strip .mv-face svg { width: 20px; height: 20px; }
+.mv-strip .mv-name { left: 6px; bottom: 6px; padding: 2px 7px; font-size: 11px; }
+@media (max-width: 600px) { .mv-strip .mv-tile { width: 112px; } }
+
+/* "You're showing your screen" while I share. */
+.mv-sharing { position: absolute; z-index: 3; top: 12px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 12px;
+  padding: 6px 6px 6px 14px; border-radius: 999px; background: rgb(12 12 13 / .82); color: #fff; font-size: 13.5px; font-weight: 500;
+  white-space: nowrap; box-shadow: 0 10px 30px -12px rgb(0 0 0 / .5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.mv-sharing span { display: flex; align-items: center; gap: 8px; }
+.mv-sharing i { width: 8px; height: 8px; border-radius: 50%; background: var(--mv-red); }
+.mv-sharing button { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #fff; color: var(--mv-ink); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* ------------------------------------------------------------ whiteboard */
+
+.mv-board { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; padding: 8px; border-radius: 18px; background: #e9e9ec; color: var(--mv-ink); }
+.mv-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mv-tools-gap { flex: 1; }
+.mv-color { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--c); cursor: pointer;
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / .9), 0 0 0 1px rgb(12 12 13 / .12); }
+.mv-color[aria-pressed="true"] { box-shadow: inset 0 0 0 3px #fff, 0 0 0 2px var(--c); }
+.mv-tool { height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: #fff; color: var(--mv-ink); font: inherit; font-size: 13.5px;
+  font-weight: 600; cursor: pointer; box-shadow: 0 0 0 1px rgb(12 12 13 / .08); }
+.mv-tool:hover { background: #f4f4f5; }
+.mv-tool.is-icon { display: grid; place-items: center; width: 32px; padding: 0; }
+.mv-tool.is-icon svg { width: 16px; height: 16px; }
+.mv-color:focus-visible, .mv-tool:focus-visible { outline: 2px solid var(--mv-ink); outline-offset: 2px; }
+/* The paper keeps 16:10 and fits the space left, like a slide. */
+.mv-board > .mv-paper { flex: none; }
+.mv-board { container-type: size; }
+.mv-paper { position: relative; width: min(100cqw - 16px, (100cqh - 56px) * 1.6); aspect-ratio: 16 / 10; margin: auto; border-radius: 12px;
+  background: #fff radial-gradient(circle, #dedee2 1px, transparent 1.2px) 0 0 / 24px 24px; box-shadow: 0 1px 2px rgb(12 12 13 / .08); overflow: hidden; }
+.mv-paper canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+
+/* A phone: the pens and buttons fit on one row. */
+@container (max-width: 420px) {
+  .mv-tools { gap: 5px; }
+  .mv-color { width: 25px; height: 25px; }
+  .mv-tool { height: 29px; padding: 0 9px; font-size: 12.5px; }
+  .mv-tool.is-icon { width: 29px; padding: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) { .mv-tile video { transition: none; } }

@@ -142,72 +142,74 @@
   }
 }
 
-/* The landing page (pages/home.templ, DESIGN.md "Landing page"): pure white
-   with one cool grey band colour and one blue for actions, a near-black stage
-   in dark mode. It sets the shadcn tokens for its own subtree, so the
-   components follow. */
+/* The landing page (pages/home.templ, DESIGN.md "Landing page"): look
+   "Voice". Pure white, ink type in Funnel, the owner's voice as the hero; the
+   logo's colours as one field behind the phone. It sets the shadcn tokens for
+   its own subtree, so the components follow. */
 .lp {
   --background: #ffffff;
-  --foreground: #1d1d1f;
+  --foreground: #0c0c0d;
   --card: #ffffff;
-  --card-foreground: #1d1d1f;
-  --primary: #1f4fd1;
+  --card-foreground: #0c0c0d;
+  --primary: #0c0c0d;
   --primary-foreground: #ffffff;
-  --secondary: #f5f5f7;
-  --secondary-foreground: #1d1d1f;
-  --muted: #f5f5f7;
-  --muted-foreground: #6e6e73;
-  --accent: #f5f5f7;
-  --accent-foreground: #1d1d1f;
-  --border: #e5e5ea;
-  --input: #e5e5ea;
-  --ring: #1f4fd1;
-  --soft: #86868b;  /* "in one click." in the headline; large text only */
-  --band: #f5f5f7;  /* the grey sections */
-  --rule: #d2d2d7;  /* hairlines on the grey band */
+  --secondary: #f4f4f5;
+  --secondary-foreground: #0c0c0d;
+  --muted: #f4f4f5;
+  --muted-foreground: #66666c;
+  --accent: #f4f4f5;
+  --accent-foreground: #0c0c0d;
+  --border: #e7e7ea;
+  --input: #e7e7ea;
+  --ring: #0c0c0d;
+  --faint: #c9c9ce;     /* the wave and the words not said yet */
+  --now: #ffe4d6;       /* the word being said */
   /* The closing band, the page's one dark moment. */
-  --ink-bg: #1d1d1f;
-  --ink-fg: #f5f5f7;
-  --ink-muted: #a1a1a6;
-  --ink-rule: #3a3a3c;
+  --ink-bg: #0c0c0d;
+  --ink-fg: #f4f4f5;
+  --ink-muted: #a1a1a8;
+  --ink-rule: #2e2e33;
+  font-family: "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
 }
 .dark .lp {
-  --background: #0b0b0d;
-  --foreground: #f5f5f7;
-  --card: #161618;
-  --card-foreground: #f5f5f7;
-  --primary: #5b86ff;
-  --primary-foreground: #0b0b0d;
-  --secondary: #1c1c1f;
-  --secondary-foreground: #f5f5f7;
-  --muted: #1c1c1f;
-  --muted-foreground: #a1a1a6;
-  --accent: #1c1c1f;
-  --accent-foreground: #f5f5f7;
-  --border: #2a2a2e;
+  --background: #0b0b0c;
+  --foreground: #f4f4f5;
+  --card: #141416;
+  --card-foreground: #f4f4f5;
+  --primary: #f4f4f5;
+  --primary-foreground: #0b0b0c;
+  --secondary: #1b1b1e;
+  --secondary-foreground: #f4f4f5;
+  --muted: #1b1b1e;
+  --muted-foreground: #a1a1a8;
+  --accent: #1b1b1e;
+  --accent-foreground: #f4f4f5;
+  --border: #29292d;
   --input: #2c2c31;
-  --ring: #5b86ff;
-  --soft: #8e8e93;
-  --band: #141416;
-  --rule: #333338;
-  --ink-bg: #161618;
-  --ink-fg: #f5f5f7;
-  --ink-muted: #a1a1a6;
-  --ink-rule: #333338;
+  --ring: #f4f4f5;
+  --faint: #3b3b40;
+  --now: #4a2a1c;
+  --ink-bg: #141416;
+  --ink-fg: #f4f4f5;
+  --ink-muted: #a1a1a8;
+  --ink-rule: #2e2e33;
 }
 body:has(> .lp) {
   background: #ffffff;
 }
 .dark body:has(> .lp) {
-  background: #0b0b0d;
+  background: #0b0b0c;
+}
+.lp .lp-display {
+  font-family: "Funnel Display", "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
 }
 .lp p,
 .lp li {
   text-wrap: pretty;
 }
 .lp ::selection {
-  background: #dbe4fb;
-  color: #1d1d1f;
+  background: #ffd9c6;
+  color: #0c0c0d;
 }
 
 /* In the components layer, so Tailwind utilities on the same element win. */
@@ -217,86 +219,228 @@ body:has(> .lp) {
     color: var(--ink-fg);
   }
 
-  /* The hero's two phone screens (callPair): the visitor's call window,
-     always dark like callscreen.css, and the owner's phone app ringing. */
-  .lp-dev figcaption {
-    margin-top: 1.125rem;
-    font-size: 14px;
-    color: var(--muted-foreground);
-  }
-  .lp-screen {
+  /* The hero's voice: play button, wave, playhead, and the words. */
+  .lp-play {
     position: relative;
-    width: 300px;
-    height: 600px;
-    overflow: hidden;
-    border-radius: 46px;
-    text-align: left;
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 30px 60px -20px rgb(0 0 0 / 0.25);
-  }
-  .dark .lp-screen {
-    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 30px 60px -20px rgb(0 0 0 / 0.8);
-  }
-  .lp-visitor {
-    background: #121316;
-    color: #f2f2f4;
-    padding: 56px 24px 28px;
-  }
-  .lp-visitor .wave > i {
-    background: #3a3b40;
-  }
-  .lp-owner {
-    background: #ffffff;
-    color: #1d1d1f;
-    padding: 52px 22px 24px;
-  }
-  .lp-opt {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    font-size: 14px;
-    color: #d4d4d8;
-  }
-  .lp-opt b {
     display: grid;
     place-items: center;
     flex: none;
-    width: 26px;
-    height: 26px;
+    width: 96px;
+    height: 96px;
     border-radius: 999px;
-    background: #26272c;
+    background: var(--foreground);
+    color: var(--background);
+    box-shadow: 0 20px 40px -16px rgb(0 0 0 / 0.45);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .lp-play:hover {
+    transform: scale(1.04);
+  }
+  .lp-play:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 4px;
+  }
+  .lp-play-off,
+  .playing .lp-play-on {
+    display: none;
+  }
+  .playing .lp-play-off {
+    display: block;
+  }
+  .lp-wave {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 150px;
+  }
+  .lp-wave > i {
+    display: block;
+    width: 4px;
+    flex: none;
+    border-radius: 3px;
+    background: var(--faint);
+    transition: background-color 0.15s;
+  }
+  .lp-wave > i.on {
+    background: var(--c);
+  }
+  .lp-head {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    width: 2px;
+    background: var(--foreground);
+    pointer-events: none;
+  }
+  .lp-head > span {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-bottom: 6px;
+    transform: translateX(-50%);
     font-size: 13px;
     font-weight: 600;
-    color: #ffffff;
   }
-  .lp-opt-on {
-    background: rgb(244 100 34 / 0.14);
-    color: #ffffff;
+  [data-voice-seek] {
+    cursor: pointer;
   }
-  .lp-opt-on b {
-    background: #c9461a;
+  .lp-words span {
+    color: var(--faint);
+    border-radius: 0.3em;
+    transition: color 0.15s, background-color 0.15s;
   }
-  /* On a phone the two screens shrink together, contents and all, and the
-     owner's phone overlaps the visitor's so both stay readable. */
+  .lp-words span.said {
+    color: var(--foreground);
+  }
+  .lp-words span.now {
+    color: var(--foreground);
+    background: var(--now);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  /* A run of words being said reads as one highlight. */
+  .lp-words span.now:has(+ span.now) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .lp-words span.now + span.now {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
   @media (max-width: 639px) {
-    .lp-dev {
-      zoom: 0.68;
+    .lp-play {
+      width: 64px;
+      height: 64px;
     }
-    .lp-dev + .lp-dev {
-      position: relative;
-      z-index: 1;
-      margin-left: -90px;
+    .lp-wave {
+      height: 96px;
     }
-    .lp-dev figcaption {
-      font-size: 17px;
-      line-height: 1.35;
-      text-align: left;
+    .lp-wave > i {
+      width: 3px;
     }
-    .lp-dev + .lp-dev figcaption {
-      margin-left: auto;
-      text-align: right;
+    .lp-wave > i:nth-child(2n) {
+      display: none;
     }
+  }
+
+  /* The logo's colours as one field, behind the owner's phone. */
+  .lp-spectrum {
+    position: relative;
+    overflow: hidden;
+    border-radius: 32px;
+    background: #f46422;
+  }
+  .lp-spectrum::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background:
+      radial-gradient(42% 60% at 8% 40%, #f3840f 0%, transparent 70%),
+      radial-gradient(40% 55% at 30% 70%, #f46422 0%, transparent 70%),
+      radial-gradient(38% 50% at 55% 30%, #e31a5a 0%, transparent 70%),
+      radial-gradient(38% 55% at 72% 75%, #9f1574 0%, transparent 72%),
+      radial-gradient(40% 55% at 90% 30%, #5a2692 0%, transparent 72%),
+      radial-gradient(45% 55% at 104% 90%, #143495 0%, transparent 75%);
+    filter: blur(28px) saturate(1.1);
+  }
+  @media (max-width: 1023px) {
+    .lp-spectrum::before {
+      background:
+        radial-gradient(70% 30% at 20% 8%, #f3840f 0%, transparent 70%),
+        radial-gradient(70% 30% at 70% 30%, #f46422 0%, transparent 70%),
+        radial-gradient(70% 30% at 25% 55%, #e31a5a 0%, transparent 70%),
+        radial-gradient(70% 30% at 80% 75%, #9f1574 0%, transparent 72%),
+        radial-gradient(80% 30% at 40% 104%, #143495 0%, transparent 75%);
+    }
+  }
+
+  /* The owner's phone: a thin dark bezel, one island, the minivoip app. */
+  .lp-phone {
+    width: 300px;
+    height: 600px;
+    padding: 10px;
+    border-radius: 52px;
+    background: linear-gradient(145deg, #3a3b3f, #121214 40%, #2a2b2f);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4), 0 40px 80px -30px rgb(0 0 0 / 0.5);
+  }
+  .lp-phone::before {
+    content: "";
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    z-index: 2;
+    width: 88px;
+    height: 26px;
+    margin-left: -44px;
+    border-radius: 20px;
+    background: #000;
+  }
+  .lp-screen {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 42px;
+    background: #ffffff;
+    color: #111113;
+    padding: 74px 22px 24px;
+    text-align: left;
+  }
+  .lp-toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 320px;
+    max-width: 100%;
+    padding: 13px 14px;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 24px 48px -20px rgb(0 0 0 / 0.4);
+  }
+
+  /* The one line an owner pastes (howItWorks). */
+  .lp-code {
+    margin-top: 12px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    background: var(--muted);
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 15px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 639px) {
+    .lp-code {
+      font-size: 13px;
+    }
+  }
+  .lp-code .t {
+    color: #7c3aed;
+  }
+  .lp-code .a {
+    color: #2563eb;
+  }
+  .lp-code .s {
+    color: #c2410c;
+  }
+  .lp-code b {
+    color: var(--foreground);
+    font-weight: 600;
+    background: var(--now);
+    border-radius: 4px;
+    padding: 0 3px;
+  }
+  .dark .lp-code .t {
+    color: #c4b5fd;
+  }
+  .dark .lp-code .a {
+    color: #93c5fd;
+  }
+  .dark .lp-code .s {
+    color: #fdba74;
   }
 
   /* A drawn voice recording (waveform in pages/home.templ). */

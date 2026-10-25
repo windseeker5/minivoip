@@ -4,6 +4,7 @@ import (
 	"minivoip/components/button"
 	"minivoip/components/icon"
 	"minivoip/layouts"
+	"minivoip/lines"
 )
 
 // The words come from docs/landing-copy.md; change them there first.
@@ -72,21 +73,24 @@ var faqs = []faq{
 }
 
 // Home is the landing page; loggedIn swaps "Log in" for the dashboard link.
-// callLine is minivoip's own line: "Call us now" reaches Ken for a demo
-// ("" hides those buttons).
-templ Home(loggedIn bool, callLine string) {
-	@layouts.Base("minivoip: from a question on your website to a real conversation", "minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install.") {
+// line is minivoip's own line (Ken's): the hero plays its recorded greeting
+// and "Call us now" calls it. nil shows an example menu and hides the call
+// buttons. site is this site's address, for the code to paste.
+templ Home(loggedIn bool, line *lines.Line, site string) {
+	@layouts.Base("minivoip: your website answers the phone for you", "minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install.") {
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400..700&family=Funnel+Sans:wght@400..600&family=JetBrains+Mono:wght@400;600&display=swap"/>
 		<div class="lp min-h-screen bg-background text-foreground">
 			@siteNav(loggedIn)
 			<main>
-				@hero(callLine)
+				@hero(line)
+				@phoneRings(line)
 				@callGrows()
 				@pricing()
 				@maker()
-				@howItWorks()
+				@howItWorks(site)
 				@faqList()
 			</main>
-			@finalCall(callLine)
+			@finalCall(line)
 		</div>
 		<script src="/assets/js/landing.js" defer></script>
 	}
@@ -102,15 +106,15 @@ templ brand() {
 }
 
 templ siteNav(loggedIn bool) {
-	<nav class="sticky top-0 z-50 border-b bg-background">
-		<div class="mx-auto flex h-14 max-w-[1080px] items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
+	<nav class="sticky top-0 z-50 bg-background/95">
+		<div class="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between gap-2 px-4 sm:px-8">
 			@brand()
-			<div class="hidden items-center gap-8 text-[13px] text-foreground/80 md:flex">
+			<div class="hidden items-center gap-7 text-[15px] text-muted-foreground md:flex">
 				<a href="#how" class="transition-colors hover:text-foreground">How it works</a>
 				<a href="#pricing" class="transition-colors hover:text-foreground">Plans</a>
 				<a href="#faq" class="transition-colors hover:text-foreground">Questions</a>
 			</div>
-			<div class="flex items-center gap-1 sm:gap-3">
+			<div class="flex items-center gap-1 sm:gap-2">
 				@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeIcon, Class: "size-11 rounded-full text-muted-foreground", Attributes: templ.Attributes{"data-theme-toggle": "", "aria-label": "Switch light or dark mode"}}) {
 					<span class="hidden dark:block">
 						@icon.Sun()
@@ -120,12 +124,12 @@ templ siteNav(loggedIn bool) {
 					</span>
 				}
 				if loggedIn {
-					@button.Button(button.Props{Href: "/dashboard", Size: button.SizeSm, Class: "h-11 rounded-full px-4 text-[13px] sm:h-8"}) {
+					@button.Button(button.Props{Href: "/dashboard", Size: button.SizeSm, Class: "h-11 rounded-full px-4 text-[15px] font-medium sm:h-10"}) {
 						My dashboard
 					}
 				} else {
-					<a href="/login" class="hidden min-h-11 items-center px-2 text-[13px] text-foreground/80 transition-colors hover:text-foreground sm:flex">Log in</a>
-					@button.Button(button.Props{Href: "/signup", Size: button.SizeSm, Class: "h-11 rounded-full px-4 text-[13px] sm:h-8"}) {
+					<a href="/login" class="hidden min-h-11 items-center rounded-full px-4 text-[15px] font-medium transition-colors hover:bg-muted sm:flex">Log in</a>
+					@button.Button(button.Props{Href: "/signup", Size: button.SizeSm, Class: "h-11 rounded-full px-4 text-[15px] font-medium sm:h-10"}) {
 						Get my free line
 					}
 				}
@@ -134,95 +138,116 @@ templ siteNav(loggedIn bool) {
 	</nav>
 }
 
-templ hero(callLine string) {
-	<section class="overflow-hidden px-4 pt-14 pb-14 text-center sm:px-6 sm:pt-20 sm:pb-20 lg:pt-[88px] lg:pb-24">
-		<h1 class="mx-auto max-w-[980px] text-[2.75rem] leading-[1.04] font-semibold tracking-[-0.035em] text-balance sm:text-6xl lg:text-[4.75rem] lg:leading-[1.03]">
-			From a question on your website to a real conversation, <span class="text-[var(--soft)]">in one click.</span>
-		</h1>
-		<p class="mx-auto mt-6 max-w-[640px] text-lg/relaxed text-pretty text-muted-foreground sm:text-[21px]/[1.45]">
-			Your voice menu answers the common questions. When a visitor wants more, you talk to them and show them your screen. No phone line, nothing to install.
-		</p>
-		<div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-7">
-			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "h-12 rounded-full px-6 text-[17px] font-medium"}) {
+// hero lets the visitor hear minivoip's own line: the recorded greeting on a
+// big voice wave, with the words written underneath.
+templ hero(line *lines.Line) {
+	<section class="mx-auto max-w-[1280px] px-4 pt-12 text-center sm:px-8 sm:pt-[76px]">
+		<h1 class="lp-display mx-auto max-w-[1000px] text-[2.875rem] leading-[1] font-semibold tracking-[-0.035em] text-balance sm:text-7xl lg:text-[5.5rem] lg:leading-[.98]">Your website answers the phone for you.</h1>
+		<p class="mx-auto mt-5 max-w-[620px] text-lg/relaxed text-pretty text-muted-foreground sm:mt-6 sm:text-xl/relaxed">Record a short menu in your own voice. Visitors hear it, press a number, and get their answer or your cell.</p>
+		@voicePlayer(line)
+		<div class="mt-10 flex flex-col items-center justify-center gap-3 sm:mt-12 sm:flex-row">
+			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "h-[52px] w-full max-w-[320px] rounded-full px-7 text-base font-semibold sm:w-auto"}) {
 				Get my free line
 			}
-			if callLine != "" {
-				<a href={ templ.SafeURL("/call/" + callLine) } target="_blank" data-call-us class="inline-flex min-h-12 items-center gap-1 px-2 text-[17px] font-medium text-primary underline-offset-4 hover:underline">
-					Call us now
-					@icon.ChevronRight(icon.Props{Class: "size-4"})
+			if line != nil {
+				<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-call-us class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">
+					@icon.Phone(icon.Props{Class: "size-4"})
+					Call us now, it's the real thing
 				</a>
 			} else {
-				<a href="#how" class="inline-flex min-h-12 items-center gap-1 px-2 text-[17px] font-medium text-primary underline-offset-4 hover:underline">
-					See how it works
-					@icon.ChevronRight(icon.Props{Class: "size-4"})
-				</a>
+				<a href="#how" class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">See how it works</a>
 			}
 		</div>
-		<p class="mt-4 text-[13px] text-muted-foreground">
-			Free while in beta · No card required
-			if callLine != "" {
-				<span class="block sm:inline"><span class="hidden sm:inline"> · </span>“Call us now” rings Ken, who builds it.</span>
-			}
-		</p>
-		@callPair()
+		<p class="mt-4 text-sm text-muted-foreground">Free while in beta · No phone line · Nothing to install</p>
 	</section>
 }
 
-// callPair is a picture of one call from both ends: the visitor hearing the
-// voice menu in their browser, and the owner's phone ringing with the choice
-// they made. Nothing in it is a control.
-templ callPair() {
-	<div class="mx-auto mt-14 flex justify-center sm:mt-[72px] sm:gap-14" role="img" aria-label="One minivoip call from both ends: the visitor hears the voice menu and presses 1, Book a demo; the owner's phone rings with that choice">
-		<figure class="lp-dev">
-			<div class="lp-screen lp-visitor" aria-hidden="true">
-				<div class="mx-auto grid size-[72px] place-items-center rounded-full border border-[#f3840f] text-3xl font-semibold text-[#f3840f]">m</div>
-				<p class="mt-4 text-center text-[22px] font-semibold tracking-[-0.01em]">minivoip</p>
-				<p class="mt-1.5 text-center text-[13px] text-[#a1a1aa]">Hi, this is Ken. Press a number…</p>
-				@waveform(44, 34, 11, 0.62, "mx-auto my-6 w-[220px]")
-				<div class="flex flex-col gap-1">
-					<span class="lp-opt lp-opt-on"><b>1</b>Book a demo</span>
-					<span class="lp-opt"><b>2</b>How it works and prices</span>
-					<span class="lp-opt"><b>0</b>Leave a message</span>
+// voicePlayer is the big wave. With a recorded greeting it plays it
+// (landing.js); without one it is a still picture of a voice.
+templ voicePlayer(line *lines.Line) {
+	{{ l := exampleLine }}
+	if line != nil {
+		{{ l = *line }}
+	}
+	<div class="lp-voice mt-12 sm:mt-16" data-voice>
+		<div class="flex items-center gap-4 text-left sm:gap-7">
+			if line != nil && line.GreetingAudio != "" {
+				<button type="button" class="lp-play" data-voice-play aria-label="Play minivoip's greeting">
+					<svg class="lp-play-on size-7 sm:size-9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"></path></svg>
+					<svg class="lp-play-off size-7 sm:size-9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"></path></svg>
+				</button>
+				<audio preload="metadata" src={ "/prompt/" + line.GreetingAudio }></audio>
+			}
+			<div class="min-w-0 flex-1">
+				<div class="lp-wave" aria-hidden="true" data-voice-seek?={ line != nil && line.GreetingAudio != "" }>
+					for _, b := range voiceWave(120, 29, 0.44) {
+						<i class={ templ.KV("on", b.On) } style={ b.style() }></i>
+					}
+					<span class="lp-head" style="left:44%"><span class="tabular-nums" data-voice-at></span></span>
 				</div>
-				<p class="absolute inset-x-0 bottom-6 text-center text-[11px] text-[#8a8a93]">Free web call · nothing to install</p>
-			</div>
-			<figcaption>Your visitor, in their browser</figcaption>
-		</figure>
-		<figure class="lp-dev">
-			<div class="lp-screen lp-owner" aria-hidden="true">
-				<p class="flex items-center gap-2 text-[13px] text-[#424245]">
-					<span class="size-2 rounded-full bg-[#1f9d55] shadow-[0_0_0_4px_#dcf2e4]"></span>
-					Incoming call · <span class="tabular-nums">0:04</span>
+				<p class="mt-3 flex justify-between text-[13px] text-muted-foreground">
+					if line != nil && line.GreetingAudio != "" {
+						<span>minivoip's own line · the real recording</span>
+						<span class="tabular-nums" data-voice-time></span>
+					} else {
+						<span>Example of a voice menu</span>
+					}
 				</p>
-				<p class="mt-[22px] text-[30px] leading-[1.08] font-semibold tracking-[-0.03em]">
-					Someone chose
-					<span class="block text-[#c9461a]">“Book a demo”</span>
-				</p>
-				<p class="mt-3 text-[13.5px]/[1.45] text-[#6e6e73]">A visitor on your website heard your greeting and picked this choice.</p>
-				<p class="mt-[18px] rounded-[14px] px-3.5 py-3 text-[12.5px] text-[#6e6e73] shadow-[inset_0_0_0_1px_#e5e5ea]">If nobody answers: <b class="font-semibold text-[#1d1d1f]">voicemail in <span class="tabular-nums">0:26</span></b></p>
-				<div class="absolute inset-x-[22px] bottom-[26px] flex flex-col gap-2">
-					<span class="rounded-[14px] bg-[#157a3f] p-[15px] text-center text-base font-semibold text-white">Answer</span>
-					<span class="rounded-[14px] p-3 text-center text-sm font-medium text-[#b4321f] shadow-[inset_0_0_0_1px_#e5e5ea]">Decline</span>
-				</div>
 			</div>
-			<figcaption>You, on your own phone</figcaption>
-		</figure>
+		</div>
+		<p class="lp-display lp-words mx-auto mt-10 max-w-[1000px] text-2xl leading-[1.3] font-medium tracking-[-0.02em] text-balance sm:mt-12 sm:text-[2.25rem]" data-voice-text>
+			for _, w := range voiceWords(l) {
+				<span class={ w.Class }>{ w.Text }</span>
+			}
+		</p>
 	</div>
 }
 
-templ waveform(n, height, seed int, played float64, class string) {
-	<div class={ "wave flex items-center justify-between gap-[2px]", class } style={ "height:" + px(height) } aria-hidden="true">
-		for _, b := range wave(n, height, seed, played) {
-			<i style={ b.style() }></i>
-		}
-	</div>
+// phoneRings is the other end of the call: the owner's phone ringing, on the
+// logo's colours.
+templ phoneRings(line *lines.Line) {
+	{{ l := exampleLine }}
+	if line != nil {
+		{{ l = *line }}
+	}
+	<section class="px-3 pt-24 sm:px-6 sm:pt-32">
+		<div class="lp-spectrum mx-auto max-w-[1280px]">
+			<div class="relative z-[1] grid items-center gap-10 px-6 py-14 sm:px-12 sm:py-20 lg:grid-cols-2 lg:gap-6 lg:px-16">
+				<div class="max-w-[30rem] text-[#0c0c0d]">
+					<h2 class="lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">Then your own phone rings.</h2>
+					<p class="mt-5 text-lg/relaxed font-medium">You see what they chose before you answer. Busy? They leave a voicemail and you get an alert.</p>
+				</div>
+				<div class="relative mx-auto h-[600px] w-full max-w-[460px]" aria-hidden="true">
+					<div class="lp-phone absolute top-0 right-0 sm:right-6">
+						<div class="lp-screen">
+							<p class="flex items-center gap-2 text-[13px] text-[#55555b]"><span class="size-2 rounded-full bg-[#1f9d55] shadow-[0_0_0_4px_#dcf2e4]"></span><span>Incoming call · <span class="tabular-nums">0:04</span></span></p>
+							<p class="lp-display mt-[22px] text-[30px] leading-[1.06] font-semibold tracking-[-0.03em]">Someone chose <span class="block text-[#c9461a]">“{ ringChoice(l) }”</span></p>
+							<p class="mt-3 text-[13.5px]/[1.45] text-[#6b6b70]">A visitor on your website heard your greeting and picked this choice.</p>
+							<p class="mt-[18px] rounded-[14px] px-3 py-2.5 text-[12.5px] text-[#6b6b70] shadow-[inset_0_0_0_1px_#e8e8ec]">If nobody answers: <b class="font-semibold text-[#111113]">voicemail in <span class="tabular-nums">0:26</span></b></p>
+							<div class="absolute inset-x-[22px] bottom-[30px] flex flex-col gap-2">
+								<span class="rounded-[15px] bg-[#157a3f] p-[15px] text-center text-base font-semibold text-white">Answer</span>
+								<span class="rounded-[15px] p-3 text-center text-sm font-medium text-[#b4321f] shadow-[inset_0_0_0_1px_#e8e8ec]">Decline</span>
+							</div>
+						</div>
+					</div>
+					<div class="lp-toast absolute top-[318px] left-0">
+						<span class="grid size-[38px] shrink-0 place-items-center rounded-[11px] bg-[#111113] text-white">
+							@icon.Voicemail(icon.Props{Class: "size-[18px]"})
+						</span>
+						<span class="min-w-0 flex-1 text-[13px]/[1.35] text-[#6b6b70]"><b class="block text-sm font-semibold text-[#111113]">New voicemail</b>From your website · <span class="tabular-nums">0:38</span></span>
+						<span class="rounded-full bg-[#f0f0f3] px-3 py-1.5 text-xs font-semibold text-[#111113]">Play</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
 }
 
 templ sectionHead(title, lead string) {
-	<div class="mx-auto max-w-[820px] text-center">
-		<h2 class="text-[2.25rem] leading-[1.06] font-semibold tracking-[-0.03em] text-balance sm:text-[3.5rem]">{ title }</h2>
+	<div class="mx-auto max-w-[860px] text-center">
+		<h2 class="lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">{ title }</h2>
 		if lead != "" {
-			<p class="mx-auto mt-5 max-w-[620px] text-lg/relaxed text-pretty text-muted-foreground sm:text-[21px]/[1.45]">{ lead }</p>
+			<p class="mx-auto mt-5 max-w-[580px] text-lg/relaxed text-pretty text-muted-foreground sm:text-xl/relaxed">{ lead }</p>
 		}
 	</div>
 }
@@ -230,15 +255,15 @@ templ sectionHead(title, lead string) {
 // callGrows tells the story in three steps: answers, then the owner, then
 // the owner's screen. The last one is Premium.
 templ callGrows() {
-	<section id="how" class="scroll-mt-14 bg-[var(--band)] px-4 py-20 sm:px-6 sm:py-[120px]">
-		<div class="mx-auto max-w-[1080px]">
+	<section id="how" class="scroll-mt-[72px] px-4 pt-24 sm:px-8 sm:pt-32">
+		<div class="mx-auto max-w-[1280px]">
 			@sectionHead("One click, and the call grows with the question.", "Most visitors only need an answer. Some need you. A few need to see it. minivoip handles all three in the same call.")
-			<div class="mt-12 grid gap-9 sm:mt-20 md:grid-cols-3 md:gap-12">
+			<div class="mt-12 grid gap-10 sm:mt-16 md:grid-cols-3 md:gap-12">
 				for _, s := range stages {
-					<div class="flex flex-col border-t border-[var(--rule)] pt-7">
-						<h3 class="text-[2rem] font-semibold tracking-[-0.025em]">{ s.Title }</h3>
-						<p class="mt-3 text-[17px]/[1.5] text-muted-foreground">{ s.Text }</p>
-						<p class={ "mt-auto pt-[18px] text-[13px] font-medium", templ.KV("text-muted-foreground", s.Soon) }>{ s.Plan }</p>
+					<div class="flex flex-col border-t pt-7">
+						<h3 class="lp-display text-[2rem] font-semibold tracking-[-0.03em]">{ s.Title }</h3>
+						<p class="mt-3 text-[17px]/[1.55] text-muted-foreground">{ s.Text }</p>
+						<p class={ "mt-auto pt-5 text-[13px] font-semibold", templ.KV("text-muted-foreground", s.Soon) }>{ s.Plan }</p>
 					</div>
 				}
 			</div>
@@ -247,10 +272,10 @@ templ callGrows() {
 }
 
 templ pricing() {
-	<section id="pricing" class="scroll-mt-14 px-4 py-20 sm:px-6 sm:py-[120px]">
-		<div class="mx-auto max-w-[1080px]">
+	<section id="pricing" class="scroll-mt-[72px] px-4 pt-24 sm:px-8 sm:pt-32">
+		<div class="mx-auto max-w-[1280px]">
 			@sectionHead("Start with Basic. Grow into Premium.", "Free while in beta. No per‑minute charges.")
-			<div class="mx-auto mt-12 grid max-w-[880px] gap-5 sm:mt-16 md:grid-cols-2">
+			<div class="mx-auto mt-12 grid max-w-[920px] gap-4 sm:mt-16 md:grid-cols-2">
 				for _, p := range plans {
 					@planCard(p)
 				}
@@ -261,34 +286,34 @@ templ pricing() {
 }
 
 templ planCard(p plan) {
-	<div class="flex flex-col rounded-2xl bg-card p-7 shadow-[0_0_0_1px_var(--border)] sm:p-9">
+	<div class={ "flex flex-col rounded-2xl p-7 sm:p-9", templ.KV("bg-card shadow-[0_0_0_1px_var(--border)]", !p.Premium), templ.KV("bg-muted", p.Premium) }>
 		<div class="flex items-baseline justify-between gap-3">
-			<h3 class="text-xl font-semibold tracking-[-0.01em]">{ p.Name }</h3>
+			<h3 class="lp-display text-2xl font-semibold tracking-[-0.02em]">{ p.Name }</h3>
 			if p.Premium {
-				<span class="text-[13px] font-medium text-muted-foreground">Coming soon</span>
+				<span class="rounded-full bg-background px-3 py-1 text-xs font-semibold">Coming soon</span>
 			} else {
-				<span class="text-[13px] font-medium text-muted-foreground">Free in beta</span>
+				<span class="rounded-full bg-muted px-3 py-1 text-xs font-semibold">Free in beta</span>
 			}
 		</div>
 		<p class="mt-6 flex items-baseline gap-2">
-			<span class="text-5xl font-semibold tracking-[-0.03em]">{ p.Price }</span>
+			<span class="lp-display text-[3.25rem] leading-none font-semibold tracking-[-0.04em]">{ p.Price }</span>
 			<span class="text-muted-foreground">/ month after beta, planned</span>
 		</p>
-		<p class="mt-2 text-[17px]">{ p.Line }</p>
-		<ul class="mt-7 mb-8 flex flex-col border-b text-[15px]">
+		<p class="mt-3 text-[17px] font-medium">{ p.Line }</p>
+		<ul class="mt-7 mb-8 flex flex-col text-[15px]">
 			for _, item := range p.Items {
 				<li class="flex items-start gap-3 border-t py-3">
-					@icon.Check(icon.Props{Class: "mt-0.5 size-4 shrink-0 text-foreground"})
+					@icon.Check(icon.Props{Class: "mt-0.5 size-4 shrink-0"})
 					{ item }
 				</li>
 			}
 		</ul>
 		if p.Premium {
-			@button.Button(button.Props{Href: "mailto:kdresdell@minipass.me?subject=minivoip%20Premium", Variant: button.VariantOutline, Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full text-[15px] font-medium"}) {
+			@button.Button(button.Props{Href: "mailto:kdresdell@minipass.me?subject=minivoip%20Premium", Variant: button.VariantOutline, Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full bg-background text-[15px] font-semibold"}) {
 				Tell me when it's ready
 			}
 		} else {
-			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full text-[15px] font-medium"}) {
+			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full text-[15px] font-semibold"}) {
 				Get my free line
 			}
 		}
@@ -297,31 +322,49 @@ templ planCard(p plan) {
 
 // maker is Ken's own reason for minivoip: he uses it on his businesses first.
 templ maker() {
-	<section class="bg-[var(--band)] px-4 py-20 sm:px-6 sm:py-[120px]">
-		<figure class="mx-auto max-w-[860px] text-center">
-			<blockquote class="text-[1.6rem] leading-[1.3] font-semibold tracking-[-0.025em] text-balance sm:text-[2.5rem] sm:leading-[1.2]">
+	<section class="px-4 pt-24 sm:px-8 sm:pt-32">
+		<figure class="mx-auto max-w-[940px] text-center">
+			<blockquote class="lp-display text-[1.75rem] leading-[1.25] font-medium tracking-[-0.025em] text-balance sm:text-[2.75rem] sm:leading-[1.18]">
 				“I built minivoip for my own businesses first. A visitor on my site asks a question, and a minute later I'm showing them the product.”
 			</blockquote>
-			<figcaption class="mt-8 text-[15px]">
-				<span class="font-semibold">Ken Dresdell</span>
-				<span class="text-muted-foreground">· Maker of minipass and minivoip</span>
-			</figcaption>
+			<figcaption class="mt-7 text-[15px]"><span class="font-semibold">Ken Dresdell</span> <span class="text-muted-foreground">· Maker of minipass and minivoip</span></figcaption>
 		</figure>
 	</section>
 }
 
-templ howItWorks() {
-	<section id="steps" class="scroll-mt-14 px-4 py-20 sm:px-6 sm:py-[120px]">
-		<div class="mx-auto max-w-[1080px]">
-			@sectionHead("Ready in three steps", "")
-			<ol class="mt-12 grid gap-9 sm:mt-16 md:grid-cols-3 md:gap-12">
-				for i, s := range steps {
-					<li class="border-t pt-7">
-						<h3 class="text-[1.375rem] font-semibold tracking-[-0.02em]"><span class="mr-2.5 text-muted-foreground tabular-nums">{ stepNumber(i) }</span>{ s.Title }</h3>
-						<p class="mt-2 text-[17px]/[1.5] text-muted-foreground">{ s.Text }</p>
-					</li>
-				}
-			</ol>
+// howItWorks is the setup in three steps, with the one line an owner pastes
+// on their site and the button it makes.
+templ howItWorks(site string) {
+	<section id="steps" class="scroll-mt-[72px] px-4 pt-24 sm:px-8 sm:pt-32">
+		<div class="mx-auto max-w-[1280px]">
+			<h2 class="lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">Ready in three steps</h2>
+			<div class="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-20">
+				<ol class="flex flex-col">
+					for i, s := range steps {
+						<li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-2 border-t py-6 first:pt-6">
+							<span class="lp-display text-[1.75rem] leading-none font-semibold text-muted-foreground tabular-nums">{ stepNumber(i) }</span>
+							<div>
+								<h3 class="lp-display text-[1.375rem] leading-tight font-semibold tracking-[-0.02em]">{ s.Title }</h3>
+								<p class="mt-1.5 text-[17px]/[1.55] text-muted-foreground">{ s.Text }</p>
+							</div>
+						</li>
+					}
+				</ol>
+				<div class="min-w-0 border-t pt-6">
+					<div class="flex items-center justify-between gap-3">
+						<p class="text-[15px] font-semibold">Paste this on your site</p>
+						<button type="button" class="min-h-11 rounded-full px-4 text-sm font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted" data-copy-code>Copy</button>
+					</div>
+					<pre class="lp-code" data-code><span class="t">&lt;a</span> <span class="a">href</span>=<span class="s">"{ site }/call/<wbr/><b>your-business</b>"</span><span class="t">&gt;</span>Call us<span class="t">&lt;/a&gt;</span></pre>
+					<div class="mt-6 flex flex-col gap-4 rounded-2xl bg-muted p-6 sm:flex-row sm:items-center sm:p-8">
+						<span class="inline-flex shrink-0 items-center gap-2.5 self-start rounded-full bg-[#f46422] py-3.5 pr-6 pl-5 text-base font-semibold text-[#111113]" aria-hidden="true">
+							@icon.Phone(icon.Props{Class: "size-[18px]"})
+							Call us
+						</span>
+						<p class="text-[15px]/[1.5] text-muted-foreground">That's the button it makes. No website? Share the link, or print it as a QR code for your door.</p>
+					</div>
+				</div>
+			</div>
 		</div>
 	</section>
 }
@@ -331,13 +374,13 @@ func stepNumber(i int) string {
 }
 
 templ faqList() {
-	<section id="faq" class="scroll-mt-14 px-4 pb-20 sm:px-6 sm:pb-[120px]">
-		<div class="mx-auto max-w-[760px]">
+	<section id="faq" class="scroll-mt-[72px] px-4 py-24 sm:px-8 sm:py-32">
+		<div class="mx-auto max-w-[780px]">
 			@sectionHead("Questions", "")
 			<div class="mt-10 divide-y border-y sm:mt-14">
 				for _, f := range faqs {
 					<details class="group">
-						<summary class="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-[17px] font-medium [&::-webkit-details-marker]:hidden">
+						<summary class="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-lg font-medium [&::-webkit-details-marker]:hidden">
 							{ f.Q }
 							@icon.Plus(icon.Props{Class: "size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-45"})
 						</summary>
@@ -351,22 +394,22 @@ templ faqList() {
 
 // finalCall is the last call to action, with the footer inside the same
 // ink band: the page's one dark moment.
-templ finalCall(callLine string) {
+templ finalCall(line *lines.Line) {
 	<footer class="lp-ink">
-		<div class="mx-auto flex max-w-[1080px] flex-col items-center px-4 py-20 text-center sm:px-6 sm:py-28">
-			<h2 class="text-[2.25rem] leading-[1.06] font-semibold tracking-[-0.03em] text-balance sm:text-[3.5rem]">Put a Call button on your website.</h2>
+		<div class="mx-auto flex max-w-[1280px] flex-col items-center px-4 py-20 text-center sm:px-8 sm:py-28">
+			<h2 class="lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">Put a Call button on your website.</h2>
 			<p class="mt-5 text-lg text-[var(--ink-muted)]">Free while in beta. Start with Basic, move to Premium when it's ready.</p>
-			<div class="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:gap-7">
-				<a href="/signup" class="flex h-12 items-center justify-center rounded-full bg-[var(--ink-fg)] px-6 text-[17px] font-medium text-[var(--ink-bg)] transition-opacity hover:opacity-90">Get my free line</a>
-				if callLine != "" {
-					<a href={ templ.SafeURL("/call/" + callLine) } target="_blank" class="inline-flex min-h-12 items-center gap-1 px-2 text-[17px] font-medium underline-offset-4 hover:underline">
+			<div class="mt-9 flex flex-col items-center gap-3 sm:flex-row">
+				<a href="/signup" class="flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full bg-[var(--ink-fg)] px-7 sm:w-auto text-base font-semibold text-[var(--ink-bg)] transition-opacity hover:opacity-90">Get my free line</a>
+				if line != nil {
+					<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--ink-rule)] sm:w-auto transition-colors hover:bg-white/10">
+						@icon.Phone(icon.Props{Class: "size-4"})
 						Call us now
-						@icon.ChevronRight(icon.Props{Class: "size-4"})
 					</a>
 				}
 			</div>
 		</div>
-		<div class="mx-auto max-w-[1080px] px-4 sm:px-6">
+		<div class="mx-auto max-w-[1280px] px-4 sm:px-8">
 			<div class="flex flex-col items-center justify-between gap-2 border-t border-[var(--ink-rule)] py-6 text-[13px] text-[var(--ink-muted)] sm:flex-row">
 				<div class="flex flex-col items-center gap-1 sm:flex-row sm:gap-3">
 					<a href="/" class="flex min-h-11 shrink-0 items-center" aria-label="minivoip home">
@@ -374,7 +417,8 @@ templ finalCall(callLine string) {
 					</a>
 					<span>Part of the mini family, with minipass and minicrm.</span>
 				</div>
-				<div class="flex items-center gap-5">
+				<div class="flex flex-wrap items-center justify-center gap-x-5">
+					<a href="/login" class="flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline">Log in</a>
 					<a href="/download/minivoip.apk" class="flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline">Get the Android app</a>
 					<a href="mailto:kdresdell@minipass.me" class="flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline">kdresdell@minipass.me</a>
 				</div>

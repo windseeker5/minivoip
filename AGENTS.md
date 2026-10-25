@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy. `main` has calls end to end, the owner's app (look C) and the Android app that rings. Branch `landing-b` (not pushed, changes not committed yet) has the landing page redesigned on 2026-10-25 as option A "Keynote": pure white, Apple-like, one blue for actions, the hero shows both ends of a real call. Plan and progress: `docs/plan.md` "Where we are".
-- Next action: Ken rejected the Keynote look too (2026-10-25: "always the same", he dislikes the font and the style; only the words are good). PRODUCT.md was reset (visual direction not decided). Ken had the Keynote page shipped as a stop-gap. Next: `/impeccable redesign` of the landing page on its own branch, with a new font and a new layout, at the craft level of a 5 to 10 thousand dollar site. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-25. Critiqued the look-B landing page (score 22/36, `.impeccable/critique/`), showed three white options on a canvas (https://claude.ai/artifact/XWsCHyUp822kvL6EfHgioS), built A in `pages/home.templ` + `globals.css` `.lp`, updated DESIGN.md "Landing page", PRODUCT.md, `docs/landing-copy.md`. Tests: `go vet`, `go test`, `site.mjs` all good.
+- Status: healthy. `main` has calls end to end, the owner's app (look C), the Android app that rings, and the landing page in look "Voice" (the hero plays the real recorded greeting of minivoip's own line, Funnel type, the logo colours in one band, the code to paste). Plan and progress: `docs/plan.md` "Where we are".
+- Next action: Ken re-records his line's greeting and menu (it still says "Hi, you've reached OMT", one choice): the landing page plays and writes out whatever the line has (planned: 1 Book a demo, 2 How it works and prices, 0 Leave a message). Then: security of call links (the iPhone app is last). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-25. After rejecting several looks, Ken picked look 6 "Voice" from ten mocks (https://claude.ai/artifact/8AZNbvGtZWkXWjugauaBTM), plus the Spectrum band and the Swiss code example. Built in `pages/home.templ`, `pages/voice.go`, `assets/js/landing.js`, `globals.css` `.lp`; `web.home` now passes the line itself. DESIGN.md, PRODUCT.md, `docs/landing-copy.md` updated; `site.mjs` now plays and pauses the greeting. Tests: `go vet`, `go test`, `site.mjs` all good.
 
 ## Rules
 

@@ -6,16 +6,16 @@ First built on the landing page (`pages/home.templ`) on 2026-10-21; the other sc
 ## Direction
 
 Clean, lean and modern, at the craft level of top product sites (Quo, Aircall, Linear). The product explains
-itself: the landing hero shows both ends of a real minivoip call. The landing page is white and pure, Apple-like, never glassy. No themed metaphors (answering machines,
+itself: the landing hero plays the owner's real recorded voice menu (look "Voice", 2026-10-25). No themed metaphors (answering machines,
 key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
 
 ## Tokens
 
 - **Type:** Onest (Google Fonts, loaded in `layouts/base.templ`, set as `--font-sans` in `assets/css/globals.css`).
   Headings semibold with tight tracking: hero `text-6xl`/`4rem`, `tracking-[-0.035em]`; section titles
-  `2.75rem`, `tracking-[-0.03em]` (the landing page goes larger: 76px hero, 56px sections). Body 15 to 18px, `leading-relaxed`, muted colour for supporting text.
-- **Colour:** the shadcn neutral tokens in `globals.css` (light and dark). Ink buttons (`primary`), except on the
-  landing page, where actions are blue (see below).
+  `2.75rem`, `tracking-[-0.03em]` (the landing page uses Funnel, larger: 88px hero, 60px sections). Body 15 to 18px, `leading-relaxed`, muted colour for supporting text.
+- **Colour:** the shadcn neutral tokens in `globals.css` (light and dark). Ink buttons (`primary`), ink pills on the
+  landing page.
   Colour is reserved for meaning:
   - the logo's bar colours (orange #f3840f to blue #143495) for the live call path and played voice waves only;
   - orange #f46422 for the caller's chosen option;
@@ -24,30 +24,33 @@ key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
   offset shadow only on the hero picture; buttons 10 to 12px radius (pills on the landing page). One elevation per element (ring + shadow, never border + shadow).
 - **Layout:** `max-w-6xl` content, `px-4` gutter. Lists use hairline rows (`border-t`), not grids of icon cards.
 
-## Landing page (built 2026-10-25: option A "Keynote")
+## Landing page (chosen 2026-10-25: look "Voice")
 
-Ken asked for "clean, lean and modern, white and pure, like Apple but not the glassy thing" (2026-10-24). He was
-shown three white options (canvas https://claude.ai/artifact/XWsCHyUp822kvL6EfHgioS: A Keynote, B Step by step,
-C One button) and skipped the choice, so A, the recommended one, was built. It replaces look B (warm beige, split
-hero with a screen-share call). Built in `pages/home.templ`; the words are in `docs/landing-copy.md`.
+Ken rejected the warm look B and the white "Keynote" rebuild (same layout, only recoloured), then three more
+directions, and asked for ten. Ten mocks each held to a top site were shown
+(https://claude.ai/artifact/8AZNbvGtZWkXWjugauaBTM); he liked 2 Spectrum, 6 Voice, 8 Swiss and 10 Signal, and
+chose **6 Voice**, held to ElevenLabs and Spotify, with two borrowed pieces: **Spectrum**'s logo-colour field (held to
+Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Built in `pages/home.templ`
+(`pages/voice.go`, `pages/wave.go`, `assets/js/landing.js`); the words are in `docs/landing-copy.md`.
 
-- **Look:** pure white ground, one cool grey band colour #f5f5f7 (`--band`, the "call grows" and quote sections),
-  ink #1d1d1f, muted #6e6e73, soft grey #86868b only for "in one click." in the headline. One blue #1f4fd1
-  (`--primary`) for actions only: buttons and the "Call us now ›" text link; status labels ("Coming soon") stay
-  muted. One dark moment: the closing band with the footer (`lp-ink`). Dark mode: #0b0b0d ground, #141416 bands,
-  blue #5b86ff. The `.lp` wrapper in `globals.css` sets these as shadcn tokens, so the components follow.
-- **Hero:** centred headline (76px desktop, `tracking-[-0.035em]`), one-line sub, blue pill "Get my free line" and
-  the "Call us now ›" link, one microcopy line. Under it `callPair`: one call from both ends, two 300x600 phone
-  screens copied from the real product (left the visitor's call window, always dark, hearing the voice menu with
-  "1 Book a demo" chosen; right the owner's app ringing, "Someone chose “Book a demo”"). Nothing in it is a
-  control. On a phone the pair shrinks (`zoom: 0.68`) and the owner's screen overlaps the visitor's.
-- **Sections:** every head is centred (`sectionHead`). The call grows (`stages`: They ask. / They talk. / They
-  see., hairline columns on the band, the plan under each), two plans as plain white cards with a hairline ring
-  (prices "/ month after beta, planned"), the maker's quote large and centred on the band, three steps (numeral
-  inline in the heading), four questions, then the closing band.
-- **"Call us now"** calls minivoip's own line (Ken's), in the hero and the closing band. Tests never press it.
-- **Voice wave** (`waveform` + `pages/wave.go`): bars drawn server-side from a seed; played bars take the logo
-  colours, the rest the border colour (#3a3b40 on the dark call screen).
+- **Type:** Funnel Display for headings (`.lp-display`) and Funnel Sans for text, loaded by the page itself (the
+  rest of the site keeps Onest). Headlines semibold, tight (`tracking-[-0.04em]`): hero 88px, sections 60px.
+- **Colour:** pure white, ink #0c0c0d, muted #66666c, hairlines #e7e7ea, soft grey panels #f4f4f5 (`.lp` tokens in
+  `globals.css`). Buttons are ink pills. The logo's colours appear in two places only: the played part of the
+  voice wave, and the one gradient field (`.lp-spectrum`, blurred radial blobs from orange #f3840f to blue
+  #143495). Peach #ffe4d6 marks the word being said. One dark moment: the closing band (`lp-ink`). Dark mode:
+  #0b0b0c ground, the same band and field.
+- **Hero (`hero`, `voicePlayer`):** centred headline and sub, then the voice: a 96px ink play button and a
+  120-bar wave (`voiceWave`), with "minivoip's own line · the real recording" and its length. landing.js plays
+  the line's recorded greeting (`/prompt/<file>`), lights the wave and the words as it goes, and redraws the wave
+  from the recording's real shape (decoded in the browser, quiet trimmed). The words are the line's greeting and
+  spoken menu (`voiceWords`), so a new recording updates the page. At rest the first 44% looks played.
+- **Then your own phone rings (`phoneRings`):** a 32px-radius band with the gradient field; ink text on the
+  orange end, the owner's phone (the real app screen, with the line's first ringing choice) and a voicemail alert.
+- **Sections:** centred heads (`sectionHead`) for the call grows, plans and questions; plans as one white card
+  and one grey card (prices "planned"); the maker's quote large; three steps beside the code to paste
+  (`.lp-code`, `your-business` highlighted) and a picture of the orange Call us button it makes.
+- **"Call us now"** calls minivoip's own line, in the hero and the closing band. Tests never press it.
 
 ## Owner app (chosen 2026-10-24: look C)
 
@@ -71,5 +74,5 @@ https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app
 
 ## Motion
 
-The landing page is still (2026-10-25, option A). Smooth scrolling to the sections, off under
+The landing page moves only when the visitor plays the greeting (the wave and the words follow it). Smooth scrolling to the sections, off under
 `prefers-reduced-motion`.

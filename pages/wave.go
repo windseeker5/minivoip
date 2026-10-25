@@ -56,3 +56,27 @@ func (b waveBar) style() string {
 	}
 	return s
 }
+
+// voiceBar is one bar of the landing page's big voice wave: its height in
+// percent of the wave, its logo colour (the played part always runs orange to
+// blue), and whether it starts played.
+type voiceBar struct {
+	Pct   int
+	Color string
+	On    bool
+}
+
+// voiceWave draws n bars of a made-up voice (the page replaces their heights
+// with the real recording's when the browser can read it).
+func voiceWave(n, seed int, played float64) []voiceBar {
+	bars := make([]voiceBar, n)
+	for i, b := range wave(n, 100, seed, 0) {
+		t := float64(i) / float64(n)
+		bars[i] = voiceBar{min(b.Height, 100), brandColor(min(t/played, 1)), t < played}
+	}
+	return bars
+}
+
+func (b voiceBar) style() string {
+	return fmt.Sprintf("height:%d%%;--c:%s", b.Pct, b.Color)
+}

@@ -161,6 +161,20 @@ try {
   } else {
     check(await visitorSite.isVisible('a[href="#how"]'), "without a real line, the hero offers how it works");
   }
+  // The hero plays the line's recorded greeting, and the wave and the words follow it.
+  if (await visitorSite.$("[data-voice-play]")) {
+    await visitorSite.click("[data-voice-play]");
+    await visitorSite.waitForTimeout(2000);
+    const voice = await visitorSite.evaluate(() => ({
+      playing: document.querySelector("[data-voice]").classList.contains("playing"),
+      at: document.querySelector("[data-voice] audio").currentTime,
+      said: document.querySelectorAll("[data-voice-text] span.said").length,
+      length: document.querySelector("[data-voice-time]").textContent,
+    }));
+    check(voice.playing && voice.at > 0.5 && voice.length !== "", `the hero plays the greeting (${voice.at.toFixed(1)} s of ${voice.length}, ${voice.said} words said)`);
+    await visitorSite.click("[data-voice-play]");
+    check(await visitorSite.evaluate(() => document.querySelector("[data-voice] audio").paused), "pressing again pauses the greeting");
+  }
   await visitorSite.goto(BASE + "/dashboard");
   check(new URL(visitorSite.url()).pathname === "/login", "dashboard sends logged-out visitors to log in");
 

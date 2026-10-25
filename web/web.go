@@ -195,11 +195,16 @@ func serverError(w http.ResponseWriter, r *http.Request, err error) {
 
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	_, loggedIn := s.user(r)
-	line := ""
-	if s.CallLine != "" && s.Store.LineExists(s.CallLine) {
-		line = s.CallLine
+	// minivoip's own line: the hero plays its greeting, "Call us now" calls it.
+	l, err := s.Store.LineByName(s.CallLine)
+	if s.CallLine == "" || err != nil {
+		if s.CallLine != "" && !errors.Is(err, store.ErrNotFound) {
+			log.Printf("home: line %s: %v", s.CallLine, err)
+		}
+		render(w, r, pages.Home(loggedIn, nil, baseURL(r)))
+		return
 	}
-	render(w, r, pages.Home(loggedIn, line))
+	render(w, r, pages.Home(loggedIn, &l, baseURL(r)))
 }
 
 // ------------------------------------------------------------- sign up, log in

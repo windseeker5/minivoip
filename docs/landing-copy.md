@@ -1,7 +1,7 @@
 # Landing page copy
 
 Last update: 2026-10-25 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
-Look: option A "Keynote", white and Apple-like, built on 2026-10-25 (DESIGN.md "Landing page"). The words stayed; the changes are noted below.
+Look: "Voice" (with the Spectrum colour band and the Swiss code example), picked by Ken on 2026-10-25 from ten mocks (DESIGN.md "Landing page"). Changes to the words are noted below.
 
 ## Elevator sentence (agreed with Ken, 2026-10-24)
 minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install.
@@ -9,15 +9,20 @@ minivoip puts a Call button on your website. Your voice menu answers the common 
 FR : minivoip ajoute un bouton « Appelez-nous » à votre site. Votre menu vocal répond aux questions courantes, et quand un visiteur veut en savoir plus, vous lui parlez et lui montrez votre écran, en un clic. Pas de ligne téléphonique, rien à installer.
 
 ## Meta
-- Title: minivoip: from a question on your website to a real conversation
+- Title: minivoip: your website answers the phone for you
 - Description: the elevator sentence.
 
 ## Hero
-- Headline: From a question on your website to a real conversation, in one click.
-- Sub: Your voice menu answers the common questions. When a visitor wants more, you talk to them and show them your screen. No phone line, nothing to install.
-- CTA: Get my free line · secondary, a text link: Call us now › (minivoip's own line, `MINIVOIP_CALL_LINE`; without it: See how it works ›)
-- Microcopy, one line: Free while in beta · No card required · “Call us now” rings Ken, who builds it. (the last part only when the line exists)
-- Picture: one call from both ends, two phone screens. Left, "Your visitor, in their browser": minivoip, "Hi, this is Ken. Press a number…", the voice wave, 1 Book a demo (chosen), 2 How it works and prices, 0 Leave a message. Right, "You, on your own phone": Incoming call · 0:04, Someone chose “Book a demo”, "A visitor on your website heard your greeting and picked this choice.", If nobody answers: voicemail in 0:26, Answer, Decline.
+- Headline: Your website answers the phone for you. (the Basic line, 2026-10-25)
+- Sub: Record a short menu in your own voice. Visitors hear it, press a number, and get their answer or your cell.
+- The voice player: minivoip's own line's recorded greeting (play and pause), the wave, "minivoip's own line · the real recording" and its length. Under it, the greeting and the spoken menu written out from the line itself (today: "Hi, you've reached OMT. Press 0 to talk to Ken."). Without the line: an example menu ("Hi, you've reached minivoip." 1 Book a demo, 2 How it works and prices, 0 Leave a message), labelled "Example of a voice menu", no play button.
+- CTA: Get my free line · Call us now, it's the real thing (minivoip's own line, `MINIVOIP_CALL_LINE`; without it: See how it works)
+- Microcopy: Free while in beta · No phone line · Nothing to install
+
+## Then your own phone rings (the colour band)
+- Heading: Then your own phone rings.
+- Text: You see what they chose before you answer. Busy? They leave a voicemail and you get an alert.
+- Picture: the owner's phone ringing, "Someone chose “<the line's first ringing choice>”", and a "New voicemail · From your website · 0:38" alert.
 
 ## The call grows (`stages`)
 - Heading: One click, and the call grows with the question.
@@ -41,6 +46,7 @@ FR : minivoip ajoute un bouton « Appelez-nous » à votre site. Votre menu voca
 “I built minivoip for my own businesses first. A visitor on my site asks a question, and a minute later I'm showing them the product.” Ken Dresdell, maker of minipass and minivoip.
 
 ## Ready in three steps (`steps`)
+- Beside the steps: "Paste this on your site", the code `<a href="<this site>/call/your-business">Call us</a>`, and a picture of the orange Call us button it makes: "That's the button it makes. No website? Share the link, or print it as a QR code for your door."
 1. **Record your menu.** Say hello and set the choices, right from your browser.
 2. **Get the app.** The Android app rings like a real call. On a computer or an iPhone, use the web app.
 3. **Add the button.** Paste one line on your site, or share your call link and QR code.

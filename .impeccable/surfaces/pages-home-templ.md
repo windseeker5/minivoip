@@ -6,13 +6,13 @@ related_targets: []
 ---
 
 Scope: the landing page `/` (pages/home.templ). Mode: Persuade.
-Audience: very small business owners (B&B, trades, freelancers), mostly Quebec. Job: understand "a Call button that rings my own cell, with my own voice menu" and sign up, or press Call us now to reach Ken.
-Constraints: approved words in docs/landing-copy.md; Premium always "coming soon"; Call us now rings Ken's real phone (tests never press it).
+Audience: non-technical people who want to serve their customers with quality and a human voice; small businesses first. Job: understand "my website answers the phone in my own voice, then my cell rings" and sign up, or press Call us now to reach Ken.
+Constraints: approved words in docs/landing-copy.md; Premium always "coming soon"; Call us now rings Ken's real phone (tests never press it); the hero's words and recording come from minivoip's own line.
 
 ## Direction contract
-THESIS: Ken pinned the world on 2026-10-24: white and pure, Apple-like, never glassy (option A "Keynote" from canvas https://claude.ai/artifact/XWsCHyUp822kvL6EfHgioS). The page refuses the split hero with a mock video call; it shows the real product, both ends of one call.
-OWN-WORLD: pure white ground and one cool grey band colour (#f5f5f7), ink #1d1d1f, muted #6e6e73, one accent blue #1f4fd1 for actions only, logo colours only on the played voice wave, orange only on the caller's choice, green only on Answer. Onest. Hairlines, no cards stacked in cards, one dark moment (the closing band).
-STORY: the visitor sees the two phone screens of one call (their browser hearing the voice menu, the owner's phone ringing with the choice), learns the three stages, sees two plain plans, then signs up.
-FIRST VIEWPORT: centred headline (76px desktop, 2 to 3 lines, "in one click." in soft grey), one-line sub, blue pill "Get my free line" plus blue text link "Call us now ›", one microcopy line; under it two 300x600 phone screens side by side with captions, starting inside the first viewport.
-FORM: the world (white, pure, Apple-like, not glassy) was pinned by Ken in his own words; option A was built as the recommended default because Ken skipped the choice between the three mocks. Seed key: none (pinned world, no roll).
+THESIS: the owner's real voice is the hero. A visitor presses play and hears the actual greeting on a big wave, reading along. It refuses the category's split hero with a product screenshot.
+OWN-WORLD: pure white, ink #0c0c0d, Funnel Display and Funnel Sans, the logo's colours only on the played wave and one blurred gradient field, peach on the word being said, ink pill buttons, hairlines, one dark closing band.
+STORY: hear the menu (hero), see the owner's phone ring (colour band), the call grows (ask, talk, see), two plans, the maker, three steps with the one line to paste, questions, sign up.
+FIRST VIEWPORT: centred 88px headline over a one-line sub; a 96px play button left of a full-width 120-bar wave; the greeting written out large under it; Get my free line and Call us now below.
+FORM: look 6 "Voice" chosen by Ken from ten mocks (https://claude.ai/artifact/8AZNbvGtZWkXWjugauaBTM), with look 2's colour field and look 8's code example. Seed key: 6fd94dbe (roll superseded by Ken's pick of the ten).
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

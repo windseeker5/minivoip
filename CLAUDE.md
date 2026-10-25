@@ -80,11 +80,14 @@ B&B and may become a SaaS.
   (the owner's app `/app`, login required: Calls, Voicemail, Menu and Me tabs on a phone; sidebar and a detail
   pane on a computer; the incoming call screen).
 - The owner's app has its own plain CSS, `assets/css/app.css` (look C, warm light, DESIGN.md "Owner app"); the
-  visitor's call window keeps `assets/css/callscreen.css` (always dark). The app never links to the dashboard;
+  visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare
+  layout, `layouts.Plain`. The app never links to the dashboard;
   logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
 - Checking the app without the server: `node tests/e2e/app.mjs` renders it with sample calls
   (`TestAppPreview` in `pages/app_test.go`) and clicks through it headless with a fake call socket, at phone and
-  computer width (screenshots `tests/e2e/shots/app-*.png`). Real calls are only tested by `site.mjs`.
+  computer width (screenshots `tests/e2e/shots/app-*.png`). The visitor's call window the same way:
+  `node tests/e2e/call.mjs` (`TestCallPreview` in `pages/call_test.go`; every step with a fake call socket and a fake
+  browser voice, phone, computer and 200% zoom; `shots/call-*.png`). Real calls are only tested by `site.mjs`.
 - `push/`: web push (VAPID keys in the `setting` table, `webpush-go`), and Firebase for the Android app
   (`push/fcm.go`: devices with endpoint `fcm:<token>`; the Firebase project `minivoip-push-kd` on Ken's Google account,
   its two files in `data/firebase/`, never in git; `GET /api/android/config` hands the app its settings). The hub's `OnRing` sends "Incoming call"

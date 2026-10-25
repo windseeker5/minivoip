@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"minivoip/lines"
 	"minivoip/pages"
@@ -218,5 +219,5 @@ func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Call(l))
+	render(w, r, pages.Call(l, int(s.Hub.RingTimeout/time.Second)))
 }

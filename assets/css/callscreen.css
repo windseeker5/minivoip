@@ -1,109 +1,202 @@
-/* Phone-style screen: the visitor's call window (/call/<line>). Always dark,
-   like a phone's call screen; one warm accent from the logo's orange bar.
-   Ported from the proof of concept's widget.css. Plain CSS (not Tailwind) so
-   the screen keeps its own look. The owner's app has its own: app.css. */
+/* The visitor's call window (/call/<line>), look A "the voice in the middle"
+   (DESIGN.md "Call window", chosen 2026-10-25). White and Funnel like the
+   landing page: the owner's voice sits in the middle with its words written
+   out as they're said, the choices are big buttons under it. Plain CSS (not
+   Tailwind) so the screen keeps its own look; call.js shows one view per call
+   state. The owner's app has its own: app.css. */
 
-.cs {
-  --cs-bg: #121319; --cs-raise: #1c1d26; --cs-line: #2d2f3c; --cs-fg: #f3f3f7; --cs-muted: #a9abbb;
-  --cs-accent: #f3840f; --cs-on-accent: #1d1206; --cs-ok: #2e9e5b; --cs-end: #d6402f;
-  --cs-ease: cubic-bezier(.16, 1, .3, 1);
-  color-scheme: dark;
-  min-height: 100dvh; background: #0b0c10; color: var(--cs-fg);
-  font: 400 16px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+.cw {
+  --cw-bg: #ffffff; --cw-ground: #f4f4f5; --cw-ink: #0c0c0d; --cw-muted: #66666c; --cw-soft: #f4f4f5;
+  --cw-line: #e7e7ea; --cw-faint: #c9c9ce; --cw-next: #76767c; --cw-now: #ffe4d6; --cw-end: #d33a2c;
+  --cw-end-soft: #fbefed; --cw-ease: cubic-bezier(.16, 1, .3, 1);
+  color-scheme: light;
+  min-height: 100dvh; background: var(--cw-bg); color: var(--cw-ink);
+  font: 400 1rem/1.45 "Funnel Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
-.cs *, .cs *::before, .cs *::after { box-sizing: border-box; }
-.cs button { font: inherit; color: inherit; cursor: pointer; }
-.cs :focus-visible { outline: 2px solid var(--cs-accent); outline-offset: 3px; }
-.cs [hidden] { display: none !important; }
-.cs ::selection { background: var(--cs-accent); color: var(--cs-on-accent); }
+.cw *, .cw *::before, .cw *::after { box-sizing: border-box; }
+.cw button { font: inherit; color: inherit; cursor: pointer; }
+.cw :focus-visible { outline: 2px solid var(--cw-ink); outline-offset: 3px; }
+.cw [data-focus]:focus { outline: none; }
+.cw [hidden] { display: none !important; }
+.cw ::selection { background: #ffd9c6; color: var(--cw-ink); }
+.cw svg { flex: none; }
+.cw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* ------------------------------------------------------------ call screen */
+/* ------------------------------------------------------------ the window */
 
-.cs-stage { display: grid; place-items: center; min-height: 100dvh; }
-.cs-screen {
-  position: relative; display: flex; flex-direction: column; width: 100%; min-height: 100dvh; overflow: hidden;
-  padding: max(24px, env(safe-area-inset-top)) 24px max(18px, env(safe-area-inset-bottom));
-  background: radial-gradient(120% 55% at 50% 0%, #2a2c3a 0%, var(--cs-bg) 62%);
+/* Phone: the whole screen. Computer: one white panel on a grey ground, the
+   size of the corner panel it will become on a business's website. */
+.cw-screen {
+  display: flex; flex-direction: column; width: 100%; min-height: 100dvh;
+  padding: max(1rem, env(safe-area-inset-top)) 1.375rem max(1.25rem, env(safe-area-inset-bottom));
 }
-@media (min-width: 560px) and (min-height: 680px) {
-  .cs-stage { padding: 24px; }
-  .cs-screen { width: 390px; min-height: 0; height: min(820px, calc(100dvh - 48px)); border-radius: 40px;
-    box-shadow: 0 0 0 1px var(--cs-line), 0 40px 90px -30px rgb(0 0 0 / .85); }
-}
-
-.cs-head { display: grid; justify-items: center; gap: 6px; padding-top: 40px; text-align: center; transition: padding .4s var(--cs-ease); }
-.cs-avatar { display: grid; place-items: center; width: 104px; height: 104px; margin-bottom: 14px; border-radius: 50%;
-  background: var(--cs-raise); box-shadow: 0 0 0 1px rgb(243 132 15 / .55); color: var(--cs-accent);
-  font: 700 38px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em;
-  transition: width .4s var(--cs-ease), height .4s var(--cs-ease), font-size .4s var(--cs-ease), margin .4s var(--cs-ease); }
-.cs-avatar svg { width: 44px; height: 44px; }
-.cs-name { margin: 0; font: 700 30px/1.1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; text-wrap: balance; }
-.cs-status { margin: 0; min-height: 1.45em; color: var(--cs-muted); }
-.cs-timer { margin: 0; min-height: 1.4em; color: var(--cs-muted); font: 500 15px/1.4 ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
-
-/* With choices or the keypad showing, the head shrinks */
-[data-state="menu"] .cs-head { padding-top: 6px; }
-[data-state="menu"] .cs-avatar { width: 56px; height: 56px; margin-bottom: 4px; font-size: 22px; }
-[data-state="menu"] .cs-name { font-size: 24px; }
-
-/* Ringing pulses, a live call breathes */
-[data-state="ringing"] .cs-avatar, .cs-call.is-ringing .cs-avatar { animation: cs-ring 1.2s ease-in-out infinite; }
-[data-state="talking"] .cs-avatar, .cs-call.is-talking .cs-avatar { animation: cs-live 2.4s ease-in-out infinite; }
-@keyframes cs-ring { 50% { box-shadow: 0 0 0 1px rgb(243 132 15 / .55), 0 0 0 18px rgb(243 132 15 / .12); } }
-@keyframes cs-live { 50% { box-shadow: 0 0 0 1px rgb(243 132 15 / .55), 0 0 0 14px rgb(243 132 15 / .08); } }
-
-.cs-mid { display: flex; flex: 1; flex-direction: column; justify-content: flex-end; gap: 14px; min-height: 0; padding: 16px 0 4px; }
-
-/* The menu's choices, as big buttons */
-.cs-choices { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; overflow-y: auto; }
-.cs-choice { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 10px 16px; border: 0;
-  border-radius: 16px; background: var(--cs-raise); box-shadow: inset 0 0 0 1px var(--cs-line); text-align: left;
-  font-weight: 600; animation: cs-up .45s var(--cs-ease) both; }
-.cs-choice:hover { box-shadow: inset 0 0 0 1px var(--cs-accent); }
-.cs-choice:active { background: #262836; }
-.cs-choice b { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%;
-  background: rgb(243 132 15 / .14); color: var(--cs-accent); font-weight: 700; }
-.cs-choice:nth-child(2) { animation-delay: .04s; } .cs-choice:nth-child(3) { animation-delay: .08s; }
-.cs-choice:nth-child(4) { animation-delay: .12s; } .cs-choice:nth-child(n+5) { animation-delay: .16s; }
-@keyframes cs-up { from { opacity: 0; translate: 0 8px; } }
-
-/* Dial pad */
-.cs-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px 24px; justify-content: center; }
-.cs-key { display: grid; place-content: center; width: 72px; height: 72px; padding: 0; border: 0; border-radius: 50%;
-  background: rgb(243 243 247 / .09); line-height: 1; transition: background .15s; touch-action: manipulation; }
-.cs-key b { font: 400 30px/1 ui-sans-serif, system-ui, sans-serif; }
-.cs-key small { margin-top: 3px; color: var(--cs-muted); font-size: 9px; font-weight: 600; letter-spacing: .18em; }
-.cs-key:active { background: rgb(243 243 247 / .26); }
-@media (max-height: 700px) {
-  .cs-pad { grid-template-columns: repeat(3, 62px); gap: 8px 22px; }
-  .cs-key { width: 62px; height: 62px; }
+@media (min-width: 35rem) and (min-height: 42rem) {
+  .cw { display: grid; place-items: center; padding: 1.5rem; background: var(--cw-ground); }
+  .cw-screen { width: 25rem; min-height: min(48rem, calc(100dvh - 3rem)); border-radius: 1.75rem; background: var(--cw-bg);
+    box-shadow: 0 1px 2px rgb(12 12 13 / .06), 0 40px 80px -36px rgb(12 12 13 / .35); }
 }
 
-/* Voicemail recording */
-.cs-rec { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; }
-.cs-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--cs-end); animation: cs-blink 1s steps(2) infinite; }
-@keyframes cs-blink { 50% { opacity: .2; } }
-.cs-pill { flex-basis: 100%; min-height: 48px; max-width: 260px; border: 0; border-radius: 999px; background: var(--cs-accent);
-  color: var(--cs-on-accent) !important; font-weight: 700 !important; }
+.cw-view { display: flex; flex: 1; flex-direction: column; animation: cw-in .45s var(--cw-ease) both; }
+@keyframes cw-in { from { opacity: 0; translate: 0 6px; } }
+.cw-top { display: flex; align-items: center; min-height: 2.75rem; }
 
-/* Round call buttons */
-.cs-bar { display: grid; grid-template-columns: repeat(3, 1fr); justify-items: center; padding-top: 18px; }
-.cs-bar.is-two { grid-template-columns: repeat(2, 1fr); }
-.cs-bar.is-one { grid-template-columns: 1fr; }
-.cs-btn { display: grid; justify-items: center; gap: 8px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--cs-fg); }
-.cs-btn svg { width: 64px; height: 64px; padding: 19px; border-radius: 50%; background: rgb(243 243 247 / .12); transition: background .15s, color .15s; }
-.cs-btn[aria-pressed="true"] svg { background: var(--cs-fg); color: var(--cs-bg); }
-.cs-btn.is-big svg { width: 76px; height: 76px; padding: 22px; }
-.cs-btn.is-yes svg { background: var(--cs-ok); color: #fff; }
-.cs-btn.is-yes:active svg { background: #237a46; }
-.cs-btn.is-no svg { background: var(--cs-end); color: #fff; padding: 17px; }
-.cs-btn.is-no:active svg { background: #a93225; }
+.cw-icon-btn { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-left: -.625rem; border: 0;
+  border-radius: 50%; background: none; color: var(--cw-ink); }
+.cw-icon-btn:hover { background: var(--cw-soft); }
 
-.cs-foot { margin: 14px 0 0; text-align: center; color: var(--cs-muted); font-size: 12px; }
-.cs-foot a { color: inherit; }
-.cs-remote { display: none; }
+/* The business's face: its initials on ink (its logo, later). */
+.cw-badge { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: .625rem;
+  background: var(--cw-ink); color: #fff; font: 600 .8125rem/1 "Funnel Display", "Funnel Sans", sans-serif; letter-spacing: -.01em; }
+.cw-badge.is-xl { width: 4.75rem; height: 4.75rem; border-radius: 1.375rem; font-size: 1.75rem; }
+.cw-badge.is-round { width: 6rem; height: 6rem; border-radius: 50%; font-size: 2.125rem; }
+.cw-badge svg { width: 2.375rem; height: 2.375rem; }
+
+.cw-title { margin: 0; font: 600 1.625rem/1.15 "Funnel Display", "Funnel Sans", sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+.cw-text { margin: 0; color: #4a4a50; font-size: 1.0625rem; line-height: 1.5; text-wrap: pretty; }
+.cw-muted { margin: 0; color: var(--cw-muted); font-size: .9375rem; }
+.cw-center { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: .25rem;
+  padding: 1rem 0; text-align: center; }
+.cw-center .cw-title { margin-top: 1.125rem; }
+.cw-center .cw-text { max-width: 17rem; margin-top: .375rem; }
+
+/* Header while a call is on: who you called and what is happening. */
+.cw-head { display: flex; align-items: center; gap: .625rem; min-height: 2.75rem; }
+.cw-head-name { margin: 0; font-size: .9375rem; font-weight: 600; }
+.cw-head-status { margin: .0625rem 0 0; color: var(--cw-muted); font-size: .8125rem; }
+
+/* ------------------------------------------------------------ start */
+
+.cw-dial { display: grid; justify-items: center; gap: .75rem; padding: 0; border: 0; background: none; }
+.cw-dial-btn { display: grid; place-items: center; width: 6.75rem; height: 6.75rem; border-radius: 50%; background: var(--cw-ink);
+  color: #fff; box-shadow: 0 18px 36px -16px rgb(12 12 13 / .5); transition: transform .2s var(--cw-ease); }
+.cw-dial:hover .cw-dial-btn { transform: scale(1.04); }
+.cw-dial:active .cw-dial-btn { transform: scale(.97); }
+.cw-dial-btn svg { width: 2.5rem; height: 2.5rem; }
+.cw-dial-label { font-size: 1.0625rem; font-weight: 600; }
+.cw-note { max-width: 18rem; margin: 1.875rem auto 0; color: var(--cw-muted); font-size: .875rem; line-height: 1.5; text-align: center; text-wrap: pretty; }
+.cw-foot { margin: 1rem 0 0; color: var(--cw-muted); font-size: .8125rem; text-align: center; }
+.cw-foot a { color: inherit; text-underline-offset: 3px; }
+
+/* ------------------------------------------------------------ the menu */
+
+.cw-stage { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 1.375rem; padding: 1.25rem 0; }
+
+/* The voice wave: bars light up in the logo's colours as the voice goes. */
+.cw-wave { display: flex; align-items: center; justify-content: center; gap: .25rem; height: 4.5rem; overflow: hidden; }
+.cw-wave > i { display: block; width: .25rem; flex: none; border-radius: 2px; background: var(--cw-faint); transition: background-color .15s; }
+.cw-wave > i.on { background: var(--c); }
+.cw-wave.is-small { height: 3.25rem; justify-content: flex-start; }
+
+/* The words being said: said in ink, the current word on peach, the rest grey. */
+.cw-words { margin: 0; min-height: 4.2em; font: 500 1.3125rem/1.4 "Funnel Display", "Funnel Sans", sans-serif; letter-spacing: -.01em; text-wrap: pretty; }
+.cw-words span { border-radius: .3em; color: var(--cw-next); transition: color .15s, background-color .15s; }
+.cw-words span.said { color: var(--cw-ink); }
+.cw-words span.now { color: var(--cw-ink); background: var(--cw-now); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+.cw-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.cw-choices li:only-child, .cw-choices li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.cw-choice { display: flex; flex-direction: column; align-items: flex-start; gap: .125rem; width: 100%; height: 100%; min-height: 5.25rem;
+  padding: .75rem .875rem; border: 0; border-radius: 1rem; background: var(--cw-soft); text-align: left;
+  transition: background-color .15s, box-shadow .15s; }
+.cw-choice b { font-size: .8125rem; font-weight: 600; color: var(--cw-muted); }
+.cw-choice span { font-size: 1rem; font-weight: 600; line-height: 1.25; }
+.cw-choice small { color: var(--cw-muted); font-size: .8125rem; }
+.cw-choice:hover { background: #ececee; }
+.cw-choice.is-now { background: var(--cw-now); }
+.cw-choice.is-now b { color: var(--cw-ink); }
+.cw-choice.is-chosen { background: var(--cw-bg); box-shadow: inset 0 0 0 2px var(--cw-ink); }
+.cw-choice.is-chosen b { color: var(--cw-ink); }
+
+/* Microphone blocked: how to allow it, then try again. */
+.cw-help { margin-top: .75rem; padding: .875rem 1rem; border-radius: 1rem; background: var(--cw-end-soft); }
+.cw-help p { margin: 0; font-size: .9375rem; line-height: 1.45; }
+.cw-help p + p { margin-top: .375rem; color: #5f4a47; font-size: .875rem; }
+.cw-link-btn { min-height: 2.75rem; margin-top: .125rem; padding: 0; border: 0; background: none; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px; }
+
+/* ------------------------------------------------------------ buttons */
+
+.cw-btn { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; min-height: 3.5rem; padding: 0 1.25rem;
+  border: 0; border-radius: 999px; font-size: 1.0625rem; font-weight: 600; text-decoration: none; transition: background-color .15s; }
+.cw-btn.is-primary { background: var(--cw-ink); color: #fff; }
+.cw-btn.is-primary:hover { background: #2a2a2e; }
+.cw-btn.is-plain { min-height: 3rem; margin-top: .375rem; background: none; color: var(--cw-ink); }
+.cw-btn.is-plain:hover { background: var(--cw-soft); }
+.cw-btn.is-quiet { min-height: 3.25rem; margin-top: .75rem; background: var(--cw-bg); box-shadow: inset 0 0 0 1px var(--cw-line); color: #b02e22; font-size: 1rem; }
+.cw-btn.is-quiet:hover { background: var(--cw-end-soft); }
+.cw-btn:disabled { opacity: .45; cursor: default; }
+.cw-btn svg { width: 1.25rem; height: 1.25rem; }
+/* On the last screen, a page to open or a message to resend comes first. */
+.cw-end-actions > a.is-primary:not([hidden]) ~ a.is-primary,
+.cw-end-actions > button.is-primary:not([hidden]) ~ a.is-primary { min-height: 3rem; margin-top: .375rem; background: none; color: var(--cw-ink); }
+
+.cw-round-row { display: flex; align-items: flex-start; justify-content: center; gap: 3.5rem; padding-top: 1.25rem; }
+.cw-round { display: grid; justify-items: center; gap: .5rem; padding: 0; border: 0; background: none; color: var(--cw-muted); font-size: .875rem; }
+.cw-round > span:first-child { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: 50%;
+  background: var(--cw-soft); color: var(--cw-ink); transition: background-color .15s, color .15s; }
+.cw-round svg { width: 1.75rem; height: 1.75rem; }
+.cw-round.is-end > span:first-child { background: var(--cw-end); color: #fff; }
+.cw-round.is-end:active > span:first-child { background: #a93225; }
+.cw-round[aria-pressed="true"] > span:first-child { background: var(--cw-ink); color: #fff; }
+.cw-hangup-icon { rotate: 135deg; }
+/* Very narrow (a small phone zoomed in): smaller round buttons, closer. */
+@media (max-width: 20rem) {
+  .cw-round-row { gap: 1.5rem; }
+  .cw-round > span:first-child { width: 3.75rem; height: 3.75rem; }
+  .cw-choices { grid-template-columns: minmax(0, 1fr); }
+  .cw-rings { width: 10rem; height: 10rem; }
+  .cw-rings::after { inset: 1.25rem; }
+}
+
+/* ------------------------------------------------------------ ringing */
+
+.cw-rings { position: relative; display: grid; place-items: center; width: 13.75rem; height: 13.75rem; }
+.cw-rings::before, .cw-rings::after { content: ""; position: absolute; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgb(12 12 13 / .14); }
+.cw-rings::before { inset: 0; }
+.cw-rings::after { inset: 2.125rem; box-shadow: inset 0 0 0 1.5px rgb(12 12 13 / .24); }
+[data-state="ringing"] .cw-rings::before { animation: cw-ring 2s var(--cw-ease) infinite; }
+[data-state="ringing"] .cw-rings::after { animation: cw-ring 2s var(--cw-ease) .25s infinite; }
+@keyframes cw-ring { 0% { scale: .8; opacity: 0; } 30% { opacity: 1; } 100% { scale: 1.06; opacity: 0; } }
+.cw-rings + .cw-title { margin-top: .875rem; }
+
+.cw-box { padding: .875rem 1rem; border-radius: 1rem; background: var(--cw-soft); }
+.cw-box p { margin: 0; font-size: .9375rem; line-height: 1.45; }
+.cw-box b { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------ talking */
+
+.cw-timer { margin: 1.5rem 0 0; font: 500 2.75rem/1 "Funnel Display", "Funnel Sans", sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cw-live { display: flex; align-items: center; justify-content: center; gap: .25rem; max-width: 100%; height: 3.5rem; margin-top: .875rem; overflow: hidden; }
+.cw-live > i { display: block; width: .25rem; flex: none; border-radius: 2px; background: var(--c); }
+
+/* ------------------------------------------------------------ voicemail */
+
+.cw-vm { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 1.5rem; padding: 1rem 0; }
+.cw-vm .cw-words { min-height: 0; margin-top: .625rem; font-size: 1.125rem; }
+.cw-rec { padding: 1.125rem; border-radius: 1.25rem; background: var(--cw-soft); }
+.cw-rec-top { display: flex; align-items: center; gap: .625rem; font-size: .9375rem; }
+.cw-rec-top > span:nth-child(2) { flex: 1; font-weight: 600; }
+.cw-rec-top > span:last-child { color: var(--cw-muted); font-variant-numeric: tabular-nums; }
+.cw-dot { width: .625rem; height: .625rem; border-radius: 50%; background: var(--cw-faint); }
+[data-state="recording"] .cw-dot { background: var(--cw-end); animation: cw-blink 1s steps(2) infinite; }
+@keyframes cw-blink { 50% { opacity: .25; } }
+.cw-rec .cw-wave > i.on { background: var(--cw-end); }
+.cw-meter { height: .25rem; margin-top: .75rem; border-radius: 2px; background: #e1e1e6; overflow: hidden; }
+.cw-meter > span { display: block; width: 0; height: 100%; border-radius: 2px; background: var(--cw-end); transition: width .5s linear; }
+.cw-rec-tip { margin: .75rem 0 0; color: var(--cw-muted); font-size: .875rem; line-height: 1.45; }
+
+/* ------------------------------------------------------------ the end */
+
+.cw-done-icon { display: none; }
+[data-end-kind="sent"] .cw-done-icon.is-sent,
+[data-end-kind="ended"] .cw-done-icon.is-ended,
+[data-end-kind="link"] .cw-done-icon.is-link,
+[data-end-kind="unsent"] .cw-done-icon.is-unsent { display: block; }
+[data-end-kind="unsent"] .cw-badge { background: var(--cw-end); }
+
+.cw-remote { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cs *, .cs *::before { animation: none !important; transition: none !important; }
+  .cw *, .cw *::before, .cw *::after { animation: none !important; transition: none !important; }
 }

@@ -1,6 +1,9 @@
 package pages
 
 import (
+	"strings"
+	"unicode"
+
 	"minivoip/layouts"
 	"minivoip/lines"
 )
@@ -8,17 +11,19 @@ import (
 // callData is what call.js needs to play the menu.
 type callData struct {
 	Line          string       `json:"line"`
+	Business      string       `json:"business"`
 	Owner         string       `json:"owner"`
 	Greeting      string       `json:"greeting"`
 	GreetingAudio string       `json:"greetingAudio,omitempty"` // owner's recording; replaces greeting + menu
 	Menu          string       `json:"menu"`
 	Options       []callOption `json:"options"`
+	RingSeconds   int          `json:"ringSeconds"` // the owner's phones ring this long, then voicemail
 }
 
 type callOption struct {
-	Key    string `json:"key"`
-	Label  string `json:"label"`
-	Action string `json:"action"`
+	Key      string `json:"key"`
+	Label    string `json:"label"`
+	Action   string `json:"action"`
 	Say      string `json:"say"`
 	SayAudio string `json:"sayAudio,omitempty"` // owner's recording of Say
 	URL      string `json:"url,omitempty"`
@@ -31,114 +36,264 @@ func promptURL(name string) string {
 	return "/prompt/" + name
 }
 
-func newCallData(l lines.Line) callData {
-	d := callData{Line: l.Name, Owner: l.Owner, Greeting: l.Greeting, GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu()}
+func newCallData(l lines.Line, ringSeconds int) callData {
+	d := callData{Line: l.Name, Business: l.Business, Owner: ownerName(l), Greeting: l.Greeting,
+		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds}
 	for _, o := range l.Options {
 		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, SayAudio: promptURL(o.SayAudio), URL: o.URL})
 	}
 	return d
 }
 
-// Phone-style icons (from the proof of concept).
-templ svgPhone() {
-	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3.5h3l1.6 4-2 1.3a11 11 0 0 0 7.6 7.6l1.3-2 4 1.6v3a2 2 0 0 1-2 2A16.5 16.5 0 0 1 3 5.5a2 2 0 0 1 2-2Z"></path></svg>
+// ownerName is who answers: the line's owner, else its business.
+func ownerName(l lines.Line) string {
+	if l.Owner != "" {
+		return l.Owner
+	}
+	return l.Business
 }
 
-templ svgHangup() {
-	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 14.6c4.6-4.1 12.2-4.1 16.8 0 .6.5.7 1.4.2 2l-1.3 1.6c-.4.5-1.1.6-1.7.4l-2.6-1a1.4 1.4 0 0 1-.9-1.3v-1.7a10 10 0 0 0-4.2 0v1.7c0 .6-.4 1.1-.9 1.3l-2.6 1c-.6.2-1.3.1-1.7-.4l-1.3-1.6c-.5-.6-.4-1.5.2-2Z"></path></svg>
+// initials are the business's face until it has a logo: the first letters
+// of its first two words, skipping little ones ("Auberge des Pins" is "AP").
+func initials(name string) string {
+	var out []rune
+	for _, w := range strings.Fields(name) {
+		if len(out) == 2 {
+			break
+		}
+		r := []rune(w)
+		if !unicode.IsLetter(r[0]) && !unicode.IsDigit(r[0]) || littleWords[strings.ToLower(w)] {
+			continue
+		}
+		out = append(out, unicode.ToUpper(r[0]))
+	}
+	if len(out) == 0 {
+		return "?"
+	}
+	return string(out)
 }
 
-templ svgMute() {
+var littleWords = map[string]bool{"de": true, "des": true, "du": true, "la": true, "le": true, "les": true,
+	"the": true, "of": true, "and": true, "et": true}
+
+// choiceHint says in a few words what a choice does.
+func choiceHint(o lines.Option) string {
+	switch o.Action {
+	case lines.Ring:
+		return "Live call"
+	case lines.Play:
+		return "Hear the answer"
+	case lines.Link:
+		return "Opens a page"
+	case lines.Voicemail:
+		return "Up to 2 minutes"
+	}
+	return ""
+}
+
+// ringsOwner reports whether a choice of the line rings the owner.
+func ringsOwner(l lines.Line) bool {
+	for _, o := range l.Options {
+		if o.Action == lines.Ring {
+			return true
+		}
+	}
+	return false
+}
+
+templ iconPhone() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.7 4.2-2.1 1.3a11 11 0 0 0 5.4 5.4l1.3-2.1L19 14.5V18a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2Z"></path></svg>
+}
+
+templ iconHangup() {
+	<svg class="cw-hangup-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.7 4.2-2.1 1.3a11 11 0 0 0 5.4 5.4l1.3-2.1L19 14.5V18a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2Z"></path></svg>
+}
+
+templ iconMic() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M19 11a7 7 0 0 1-14 0M12 18v3"></path></svg>
 }
 
-templ svgPad() {
-	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="5" r="1.7"></circle><circle cx="12" cy="5" r="1.7"></circle><circle cx="18" cy="5" r="1.7"></circle><circle cx="6" cy="11" r="1.7"></circle><circle cx="12" cy="11" r="1.7"></circle><circle cx="18" cy="11" r="1.7"></circle><circle cx="6" cy="17" r="1.7"></circle><circle cx="12" cy="17" r="1.7"></circle><circle cx="18" cy="17" r="1.7"></circle><circle cx="12" cy="22" r="1.7"></circle></svg>
+templ iconBack() {
+	<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
 }
 
-templ svgPerson() {
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+// callHead is the top of the window while a call is on.
+templ callHead(l lines.Line, status string, attrs templ.Attributes) {
+	<header class="cw-head">
+		<span class="cw-badge" aria-hidden="true">{ initials(l.Business) }</span>
+		<div>
+			<p class="cw-head-name" tabindex="-1" data-focus>{ l.Business }</p>
+			<p class="cw-head-status" { attrs... }>{ status }</p>
+		</div>
+	</header>
 }
 
-var padKeys = []struct{ Key, Letters string }{
-	{"1", ""}, {"2", "ABC"}, {"3", "DEF"}, {"4", "GHI"}, {"5", "JKL"}, {"6", "MNO"},
-	{"7", "PQRS"}, {"8", "TUV"}, {"9", "WXYZ"}, {"*", ""}, {"0", "+"}, {"#", ""},
+templ callFoot() {
+	<p class="cw-foot">Free call by <a href="/" target="_blank" rel="noopener">minivoip</a></p>
 }
 
-func initial(name string) string {
-	for _, r := range name {
-		return string(r)
-	}
-	return "?"
-}
-
-// Call is the visitor's call window: /call/<line>. It looks like a phone's
-// call screen (a phone-sized frame on computers). call.js runs it; data-show
-// lists the call states each part appears in.
-templ Call(l lines.Line) {
-	@layouts.Base("Call "+l.Business, "") {
+// Call is the visitor's call window: /call/<line>, look A (DESIGN.md "Call
+// window"). One view per call state; call.js shows the view whose data-show
+// lists the state, writes out what the voice says, and runs the call.
+templ Call(l lines.Line, ringSeconds int) {
+	{{ owner := ownerName(l) }}
+	@layouts.Plain("Call " + l.Business) {
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
 		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
-		<div class="cs">
-			<main class="cs-stage">
-				<div class="cs-screen" data-call data-state="idle">
-					<header class="cs-head">
-						<div class="cs-avatar" aria-hidden="true">{ initial(l.Business) }</div>
-						<h1 class="cs-name">{ l.Business }</h1>
-						<p class="cs-status" data-status role="status" aria-live="polite">Tap the green button to call</p>
-						<p class="cs-timer" data-timer aria-hidden="true"></p>
-					</header>
-					<div class="cs-mid">
-						<ul class="cs-choices" data-show="menu" hidden aria-label="Choices">
-							for _, o := range l.Options {
-								<li><button type="button" class="cs-choice" data-key={ o.Key }><b>{ o.Key }</b>{ o.Label }</button></li>
+		<main class="cw">
+			<div class="cw-screen" data-call data-state="idle">
+				<p class="cw-sr" data-status role="status" aria-live="polite"></p>
+				<section class="cw-view" data-show="idle" aria-label={ "Call " + l.Business }>
+					<div class="cw-top">
+						<a class="cw-icon-btn" data-back hidden aria-label="Back to the website">
+							@iconBack()
+						</a>
+					</div>
+					<div class="cw-center">
+						<span class="cw-badge is-xl" aria-hidden="true">{ initials(l.Business) }</span>
+						<h1 class="cw-title" tabindex="-1" data-focus>{ l.Business }</h1>
+					</div>
+					<button type="button" class="cw-dial" data-action="call">
+						<span class="cw-dial-btn">
+							@iconPhone()
+						</span>
+						<span class="cw-dial-label">Call us</span>
+					</button>
+					<p class="cw-note">
+						Free call from your browser.
+						if ringsOwner(l) {
+							Before you talk to { owner }, your browser will ask to use your microphone.
+						}
+					</p>
+					@callFoot()
+				</section>
+				<section class="cw-view" data-show="menu" hidden aria-label="Menu">
+					@callHead(l, "Playing the menu", templ.Attributes{"data-menu-status": true})
+					<div class="cw-stage">
+						<div class="cw-wave" data-wave aria-hidden="true">
+							for _, b := range voiceWave(30, 7, 1) {
+								<i style={ b.style() }></i>
 							}
-						</ul>
-						<div class="cs-pad" data-pad hidden role="group" aria-label="Keypad">
-							for _, k := range padKeys {
-								<button type="button" class="cs-key" data-key={ k.Key }>
-									<b>{ k.Key }</b>
-									<small>
-										if k.Letters != "" {
-											{ k.Letters }
-										} else {
-											&nbsp;
-										}
-									</small>
+						</div>
+						<p class="cw-words" data-words></p>
+					</div>
+					<ul class="cw-choices" aria-label="Choices">
+						for _, o := range l.Options {
+							<li>
+								<button type="button" class="cw-choice" data-key={ o.Key }>
+									<b>{ o.Key }</b>
+									<span>{ o.Label }</span>
+									if h := choiceHint(o); h != "" {
+										<small>{ h }</small>
+									}
 								</button>
-							}
-						</div>
-						<div class="cs-rec" data-show="recording" hidden>
-							<span class="cs-dot"></span>
-							<span>Recording your message</span>
-							<button type="button" class="cs-pill" data-action="send-message">Send my message</button>
-						</div>
+							</li>
+						}
+					</ul>
+					<div class="cw-help" data-mic-help hidden role="alert">
+						<p>Your browser blocked the microphone, so { owner } can't hear you.</p>
+						<p>To allow it, tap the lock or settings icon next to the web address, then Microphone. On an iPhone: tap aA, then Website Settings.</p>
+						<button type="button" class="cw-link-btn" data-action="retry-mic">Try again</button>
 					</div>
-					<div class="cs-bar is-one" data-show="idle ended">
-						<button type="button" class="cs-btn is-yes is-big" data-action="call">
-							@svgPhone()
-							<span>Call</span>
-						</button>
+					<button type="button" class="cw-btn is-quiet" data-action="hangup">
+						@iconHangup()
+						Hang up
+					</button>
+				</section>
+				<section class="cw-view" data-show="ringing connecting" hidden aria-label="Ringing">
+					<div class="cw-center">
+						<div class="cw-rings">
+							<span class="cw-badge is-round" aria-hidden="true">{ initials(owner) }</span>
+						</div>
+						<h2 class="cw-title" tabindex="-1" data-focus data-ring-title>Ringing { owner }…</h2>
+						<p class="cw-muted" data-ring-choice></p>
 					</div>
-					<div class="cs-bar" data-show="menu ringing connecting talking voicemail recording sending" hidden>
-						<button type="button" class="cs-btn" data-action="mute" aria-pressed="false">
-							@svgMute()
-							<span>Mute</span>
-						</button>
-						<button type="button" class="cs-btn" data-action="pad" aria-pressed="false">
-							@svgPad()
-							<span>Keypad</span>
-						</button>
-						<button type="button" class="cs-btn is-no" data-action="hangup">
-							@svgHangup()
+					<div class="cw-box" data-ring-box>
+						<p>If { owner } can't answer, you can leave a message in <b data-ring-count></b>.</p>
+						<button type="button" class="cw-link-btn" data-action="leave-message">Leave a message now</button>
+					</div>
+					<div class="cw-round-row">
+						<button type="button" class="cw-round is-end" data-action="hangup">
+							<span>
+								@iconHangup()
+							</span>
 							<span>Hang up</span>
 						</button>
 					</div>
-					<p class="cs-foot">Free web call · no phone needed · <a href="/" target="_blank">minivoip</a></p>
-					<audio class="cs-remote" data-remote autoplay playsinline></audio>
-				</div>
-			</main>
-		</div>
-		@templ.JSONScript("line", newCallData(l))
+				</section>
+				<section class="cw-view" data-show="talking" hidden aria-label="On the call">
+					<div class="cw-center">
+						<span class="cw-badge is-round" aria-hidden="true">{ initials(owner) }</span>
+						<h2 class="cw-title" tabindex="-1" data-focus>On the line with { owner }</h2>
+						<p class="cw-timer" data-timer aria-hidden="true">0:00</p>
+						<div class="cw-live" data-live aria-hidden="true">
+							for _, b := range voiceWave(26, 11, 1) {
+								<i style={ b.style() }></i>
+							}
+						</div>
+					</div>
+					<div class="cw-round-row">
+						<button type="button" class="cw-round" data-action="mute" aria-pressed="false">
+							<span>
+								@iconMic()
+							</span>
+							<span>Mute</span>
+						</button>
+						<button type="button" class="cw-round is-end" data-action="hangup">
+							<span>
+								@iconHangup()
+							</span>
+							<span>Hang up</span>
+						</button>
+					</div>
+				</section>
+				<section class="cw-view" data-show="voicemail recording sending" hidden aria-label="Leave a message">
+					<div class="cw-vm">
+						<div>
+							<h2 class="cw-title" tabindex="-1" data-focus>Leave a message for { owner }</h2>
+							<p class="cw-words" data-vm-words></p>
+						</div>
+						<div class="cw-rec">
+							<div class="cw-rec-top">
+								<span class="cw-dot" aria-hidden="true"></span>
+								<span data-rec-state>Recording starts after the tone</span>
+								<span data-rec-time>2:00</span>
+							</div>
+							<div class="cw-wave is-small" data-rec-wave aria-hidden="true">
+								for _, b := range voiceWave(34, 13, 1) {
+									<i style={ b.style() }></i>
+								}
+							</div>
+							<div class="cw-meter" aria-hidden="true"><span data-rec-bar></span></div>
+						</div>
+						<p class="cw-rec-tip">Say your name and phone number so { owner } can call you back.</p>
+					</div>
+					<button type="button" class="cw-btn is-primary" data-action="send-message" disabled>Send my message</button>
+					<button type="button" class="cw-btn is-plain" data-action="restart-message" disabled>Start over</button>
+				</section>
+				<section class="cw-view" data-show="ended" hidden data-end-kind="ended" aria-label="Call ended">
+					<div class="cw-center">
+						<span class="cw-badge is-round" aria-hidden="true">
+							<svg class="cw-done-icon is-sent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>
+							<svg class="cw-done-icon is-ended" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h3.5l1.7 4.2-2.1 1.3a11 11 0 0 0 5.4 5.4l1.3-2.1L19 14.5V18a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2Z"></path></svg>
+							<svg class="cw-done-icon is-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"></path></svg>
+							<svg class="cw-done-icon is-unsent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v6M12 17h.01"></path></svg>
+						</span>
+						<h2 class="cw-title" tabindex="-1" data-focus data-end-title>Call ended</h2>
+						<p class="cw-text" data-end-text></p>
+					</div>
+					<div class="cw-end-actions">
+						<a class="cw-btn is-primary" data-end-link hidden target="_blank" rel="noopener">Open the page</a>
+						<button type="button" class="cw-btn is-primary" data-action="retry-send" hidden>Try sending again</button>
+						<a class="cw-btn is-primary" data-back hidden>Back to the website</a>
+						<button type="button" class="cw-btn is-plain" data-action="call">Call again</button>
+					</div>
+					@callFoot()
+				</section>
+				<audio class="cw-remote" data-remote autoplay playsinline></audio>
+			</div>
+		</main>
+		@templ.JSONScript("line", newCallData(l, ringSeconds))
 		<script src="/assets/js/call.js" defer></script>
 	}
 }

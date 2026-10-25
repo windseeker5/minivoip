@@ -253,10 +253,10 @@ try {
   const heardFiles = [];
   listener.on("request", (r) => { if (r.url().includes("/prompt/")) heardFiles.push(r.url().split("/prompt/")[1]); });
   await listener.goto(BASE + `/call/${LINE}`);
-  await listener.click('[data-action="call"]');
+  await listener.click('[data-action="call"]:visible');
   await listener.waitForSelector('[data-key="2"]:visible');
   await listener.click('[data-key="2"]');
-  await listener.waitForSelector('[data-action="call"]:visible', { timeout: 15000 });
+  await listener.waitForFunction(() => /Anything else/.test(document.querySelector("[data-menu-status]").textContent), null, { timeout: 15000 });
   check(heardFiles.includes(greetingFile) && heardFiles.includes(hoursFile), "the caller hears the recorded greeting and message");
 
   step = "back to computer voice";
@@ -329,7 +329,7 @@ try {
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   const caller = await newPage(390, 760);
   await caller.goto(BASE + `/call/${LINE}`);
-  await caller.click('[data-action="call"]');
+  await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="3"]:visible');
   const ringStart = pushes.length;
   await caller.click('[data-key="1"]');
@@ -356,7 +356,7 @@ try {
   const afterAnswer = pushes.length;
   await caller.waitForTimeout(6000);
   check(pushes.length === afterAnswer, `answering stops the notifications (${pushes.length - afterAnswer} more)`);
-  await caller.click('[data-action="hangup"]');
+  await caller.click('[data-action="hangup"]:visible');
   await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   check(true, "hanging up reaches the phone");
   await owner.waitForSelector('[data-panel="calls"] .ap-row[data-kind="answered"]', { timeout: 5000 });
@@ -368,7 +368,7 @@ try {
   await owner.goto(BASE + "/app?relay=1");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await caller.goto(BASE + `/call/${LINE}?relay=1`);
-  await caller.click('[data-action="call"]');
+  await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
   await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
@@ -381,7 +381,7 @@ try {
     const o = await owner.evaluate(() => window.minivoipCallStats());
     check(c && c.route === "relay>relay" && c.bytesIn > 1000 && o && o.bytesIn > 1000,
       `voice flows both ways through the relay (caller ${c && c.route}, ${c && c.bytesIn} bytes in; phone ${o && o.bytesIn} bytes in)`);
-    await caller.click('[data-action="hangup"]');
+    await caller.click('[data-action="hangup"]:visible');
     await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   }
   await owner.goto(BASE + "/app");
@@ -389,21 +389,23 @@ try {
   await caller.goto(BASE + `/call/${LINE}`);
 
   step = "play option";
-  await caller.click('[data-action="call"]');
+  await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="2"]:visible');
   await caller.click('[data-key="2"]');
-  await caller.waitForSelector('[data-action="call"]:visible', { timeout: 15000 });
-  check(true, "a 'play a message' choice ends the call by itself");
+  await caller.waitForFunction(() => /Anything else/.test(document.querySelector("[data-menu-status]").textContent), null, { timeout: 15000 });
+  check(true, "after a 'play a message' answer the menu stays, for another choice");
+  await caller.click('[data-action="hangup"]:visible');
+  await caller.waitForSelector('[data-action="call"]:visible');
 
   // Voicemail ---------------------------------------------------------------
   step = "voicemail after no answer";
-  await caller.click('[data-action="call"]');
+  await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
   await owner.waitForSelector('[data-action="decline"]:visible', { timeout: 15000 });
   const beforeDecline = pushes.length;
   await owner.click('[data-action="decline"]');
-  await caller.waitForSelector('[data-action="send-message"]:visible', { timeout: 20000 });
+  await caller.waitForSelector('[data-action="send-message"]:enabled', { timeout: 20000 });
   check(true, "declining sends the caller to voicemail");
   await caller.waitForTimeout(2500);
   await caller.screenshot({ path: `${SHOTS}/voicemail-recording.png` });
@@ -418,14 +420,14 @@ try {
   check(await owner.isVisible("[data-vm-dot]"), "the Voicemail tab shows a dot for the new message");
 
   step = "voicemail choice";
-  await caller.click('[data-action="call"]');
+  await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="4"]:visible');
   await caller.click('[data-key="4"]');
-  await caller.waitForSelector('[data-action="send-message"]:visible', { timeout: 20000 });
+  await caller.waitForSelector('[data-action="send-message"]:enabled', { timeout: 20000 });
   await caller.waitForTimeout(1500);
-  await caller.click('[data-action="hangup"]');
+  await caller.click('[data-action="send-message"]');
   await caller.waitForSelector("text=Message sent", { timeout: 10000 });
-  check(true, "a 'take a voicemail' choice records, and hanging up sends it");
+  check(true, "a 'take a voicemail' choice records, and Send my message sends it");
 
   step = "voicemail page";
   await owner.goto(BASE + "/dashboard");
@@ -454,13 +456,13 @@ try {
   await owner.click("[data-avail-btn]");
   await owner.click('[data-avail-menu] [data-mode="off"]');
   await owner.waitForSelector('[data-avail-state][data-mode="off"]');
-  await caller.click('[data-action="call"]');
+  await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
-  await caller.waitForSelector('[data-action="send-message"]:visible', { timeout: 20000 });
+  await caller.waitForSelector('[data-action="send-message"]:enabled', { timeout: 20000 });
   check(await owner.isHidden("[data-call-screen]"), "Off: a call goes straight to voicemail and the app doesn't ring");
   await caller.waitForTimeout(1500);
-  await caller.click('[data-action="hangup"]');
+  await caller.click('[data-action="send-message"]');
   await caller.waitForSelector("text=Message sent", { timeout: 10000 });
   const callDB = new DatabaseSync(DB, { readOnly: true });
   const outcomes = callDB.prepare(`SELECT c.outcome FROM call_log c JOIN line l ON l.id = c.line_id WHERE l.name = ? ORDER BY c.id`).all(LINE).map((r) => r.outcome);

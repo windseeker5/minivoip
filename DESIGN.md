@@ -52,6 +52,32 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
   (`.lp-code`, `your-business` highlighted) and a picture of the orange Call us button it makes.
 - **"Call us now"** calls minivoip's own line, in the hero and the closing band. Tests never press it.
 
+## Call window (chosen 2026-10-25: look A "the voice in the middle")
+
+What a visitor sees after "Call us": `/call/<line>` (`pages/call.templ`, `assets/css/callscreen.css`,
+`assets/js/call.js`). A critique on 2026-10-25 (`.impeccable/critique/`, 21/40) found the old dark phone screen
+generic and buggy; Ken picked A from three propositions (https://claude.ai/artifact/UefEpYx2avVwMxAyRekqLS: A the
+voice in the middle, B answers first, C like a text conversation).
+
+- **Look:** the landing page's world: white, Funnel Display and Funnel Sans, ink #0c0c0d, muted #66666c, soft grey
+  #f4f4f5, ink buttons, red #d33a2c only for hang up and recording. The voice wave lights up in the logo's
+  colours; the word being said is on peach #ffe4d6, words still to come grey #76767c. Always light. The page has
+  its own bare layout (`layouts.Plain`): no site CSS, htmx or component scripts.
+- **The business's face:** its initials on an ink square (`initials`), its logo later. No business colour yet: the
+  mocks' green was only an example of one.
+- **Phone:** the whole screen. **Computer:** one 400px white panel on the grey ground, the size of the corner panel it
+  will become on a business's website.
+- **Steps, one view each:** Start (name, big ink "Call us" button, a line that the browser will ask for the
+  microphone) → the menu (wave, the words written out as they're said, the choices as big buttons that light up
+  when the voice names them, a quiet Hang up; a "play" answer is written out and the menu stays) → Ringing (rings
+  around the owner's initial, "You chose: …", the countdown to voicemail, "Leave a message now", red Hang up) →
+  On the line (timer, a wave that moves with the owner's voice, Mute and Hang up: Mute exists only here) → Leave a
+  message (the prompt written out, asks for a name and phone number, time "0:12 of 2:00", Send my message, Start
+  over) → the end (a check for "Message sent", an "Open the page" button for a link choice, "Try sending again"
+  when the upload fails, "Back to the website" when a page sent the visitor here, "Call again").
+- **Microphone blocked:** a red-tinted note under the choices says how to allow it, with Try again.
+- **Keys:** the number keys pick a choice (not with Ctrl, Alt or Cmd); Escape hangs up.
+
 ## Owner app (chosen 2026-10-24: look C)
 
 One installable web app for the owner, on the phone and the computer (Chrome "Install", or "Add to Home Screen" on

@@ -1,0 +1,21 @@
+package layouts
+
+// Plain is a bare page for screens with their own stylesheet, like the
+// visitor's call window: no site CSS, no htmx, no component scripts, so it
+// loads fast on a phone. Always light.
+templ Plain(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="color-scheme" content="light"/>
+			<meta name="theme-color" content="#ffffff"/>
+			<link rel="icon" type="image/png" href="/assets/brand/icon.png"/>
+			<title>{ title }</title>
+		</head>
+		<body style="margin:0">
+			{ children... }
+		</body>
+	</html>
+}

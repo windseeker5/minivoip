@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy, all on `main` (PR #1, 2026-10-24). Calls work end to end; the owner's app (look C) rings on the computer, and the Android app (`android/`, Firebase, project `minivoip-push-kd`, files in `data/firebase/`) rings like a real call on Ken's locked Pixel 9. Plan and progress: `docs/plan.md` "Where we are".
-- Next action: Ken picks the next piece (recommended: iPhone app that rings; then security of call links; then the landing page demo phone). Work on a branch, ship with a PR when Ken says "ship it" (CLAUDE.md rule 3). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-24. Look C owner app, call history, Available switch, Android app with native ring, landing page links the Android app, vision and plan updated (native shells around the same pages). Shipped as PR #1. Android app installs over USB (`adb install -r data/android/minivoip.apk`) or from `/download/minivoip.apk`.
+- Status: healthy. `main` has calls end to end, the owner's app (look C) and the Android app that rings. Branch `landing-b` (not pushed, changes not committed yet) has the landing page redesigned on 2026-10-25 as option A "Keynote": pure white, Apple-like, one blue for actions, the hero shows both ends of a real call. Plan and progress: `docs/plan.md` "Where we are".
+- Next action: Ken rejected the Keynote look too (2026-10-25: "always the same", he dislikes the font and the style; only the words are good). PRODUCT.md was reset (visual direction not decided). Ken had the Keynote page shipped as a stop-gap. Next: `/impeccable redesign` of the landing page on its own branch, with a new font and a new layout, at the craft level of a 5 to 10 thousand dollar site. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-25. Critiqued the look-B landing page (score 22/36, `.impeccable/critique/`), showed three white options on a canvas (https://claude.ai/artifact/XWsCHyUp822kvL6EfHgioS), built A in `pages/home.templ` + `globals.css` `.lp`, updated DESIGN.md "Landing page", PRODUCT.md, `docs/landing-copy.md`. Tests: `go vet`, `go test`, `site.mjs` all good.
 
 ## Rules
 

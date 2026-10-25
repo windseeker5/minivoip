@@ -142,173 +142,173 @@
   }
 }
 
-/* The call-flow demo on the landing page (pages/home.templ, landing.js):
-   a dotted canvas, cards linked by wires; the live path takes the logo's
-   colours. */
-.flow-canvas {
-  background-color: color-mix(in oklab, var(--muted) 55%, var(--background));
-  background-image: radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0);
-  background-size: 22px 22px;
+/* The landing page (pages/home.templ, DESIGN.md "Landing page"): pure white
+   with one cool grey band colour and one blue for actions, a near-black stage
+   in dark mode. It sets the shadcn tokens for its own subtree, so the
+   components follow. */
+.lp {
+  --background: #ffffff;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --primary: #1f4fd1;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f5f5f7;
+  --muted-foreground: #6e6e73;
+  --accent: #f5f5f7;
+  --accent-foreground: #1d1d1f;
+  --border: #e5e5ea;
+  --input: #e5e5ea;
+  --ring: #1f4fd1;
+  --soft: #86868b;  /* "in one click." in the headline; large text only */
+  --band: #f5f5f7;  /* the grey sections */
+  --rule: #d2d2d7;  /* hairlines on the grey band */
+  /* The closing band, the page's one dark moment. */
+  --ink-bg: #1d1d1f;
+  --ink-fg: #f5f5f7;
+  --ink-muted: #a1a1a6;
+  --ink-rule: #3a3a3c;
 }
-.dark .flow-canvas {
-  background-color: color-mix(in oklab, var(--muted) 30%, var(--background));
-  background-image: radial-gradient(circle at 1px 1px, oklch(1 0 0 / 9%) 1px, transparent 0);
+.dark .lp {
+  --background: #0b0b0d;
+  --foreground: #f5f5f7;
+  --card: #161618;
+  --card-foreground: #f5f5f7;
+  --primary: #5b86ff;
+  --primary-foreground: #0b0b0d;
+  --secondary: #1c1c1f;
+  --secondary-foreground: #f5f5f7;
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1a6;
+  --accent: #1c1c1f;
+  --accent-foreground: #f5f5f7;
+  --border: #2a2a2e;
+  --input: #2c2c31;
+  --ring: #5b86ff;
+  --soft: #8e8e93;
+  --band: #141416;
+  --rule: #333338;
+  --ink-bg: #161618;
+  --ink-fg: #f5f5f7;
+  --ink-muted: #a1a1a6;
+  --ink-rule: #333338;
 }
-.flow-wires {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
+body:has(> .lp) {
+  background: #ffffff;
 }
-.flow-wires path {
-  fill: none;
-  stroke: color-mix(in oklab, var(--foreground) 16%, transparent);
-  stroke-width: 1.25;
-  transition: stroke 0.35s;
+.dark body:has(> .lp) {
+  background: #0b0b0d;
 }
-.flow-wires path.on {
-  stroke: url(#flow-hot);
-  stroke-width: 2;
+.lp p,
+.lp li {
+  text-wrap: pretty;
 }
-.flow-node {
-  background: var(--card);
-  border-radius: 14px;
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 9%, transparent), 0 1px 2px rgb(15 17 21 / 0.04), 0 12px 28px -16px rgb(15 17 21 / 0.24);
+.lp ::selection {
+  background: #dbe4fb;
+  color: #1d1d1f;
 }
-.flow-opt {
-  transition: box-shadow 0.3s, transform 0.2s;
-}
-.flow-opt[data-on] {
-  box-shadow: 0 0 0 1.5px #f46422, 0 0 0 5px rgb(244 100 34 / 0.12), 0 12px 28px -16px rgb(15 17 21 / 0.24);
-}
-.flow-opt[data-on] .flow-key {
-  background: #f46422;
-  color: #fff;
-  box-shadow: none;
-}
-.flow-opt[data-on] .flow-sub {
-  color: #c2410c;
-}
-.dark .flow-opt[data-on] .flow-sub {
-  color: #fb9a6b;
-}
-[data-flow][data-state="menu"] .flow-opt {
-  cursor: pointer;
-  animation: flow-pick 1.8s ease-in-out infinite;
-}
-[data-flow][data-state="menu"] .flow-opt:hover {
-  transform: translateX(3px);
-}
-@keyframes flow-pick {
-  50% { box-shadow: 0 0 0 1.5px rgb(244 100 34 / 0.45), 0 12px 28px -16px rgb(15 17 21 / 0.24); }
-}
-/* Between the steps on a phone: a short wire in the logo's colours. */
-@media (width < 64rem) {
-  .flow-col + .flow-col::before {
-    content: "";
-    display: block;
-    width: 2px;
-    height: 1.5rem;
-    margin: 0.75rem auto;
-    border-radius: 2px;
-    background: linear-gradient(#f3840f, #e31a5a);
+
+/* In the components layer, so Tailwind utilities on the same element win. */
+@layer components {
+  .lp-ink {
+    background: var(--ink-bg);
+    color: var(--ink-fg);
   }
-}
 
-.wave > i {
-  display: block;
-  width: 3px;
-  flex: none;
-  border-radius: 3px;
-  background: var(--border);
-}
-.dark .wave > i:not([style*="background"]) {
-  background: oklch(1 0 0 / 14%);
-}
-[data-state="greeting"] .wave > i,
-[data-state="hours"] .wave > i {
-  animation: wave-talk 0.7s ease-in-out infinite alternate;
-}
-.wave > i:nth-child(3n) { animation-delay: -0.25s; }
-.wave > i:nth-child(3n + 1) { animation-delay: -0.5s; }
-@keyframes wave-talk {
-  from { transform: scaleY(0.45); }
-}
+  /* The hero's two phone screens (callPair): the visitor's call window,
+     always dark like callscreen.css, and the owner's phone app ringing. */
+  .lp-dev figcaption {
+    margin-top: 1.125rem;
+    font-size: 14px;
+    color: var(--muted-foreground);
+  }
+  .lp-screen {
+    position: relative;
+    width: 300px;
+    height: 600px;
+    overflow: hidden;
+    border-radius: 46px;
+    text-align: left;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 30px 60px -20px rgb(0 0 0 / 0.25);
+  }
+  .dark .lp-screen {
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 30px 60px -20px rgb(0 0 0 / 0.8);
+  }
+  .lp-visitor {
+    background: #121316;
+    color: #f2f2f4;
+    padding: 56px 24px 28px;
+  }
+  .lp-visitor .wave > i {
+    background: #3a3b40;
+  }
+  .lp-owner {
+    background: #ffffff;
+    color: #1d1d1f;
+    padding: 52px 22px 24px;
+  }
+  .lp-opt {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    color: #d4d4d8;
+  }
+  .lp-opt b {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: #26272c;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  .lp-opt-on {
+    background: rgb(244 100 34 / 0.14);
+    color: #ffffff;
+  }
+  .lp-opt-on b {
+    background: #c9461a;
+  }
+  /* On a phone the two screens shrink together, contents and all, and the
+     owner's phone overlaps the visitor's so both stay readable. */
+  @media (max-width: 639px) {
+    .lp-dev {
+      zoom: 0.68;
+    }
+    .lp-dev + .lp-dev {
+      position: relative;
+      z-index: 1;
+      margin-left: -90px;
+    }
+    .lp-dev figcaption {
+      font-size: 17px;
+      line-height: 1.35;
+      text-align: left;
+    }
+    .lp-dev + .lp-dev figcaption {
+      margin-left: auto;
+      text-align: right;
+    }
+  }
 
-/* Joe's phone: an Android-style frame with the minivoip app (iPhones ring
-   with a notification instead, see the FAQ). zoom sets its size. */
-.lp-phone {
-  position: relative;
-  width: 288px;
-  height: 612px;
-  flex: none;
-  border-radius: 48px;
-  background: #0d0e10;
-  box-shadow: inset 0 0 0 1.5px #34363b, inset 0 0 0 4px #0d0e10, 0 2px 4px rgb(10 12 16 / 0.12), 0 30px 50px -20px rgb(10 12 16 / 0.38), 0 80px 120px -50px rgb(10 12 16 / 0.5);
-}
-.lp-screen {
-  position: absolute;
-  inset: 9px;
-  overflow: hidden;
-  border-radius: 39px;
-  color: #fff;
-  background: radial-gradient(130% 75% at 50% 0%, #2b3342 0%, #151820 52%, #0c0d11 100%);
-}
-.lp-screen.lite {
-  color: var(--card-foreground);
-  background: var(--muted);
-}
-.lp-cam {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  width: 11px;
-  height: 11px;
-  margin-left: -5.5px;
-  border-radius: 50%;
-  background: #030304;
-  box-shadow: inset 0 0 0 2px #17191d;
-}
-.lp-ring {
-  position: relative;
-}
-.lp-ring::before,
-.lp-ring::after {
-  content: "";
-  position: absolute;
-  inset: -17px;
-  border-radius: 50%;
-  border: 1px solid rgb(255 255 255 / 0.09);
-}
-.lp-ring::after {
-  inset: -36px;
-  border-color: rgb(255 255 255 / 0.045);
-}
-[data-state="ringing"] .lp-answer {
-  animation: lp-answer 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
-@keyframes lp-answer {
-  0% { box-shadow: 0 0 0 0 rgb(34 197 94 / 0.5); }
-  100% { box-shadow: 0 0 0 18px rgb(34 197 94 / 0); }
-}
-
-.rec-dot {
-  animation: rec-blink 1s steps(2, jump-none) infinite;
-}
-@keyframes rec-blink {
-  50% { opacity: 0.25; }
-}
-
-[data-flow] [data-when]:not([hidden]) {
-  animation: flow-in 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes flow-in {
-  from { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+  /* A drawn voice recording (waveform in pages/home.templ). */
+  .wave > i {
+    display: block;
+    width: 3px;
+    flex: none;
+    border-radius: 3px;
+    background: var(--border);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  [data-flow] *, [data-flow] [data-when]:not([hidden]) { animation: none !important; }
 }

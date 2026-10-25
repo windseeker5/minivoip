@@ -6,33 +6,48 @@ First built on the landing page (`pages/home.templ`) on 2026-10-21; the other sc
 ## Direction
 
 Clean, lean and modern, at the craft level of top product sites (Quo, Aircall, Linear). The product explains
-itself: the hero is a working diagram of one call, from the website's Call button to the owner's cell. No themed
-metaphors (answering machines, key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
+itself: the landing hero shows both ends of a real minivoip call. The landing page is white and pure, Apple-like, never glassy. No themed metaphors (answering machines,
+key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
 
 ## Tokens
 
 - **Type:** Onest (Google Fonts, loaded in `layouts/base.templ`, set as `--font-sans` in `assets/css/globals.css`).
   Headings semibold with tight tracking: hero `text-6xl`/`4rem`, `tracking-[-0.035em]`; section titles
-  `2.75rem`, `tracking-[-0.03em]`. Body 15 to 18px, `leading-relaxed`, muted colour for supporting text.
-- **Colour:** the shadcn neutral tokens in `globals.css` (light and dark). Ink buttons (`primary`).
+  `2.75rem`, `tracking-[-0.03em]` (the landing page goes larger: 76px hero, 56px sections). Body 15 to 18px, `leading-relaxed`, muted colour for supporting text.
+- **Colour:** the shadcn neutral tokens in `globals.css` (light and dark). Ink buttons (`primary`), except on the
+  landing page, where actions are blue (see below).
   Colour is reserved for meaning:
   - the logo's bar colours (orange #f3840f to blue #143495) for the live call path and played voice waves only;
   - orange #f46422 for the caller's chosen option;
   - green for Answer and check marks, red for Decline, recording and hang up.
-- **Shape:** cards 14px radius with a 1px hairline ring and a soft offset shadow (`.flow-node`); buttons 10 to
-  12px radius; pills only for small controls. One elevation per element (ring + shadow, never border + shadow).
+- **Shape:** cards 14 to 20px radius with a 1px hairline ring (`shadow-[0_0_0_1px_var(--border)]`), a soft
+  offset shadow only on the hero picture; buttons 10 to 12px radius (pills on the landing page). One elevation per element (ring + shadow, never border + shadow).
 - **Layout:** `max-w-6xl` content, `px-4` gutter. Lists use hairline rows (`border-t`), not grids of icon cards.
 
-## Components (landing page)
+## Landing page (built 2026-10-25: option A "Keynote")
 
-- **Call diagram** (`callFlow`, `.flow-*` in globals.css, `landing.js`): dotted canvas, four steps (site, greeting,
-  choices, phone) joined by SVG wires drawn from the nodes' positions; the wires on the call's path light up in
-  the logo colours. On phones the steps stack and short gradient wires join them. It is also the demo: pressing
-  Call us walks the states idle → greeting → menu → book / hours / ringing → voicemail → recording → sent.
-- **Phone** (`joesPhone`, `setupPhone`, `.lp-phone`): an Android-style frame (the iPhone rings with a notification
-  instead, so never show an iPhone ringing full screen). Size it with `zoom`.
+Ken asked for "clean, lean and modern, white and pure, like Apple but not the glassy thing" (2026-10-24). He was
+shown three white options (canvas https://claude.ai/artifact/XWsCHyUp822kvL6EfHgioS: A Keynote, B Step by step,
+C One button) and skipped the choice, so A, the recommended one, was built. It replaces look B (warm beige, split
+hero with a screen-share call). Built in `pages/home.templ`; the words are in `docs/landing-copy.md`.
+
+- **Look:** pure white ground, one cool grey band colour #f5f5f7 (`--band`, the "call grows" and quote sections),
+  ink #1d1d1f, muted #6e6e73, soft grey #86868b only for "in one click." in the headline. One blue #1f4fd1
+  (`--primary`) for actions only: buttons and the "Call us now ›" text link; status labels ("Coming soon") stay
+  muted. One dark moment: the closing band with the footer (`lp-ink`). Dark mode: #0b0b0d ground, #141416 bands,
+  blue #5b86ff. The `.lp` wrapper in `globals.css` sets these as shadcn tokens, so the components follow.
+- **Hero:** centred headline (76px desktop, `tracking-[-0.035em]`), one-line sub, blue pill "Get my free line" and
+  the "Call us now ›" link, one microcopy line. Under it `callPair`: one call from both ends, two 300x600 phone
+  screens copied from the real product (left the visitor's call window, always dark, hearing the voice menu with
+  "1 Book a demo" chosen; right the owner's app ringing, "Someone chose “Book a demo”"). Nothing in it is a
+  control. On a phone the pair shrinks (`zoom: 0.68`) and the owner's screen overlaps the visitor's.
+- **Sections:** every head is centred (`sectionHead`). The call grows (`stages`: They ask. / They talk. / They
+  see., hairline columns on the band, the plan under each), two plans as plain white cards with a hairline ring
+  (prices "/ month after beta, planned"), the maker's quote large and centred on the band, three steps (numeral
+  inline in the heading), four questions, then the closing band.
+- **"Call us now"** calls minivoip's own line (Ken's), in the hero and the closing band. Tests never press it.
 - **Voice wave** (`waveform` + `pages/wave.go`): bars drawn server-side from a seed; played bars take the logo
-  colours, the rest the border colour.
+  colours, the rest the border colour (#3a3b40 on the dark call screen).
 
 ## Owner app (chosen 2026-10-24: look C)
 
@@ -56,5 +71,5 @@ https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app
 
 ## Motion
 
-One authored moment: the demo call. Fades in each state, animates the wave while a voice speaks and pulses the
-Answer button while ringing. All of it stops under `prefers-reduced-motion`.
+The landing page is still (2026-10-25, option A). Smooth scrolling to the sections, off under
+`prefers-reduced-motion`.

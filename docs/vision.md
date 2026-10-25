@@ -1,6 +1,6 @@
 # Long-term vision
 
-Last update: 2026-10-22 · Agreed with Ken. Read this before planning any new feature.
+Last update: 2026-10-24 · Agreed with Ken. Read this before planning any new feature.
 
 ## The goal
 
@@ -27,15 +27,22 @@ Nothing to install on either side, nothing to deploy for the owner beyond pastin
 
 ## Two plans
 
+Named Basic and Premium on 2026-10-24 (before: Voice and Meetings).
+
 | Plan | Price | What's in it |
 |---|---|---|
-| **Voice** | Really cheap (amount not set yet) | "Call us" button, voice menu that filters calls, rings on every device, one voicemail |
-| **Meetings** | About double Voice | Everything in Voice, plus meeting room, whiteboard, screen sharing, recording, meeting notes |
+| **Basic** | Really cheap (landing page placeholder: $2 a month) | "Call us" button, voice menu that answers common questions and sends callers to the right page, rings on every device, voicemail. Never video, whiteboard or AI. |
+| **Premium** | About $5 a month (placeholder) | Everything in Basic, plus AI front desk (answers from the owner's FAQ), video, screen sharing, whiteboard, a team meeting room, recording and meeting notes |
+
+The pitch (2026-10-24): "minivoip puts a Call button on your website. Your voice menu answers the common
+questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line,
+nothing to install." Premium's main pain: an interested visitor gets a live demo right away, before they cool off
+(Ken wants it for minipass first); team meetings without free-tool time limits are a bonus.
 
 Why the prices differ:
-- Voice costs almost nothing to run: the call goes straight between the two browsers.
-- Meetings cost real money: recordings take storage, notes cost a little per meeting hour, and rooms with three or
-  more people need the server to carry the video. The Meetings plan has to cover that, probably with a monthly limit
+- Basic costs almost nothing to run: the call goes straight between the two browsers.
+- Premium costs real money: recordings take storage, notes cost a little per meeting hour, and rooms with three or
+  more people need the server to carry the video. The Premium plan has to cover that, probably with a monthly limit
   on note hours.
 
 ## Decisions
@@ -60,5 +67,4 @@ Why the prices differ:
 - Privacy wording. The landing page's "nothing is recorded" was a placeholder; recording and notes will change it
   (likely "recorded only when you turn notes on").
 - How group rooms carry video (a forwarding server is needed from three people on).
-- The landing page copy (`docs/landing-copy.md`) and `.agents/product-marketing.md` still describe Voice only;
-  update them when the landing page is reworked.
+- Real prices. The AI front desk runs on Ken's own AI server, so its cost per call is still to be seen.

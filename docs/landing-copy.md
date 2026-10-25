@@ -1,66 +1,58 @@
 # Landing page copy
 
-Last update: 2026-10-21 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
+Last update: 2026-10-25 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
+Look: option A "Keynote", white and Apple-like, built on 2026-10-25 (DESIGN.md "Landing page"). The words stayed; the changes are noted below.
+
+## Elevator sentence (agreed with Ken, 2026-10-24)
+minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install.
+
+FR : minivoip ajoute un bouton « Appelez-nous » à votre site. Votre menu vocal répond aux questions courantes, et quand un visiteur veut en savoir plus, vous lui parlez et lui montrez votre écran, en un clic. Pas de ligne téléphonique, rien à installer.
 
 ## Meta
-- Title: minivoip: a virtual receptionist for your website that rings your cell
-- Description: Your website's receptionist answers every call in your voice, sends it to the right place and rings your cell when it's for you. No phone line needed. Free while in beta.
+- Title: minivoip: from a question on your website to a real conversation
+- Description: the elevator sentence.
 
 ## Hero
-- Headline: Your website's receptionist answers every call and sends it to your cell.
-- Sub: Visitors click Call on your website. Your receptionist greets them in your voice, sends each call to the right person, the right page or voicemail, and rings your cell only when it's for you. No phone line needed.
-- CTA: Get my free line · secondary: Try the demo call
-- Microcopy (two check marks): Free while in beta · No card required
+- Headline: From a question on your website to a real conversation, in one click.
+- Sub: Your voice menu answers the common questions. When a visitor wants more, you talk to them and show them your screen. No phone line, nothing to install.
+- CTA: Get my free line · secondary, a text link: Call us now › (minivoip's own line, `MINIVOIP_CALL_LINE`; without it: See how it works ›)
+- Microcopy, one line: Free while in beta · No card required · “Call us now” rings Ken, who builds it. (the last part only when the line exists)
+- Picture: one call from both ends, two phone screens. Left, "Your visitor, in their browser": minivoip, "Hi, this is Ken. Press a number…", the voice wave, 1 Book a demo (chosen), 2 How it works and prices, 0 Leave a message. Right, "You, on your own phone": Incoming call · 0:04, Someone chose “Book a demo”, "A visitor on your website heard your greeting and picked this choice.", If nobody answers: voicemail in 0:26, Answer, Decline.
 
-## Problem
-- Heading: Paying for a second line just to take messages?
-- Body: Most small businesses don't need a phone system. They need customers to reach them, and a voicemail for when they can't. A business line bills you every month for that, and a personal cell number on your website brings spam and calls at 9 p.m.
+## The call grows (`stages`)
+- Heading: One click, and the call grows with the question.
+- Sub: Most visitors only need an answer. Some need you. A few need to see it. minivoip handles all three in the same call.
+- Each stage is a short title and one paragraph (2026-10-25):
+- **They ask.** Your menu answers the easy questions. Hours, prices, directions, or a link to the right page of your site. In your own voice. (Basic)
+- **They talk.** A real customer reaches you. Your phone or computer rings. Busy? They leave a voicemail. (Basic)
+- **They see.** Turn on video, share your screen or open the whiteboard. The demo happens while they're still interested. (Premium · coming soon)
 
-## How it works
-- Heading: Set up in three steps · Sub: You set it all up yourself, from your browser.
-1. **Record your greeting.** Say hello and set the choices: press 1 for bookings, 2 to talk to you. Record it from your browser.
-2. **Install the app on your phone.** Open a link on your phone and add it to your home screen. Your phone number stays the same.
-3. **Add the button to your site.** Paste one line into WordPress, Wix, Squarespace or Shopify. Can't edit your site? Share your call link or a QR code.
-
-## Demo (the call diagram under the hero, `callFlow` in pages/home.templ)
-- Step labels: 1 Visitor clicks Call · 2 Your greeting answers · 3 They choose · 4 Only then, your cell rings
-- Choices (Joe's B&B, sample): 1 Bookings (Opens your booking page) · 2 Talk to Joe (Rings Joe's cell) · 3 Hours and directions (Plays a message) · 0 Leave a message (Voicemail, with an alert)
-- Under the phone: Joe's own cell · Same phone, same number
-- Below: A demo with a sample business. Press Call us: nothing rings and nothing is recorded.
-- Pressing Call us plays the greeting, then "Choose an option"; 2 rings Joe's cell, then "Joe can't answer right now. Leave a message after the tone."
-
-## Features (`features` and `aiFeature` in pages/home.templ)
-- Heading: Everything a good receptionist does · Sub: On the cell phone you already carry. Set it up once, and change your greeting and choices whenever you like.
-- **Answers every call.** Your receptionist greets callers in your own voice, day or night.
-- **Sends each call to the right place.** The right person, your booking page, your price list or your opening hours. You decide what each choice does.
-- **Rings your cell.** Only when the call is really for you. It uses the phone you already have, with the same number.
-- **Takes messages.** Callers leave a voicemail and you get an alert on your phone to play it.
-- **Knows your hours.** After closing time, callers hear your after-hours message and leave a message.
-- **Rings your whole team.** Add a partner's phone or your laptop. They all ring, and the first person free takes the call.
-- **Works from your website.** One Call button on your site, or a link and QR code for Google Maps, Facebook or your front door.
-- **Keeps your number private.** Callers never see your cell number, and calls are never recorded.
-- **No phone line to pay.** $30 a year per line, after the free beta. No per-minute charges.
-- **AI receptionist** (badge: Coming soon; not built, never drop the badge). Answers common questions for you, like your hours, prices and directions, and sums up your messages.
-
-## Pricing
-- Heading: One line, one price · Sub: About the price of a coffee a month.
-- Plan: minivoip line · **Free** while in beta · then $30 a year per line, about $2.50 a month
-- Includes: your receptionist (greeting, choices and call routing), unlimited calls with no per-minute charges, voicemail with notifications, call link and QR code, as many phones as you like
+## Plans (`plans`)
+- Heading: Start with Basic. Grow into Premium. · Sub: Free while in beta. No per-minute charges.
+- Prices read "/ month after beta" (placeholders, 2026-10-25).
+- **Basic** · $2 / month (placeholder) · tag Free in beta · Your website answers the phone for you.
+  Call button, call link and QR code · Voice menu in your own voice · Sends callers to the right page of your site · Rings your phone and your computer · Voicemail with an alert. CTA: Get my free line
+- **Premium** · $5 / month (placeholder) · badge Coming soon · From a question to a live demo, in one click.
+  Everything in Basic · AI front desk that answers from your FAQ · Video and screen sharing · Whiteboard to draw together · A meeting room for your team, no time limit. CTA: Tell me when it's ready (email to Ken)
 - Note: Have a promo code? Enter it when you sign up.
-- CTA: Get my free line
+- Basic never gets video, whiteboard or AI (Ken, 2026-10-24). Everything in Premium stays "Coming soon" until built.
 
-## FAQ
+## Maker
+“I built minivoip for my own businesses first. A visitor on my site asks a question, and a minute later I'm showing them the product.” Ken Dresdell, maker of minipass and minivoip.
+
+## Ready in three steps (`steps`)
+1. **Record your menu.** Say hello and set the choices, right from your browser.
+2. **Get the app.** The Android app rings like a real call. On a computer or an iPhone, use the web app.
+3. **Add the button.** Paste one line on your site, or share your call link and QR code.
+
+## Questions (`faqs`)
 - **Can people call me from a regular phone?** Not yet. Calls come from your website, your call link or a QR code. A real phone number is planned as an add-on.
-- **Will my iPhone ring like a normal call?** You get a notification with a sound, and you answer by tapping it. Apple doesn't let web apps show a full ringing screen. Android phones and computers keep ringing until you answer.
-- **Does the caller need to install anything?** No. They click the button and talk from their browser, after allowing the microphone.
-- **What if I miss the call?** After 30 seconds the caller can leave a voicemail. You get a notification and play it in the app.
+- **Will my phone ring like a normal call?** On Android, yes: the minivoip app rings with your ringtone and shows the call screen, even when your phone is locked. Computers ring while the app is open. On iPhone, for now you get a notification with a sound and answer by tapping it; a ringing iPhone app is next.
+- **Does the visitor need to install anything?** No. They click the button and talk from their browser, after allowing the microphone.
 - **I can't edit my website. Can I still use it?** Yes. Put your call link on your Google Maps listing, your Facebook page, your email signature, or print it as a QR code for your door.
 
-## Final CTA
-- Heading: Give your website a receptionist
-- Body: Record your greeting, install the app, paste one line. Free while in beta.
-- CTA: Get my free line
-
-## Footer
-- minivoip, part of the mini family, with minipass and minicrm.
-- Contact: kdresdell@minipass.me
+## Final call and footer
+- Heading: Put a Call button on your website.
+- Body: Free while in beta. Start with Basic, move to Premium when it's ready.
+- CTA: Get my free line · Call us now
+- Footer: minivoip, part of the mini family, with minipass and minicrm. Get the Android app. Contact: kdresdell@minipass.me

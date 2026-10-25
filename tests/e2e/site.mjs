@@ -156,8 +156,10 @@ try {
   if (callUs) {
     const res = await visitorSite.request.get(BASE + callUs);
     check(res.ok() && (await res.text()).includes('data-action="call"'), `"Call us now" opens a working call page (${callUs})`);
+    const calls = await visitorSite.$$eval('a[href^="/call/"]', (as) => as.map((a) => a.getAttribute("href")));
+    check(calls.length === 2 && calls.every((h) => h === callUs), `every "Call us now" on the landing page calls minivoip's own line (${calls.join(", ")})`);
   } else {
-    check(await visitorSite.isVisible('a[href="#demo"]'), "without a real line, the hero offers the demo call");
+    check(await visitorSite.isVisible('a[href="#how"]'), "without a real line, the hero offers how it works");
   }
   await visitorSite.goto(BASE + "/dashboard");
   check(new URL(visitorSite.url()).pathname === "/login", "dashboard sends logged-out visitors to log in");

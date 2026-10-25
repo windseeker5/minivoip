@@ -162,6 +162,8 @@ try {
     check(await visitorSite.isVisible('a[href="#how"]'), "without a real line, the hero offers how it works");
   }
   // The hero plays the line's recorded greeting, and the wave and the words follow it.
+  // The crawl above already loaded the page, so this is a second visit: the
+  // recording comes from the browser's cache (it once broke the words).
   if (await visitorSite.$("[data-voice-play]")) {
     await visitorSite.click("[data-voice-play]");
     await visitorSite.waitForTimeout(2000);
@@ -171,7 +173,7 @@ try {
       said: document.querySelectorAll("[data-voice-text] span.said").length,
       length: document.querySelector("[data-voice-time]").textContent,
     }));
-    check(voice.playing && voice.at > 0.5 && voice.length !== "", `the hero plays the greeting (${voice.at.toFixed(1)} s of ${voice.length}, ${voice.said} words said)`);
+    check(voice.playing && voice.at > 0.5 && voice.length !== "" && voice.said > 0, `the hero plays the greeting (${voice.at.toFixed(1)} s of ${voice.length}, ${voice.said} words said)`);
     await visitorSite.click("[data-voice-play]");
     check(await visitorSite.evaluate(() => document.querySelector("[data-voice] audio").paused), "pressing again pauses the greeting");
   }

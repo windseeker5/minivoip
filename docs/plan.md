@@ -10,6 +10,10 @@ Last update: 2026-10-25 · Design: [architecture.md](architecture.md) · Goal: [
 - **Visitor's call window** (2026-10-25, look A, `DESIGN.md` "Call window"): white like the landing page, the menu's
   words written out as they're said, choices as big buttons, a clear ending. Next for it: a panel in the corner of
   the business's website instead of a new tab, then the business's own colour and logo.
+- **Premium, first pieces** (2026-10-25): in a call, both sides can turn on their camera, show their screen (on a
+  computer) and draw on a shared whiteboard. Each line has a meeting room, `/room/<line>`, for up to 4 people;
+  guests wait until the owner opens it, and the owner's app says who is waiting. Not yet: limiting them to the
+  Premium plan, recording and meeting notes, the AI front desk.
 - **Next, most important first:**
   1. **Security:** anyone who knows a call link can call, robots too.
   2. Container and home server (Phase 6).

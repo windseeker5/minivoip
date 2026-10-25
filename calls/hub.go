@@ -6,7 +6,8 @@
 // Visitor -> server: call, voicemail, offer, ice, hangup
 // Owner   -> server: hello, accept, decline, answer, ice, hangup
 // Server  -> visitor: ringing, busy, accepted, no-answer, voicemail, answer, ice, hangup
-// Server  -> owner:   ready, incoming, taken, missed, voicemail, offer, ice, hangup
+// Server  -> owner:   ready, incoming, taken, missed, voicemail, offer, ice, hangup,
+//                    room (who waits in the meeting room, room.go)
 //
 // "no-answer" and "voicemail" to the visitor carry a one-time token that lets
 // the browser upload one voicemail (UseVoicemailToken).
@@ -34,6 +35,7 @@ type Message struct {
 	SDP       string          `json:"sdp,omitempty"`
 	Token     string          `json:"token,omitempty"` // voicemail upload pass
 	Candidate json.RawMessage `json:"candidate,omitempty"`
+	Names     []string        `json:"names,omitempty"` // "room": the guests waiting in the meeting room
 }
 
 type peer struct {

@@ -76,6 +76,10 @@ voice in the middle, B answers first, C like a text conversation).
   over) → the end (a check for "Message sent", an "Open the page" button for a link choice, "Try sending again"
   when the upload fails, "Back to the website" when a page sent the visitor here, "Call again").
 - **Microphone blocked:** a red-tinted note under the choices says how to allow it, with Try again.
+- **Video, screen and whiteboard (2026-10-25):** on the line, five round buttons: Mute, Camera, Screen (computers
+  only), Whiteboard, Hang up. While a camera, a screen or the whiteboard is on, the stage (below) takes the place of
+  the voice wave, the owner's name and the timer move to a small header, and on a computer the window grows to
+  almost the whole screen.
 - **Keys:** the number keys pick a choice (not with Ctrl, Alt or Cmd); Escape hangs up.
 
 ## Owner app (chosen 2026-10-24: look C)
@@ -97,6 +101,31 @@ https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app
   "Incoming call, click to answer" alert that brings it to the front, and flashes the tab title.
 - **Available switch:** Available / Pause for 1 hour / Off. Green, amber, grey dot. While away, calls go straight
   to voicemail.
+
+## The stage: cameras, screens, whiteboard (2026-10-25)
+
+One look for the call window, the owner's app and the meeting room (`assets/css/stage.css`, `assets/js/meet.js`):
+dark tiles (#18181b, 18px radius) on whatever page holds them; a person without a camera is their initials on a
+grey circle; names in a small dark pill at the bottom left, with a red crossed mic when muted. Two people: the other
+fills the stage, me in a small corner tile (only with my camera on, mirrored). Three or more: a grid. A screen or the
+whiteboard fills the stage, with everyone in a strip under it; showing my own screen shows "You're showing your
+screen · Stop" on top instead of the screen itself. The whiteboard is white paper with a faint dot grid (16:10, it
+fits the space like a slide) on a light grey board, five pens (ink, orange, blue, green, red), Undo, Clear and a
+close button. Opening or closing it does so for everyone.
+
+## Meeting room (2026-10-25)
+
+`/room/<line>` (`pages/room.templ`, `assets/css/room.css`, `assets/js/room.js`). The call window's world (look A:
+white, Funnel, ink, red only for Leave), not a new look.
+
+- **Get ready:** the camera preview (dark, 16:10 on a computer, 4:3 on a phone) with Mic and Camera buttons on it,
+  beside the business's initials, "Meeting room", its name, "Your name" and a big ink Join (the owner: "Open the
+  room", no name). On a computer, one white card on the grey ground; on a phone, stacked.
+- **Waiting:** an orange pulsing dot and "Waiting for <owner> to open the room…", with Leave.
+- **In the room:** a bar (initials, name, "Meeting room · 3 people", Copy link), "Nobody else is here yet" with the
+  link while alone, the stage, then Mute, Camera, Screen, Whiteboard and a red Leave.
+- **The owner's app:** a Room tab (the link, Copy, "Open the room", three steps) and, when a guest waits, a dark pill
+  on top of every tab, "Ana is waiting in your meeting room · Join".
 
 ## Motion
 

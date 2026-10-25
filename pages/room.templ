@@ -1,0 +1,154 @@
+package pages
+
+import (
+	"minivoip/layouts"
+	"minivoip/lines"
+)
+
+// roomData is what room.js needs.
+type roomData struct {
+	Line     string `json:"line"`
+	Business string `json:"business"`
+	Owner    string `json:"owner"`    // who opens the room
+	IsOwner  bool   `json:"isOwner"`  // this visitor is the line's owner
+	Initials string `json:"initials"` // the owner's, for their face on the stage
+	URL      string `json:"url"`
+}
+
+templ iconLeave() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"></path></svg>
+}
+
+templ iconCopy() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
+}
+
+// Room is a line's meeting room: /room/<line> (DESIGN.md "Meeting room").
+// First a "get ready" screen (name, microphone, camera), then the room: the
+// stage (meet.js) and the controls. Guests wait until the owner opens it.
+// room.js shows the parts whose data-show lists the state.
+templ Room(l lines.Line, isOwner bool, url string) {
+	{{ owner := ownerName(l) }}
+	@layouts.Plain(l.Business + " · Meeting room") {
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
+		<link rel="stylesheet" href="/assets/css/room.css"/>
+		<link rel="stylesheet" href="/assets/css/stage.css"/>
+		<main class="rm" data-room data-state="lobby">
+			<p class="rm-sr" data-status role="status" aria-live="polite"></p>
+			<section class="rm-ready" data-show="lobby joining waiting full left dropped" aria-label="Get ready">
+				<div class="rm-preview">
+					<div class="rm-self" data-preview>
+						<video data-preview-video autoplay muted playsinline></video>
+						<span class="rm-self-face" data-preview-face aria-hidden="true">
+							if isOwner {
+								{ initials(owner) }
+							}
+						</span>
+						<span class="rm-self-name">You</span>
+					</div>
+					<div class="rm-toggles">
+						<button type="button" class="rm-toggle" data-action="pre-mute" aria-pressed="false" aria-label="Microphone">
+							@iconMic()
+						</button>
+						<button type="button" class="rm-toggle" data-action="pre-camera" aria-pressed="false" aria-label="Camera">
+							@iconCamera()
+						</button>
+					</div>
+				</div>
+				<div class="rm-side">
+					<span class="rm-badge" aria-hidden="true">{ initials(l.Business) }</span>
+					<p class="rm-kicker">Meeting room</p>
+					<h1 class="rm-title" tabindex="-1" data-focus>{ l.Business }</h1>
+					<div class="rm-step" data-show="lobby joining">
+						if isOwner {
+							<p class="rm-text">You're the host. People who open your link wait here until you open the room.</p>
+						} else {
+							<label class="rm-label" for="rm-name">Your name</label>
+							<input class="rm-input" id="rm-name" data-name autocomplete="name" maxlength="40" placeholder="So { owner } knows who you are"/>
+						}
+						<button type="button" class="rm-btn is-primary" data-action="join">
+							if isOwner {
+								Open the room
+							} else {
+								Join
+							}
+						</button>
+						<p class="rm-note">Free, in your browser. It will ask to use your microphone; the camera only if you turn it on.</p>
+					</div>
+					<div class="rm-step" data-show="waiting" hidden>
+						<p class="rm-waiting"><i aria-hidden="true"></i>Waiting for { owner } to open the room…</p>
+						<p class="rm-text">You'll come in as soon as they do. Keep this page open.</p>
+						<button type="button" class="rm-btn is-plain" data-action="leave">Leave</button>
+					</div>
+					<div class="rm-step" data-show="full" hidden>
+						<p class="rm-text"><b>This room is full.</b> A meeting room fits 4 people. Try again in a little while.</p>
+						<button type="button" class="rm-btn is-primary" data-action="join">Try again</button>
+					</div>
+					<div class="rm-step" data-show="left dropped" hidden>
+						<p class="rm-text" data-left-text>You left the room.</p>
+						<button type="button" class="rm-btn is-primary" data-action="join">Join again</button>
+					</div>
+					<div class="rm-help" data-mic-help hidden role="alert">
+						<p>Your browser blocked the microphone, so nobody can hear you.</p>
+						<p>To allow it, tap the lock or settings icon next to the web address, then Microphone. Then join again.</p>
+					</div>
+					<p class="rm-foot">Free meeting by <a href="/" target="_blank" rel="noopener">minivoip</a></p>
+				</div>
+			</section>
+			<section class="rm-in" data-show="in" hidden aria-label="Meeting">
+				<header class="rm-bar">
+					<span class="rm-badge is-small" aria-hidden="true">{ initials(l.Business) }</span>
+					<div class="rm-bar-text">
+						<p class="rm-bar-name" tabindex="-1" data-focus>{ l.Business }</p>
+						<p class="rm-bar-sub" data-people>Meeting room</p>
+					</div>
+					<button type="button" class="rm-chip" data-action="copy">
+						@iconCopy()
+						<span>Copy link</span>
+					</button>
+				</header>
+				<div class="rm-alone" data-alone hidden>
+					<p>Nobody else is here yet. Send them the link: <b>{ url }</b></p>
+				</div>
+				<div class="rm-stage" data-stage></div>
+				<p class="rm-meet-note" data-meet-note role="status" hidden></p>
+				<nav class="rm-controls" aria-label="Meeting controls">
+					<button type="button" class="rm-round" data-action="mute" aria-pressed="false">
+						<span>
+							@iconMic()
+						</span>
+						<span>Mute</span>
+					</button>
+					<button type="button" class="rm-round" data-action="camera" aria-pressed="false">
+						<span>
+							@iconCamera()
+						</span>
+						<span>Camera</span>
+					</button>
+					<button type="button" class="rm-round" data-action="screen" aria-pressed="false" data-share-btn hidden>
+						<span>
+							@iconScreen()
+						</span>
+						<span>Screen</span>
+					</button>
+					<button type="button" class="rm-round" data-action="board" aria-pressed="false">
+						<span>
+							@iconBoard()
+						</span>
+						<span>Whiteboard</span>
+					</button>
+					<button type="button" class="rm-round is-end" data-action="leave">
+						<span>
+							@iconLeave()
+						</span>
+						<span>Leave</span>
+					</button>
+				</nav>
+			</section>
+			<div data-audio hidden></div>
+		</main>
+		@templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), URL: url})
+		<script src="/assets/js/meet.js" defer></script>
+		<script src="/assets/js/room.js" defer></script>
+	}
+}

@@ -58,6 +58,8 @@ Why the prices differ:
   - Safety net when nobody answers: voicemail, later "leave your number, we call you back".
 - **The voice menu is the junk-call filter.** An open door invites junk callers; the menu keeps robots out and is a
   selling point ("only real people get through").
+- **Meeting rooms connect everyone to everyone** (2026-10-25): no server carries the video, so a room fits 4 people
+  (each sends their video to the others). Bigger rooms will need a forwarding server (see "Not decided yet").
 - **Simple first.** Minimalist, easy to understand, intuitive. Today's screens are not; making them simple comes
   before adding features.
 

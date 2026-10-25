@@ -41,6 +41,7 @@ func sampleApp() AppData {
 		Voicemails:  []store.Voicemail{*v1, *v2, *v3},
 		VapidKey:    "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U",
 		CallURL:     "voip.example.com/call/joesbnb",
+		RoomURL:     "https://voip.example.com/room/joesbnb",
 		Devices:     2,
 		RingSeconds: 30,
 	}
@@ -59,7 +60,8 @@ func TestAppRenders(t *testing.T) {
 	d := sampleApp()
 	html := render(t, Phone(d))
 	for _, want := range []string{`data-tab="calls"`, `data-panel="me"`, `data-call-screen`, `data-push-state`,
-		"Call while you were away", "Declined", "Answered", "4:18", "Yesterday", "Opens https://joesbnb.ca", `data-new`} {
+		"Call while you were away", "Declined", "Answered", "4:18", "Yesterday", "Opens https://joesbnb.ca", `data-new`,
+		`data-panel="room"`, "https://voip.example.com/room/joesbnb", `data-room-alert`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("app is missing %q", want)
 		}
@@ -73,6 +75,11 @@ func TestAppRenders(t *testing.T) {
 	}
 	if got := render(t, Availability(store.Away)); !strings.Contains(got, "Off") || !strings.Contains(got, `data-mode="off"`) {
 		t.Errorf("Availability(Away) = %s", got)
+	}
+	// Someone waiting in the meeting room shows when the app opens.
+	d.RoomWaiting = []string{"Ana", "Bo", "Cy"}
+	if got := render(t, Phone(d)); !strings.Contains(got, "Ana and 2 others are waiting in your meeting room") {
+		t.Error("the app doesn't say who waits in the meeting room")
 	}
 }
 

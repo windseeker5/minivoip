@@ -107,12 +107,25 @@ const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - 
   check(await page.locator('[data-voicemail="3"] [data-new]').count() === 0 && await page.isHidden("[data-vm-dot]"), "phone: New badge and tab dot clear");
   await page.click('[data-panel="calls"] [data-voicemail="3"] [data-play]');
 
-  for (const tab of ["voicemail", "menu", "me"]) {
+  for (const tab of ["voicemail", "menu", "room", "me"]) {
     await page.click(`[data-tab="${tab}"]`);
     check(await page.isVisible(`[data-panel="${tab}"]`) && (await page.evaluate(() => location.hash)) === "#" + tab, `phone: ${tab} tab opens`);
     await page.screenshot({ path: `${SHOTS}/app-phone-${tab}.png`, fullPage: true });
   }
   check(await page.isVisible("text=Log out"), "phone: Me has Log out");
+  check(await page.getAttribute('[data-panel="room"] [data-room-open]', "href") === "https://voip.example.com/room/joesbnb", "phone: the Room tab opens the meeting room");
+
+  // Someone waits in the meeting room: an alert with Join, on every tab.
+  check(await page.isHidden("[data-room-alert]"), "phone: no meeting room alert while nobody waits");
+  sock.ws.send(JSON.stringify({ type: "room", names: ["Ana Roy"] }));
+  await page.waitForSelector("[data-room-alert]:visible");
+  check(/Ana Roy is waiting in your meeting room/.test(await page.textContent("[data-room-alert]")), "phone: the app says who waits in the meeting room");
+  check(await overflow(page) <= 0, "phone: the meeting room alert fits");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${SHOTS}/app-phone-room-waiting.png` });
+  sock.ws.send(JSON.stringify({ type: "room" }));
+  await page.waitForSelector("[data-room-alert]", { state: "hidden" });
+  check(true, "phone: the alert goes away when nobody waits");
   check(!/Checking/.test(await page.textContent("[data-push-state]")), "phone: notification state is shown");
   await page.reload();
   await page.waitForFunction(() => document.querySelector("[data-phone]").dataset.online === "true");

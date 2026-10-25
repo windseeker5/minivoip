@@ -6,6 +6,8 @@
 //    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
 //    then voicemail (unanswered call and a voicemail choice), listen, delete.
+//    Video through the relay. The meeting room: a guest waits, the app says so,
+//    the owner opens it, a third person, the whiteboard, leaving.
 // 4. Promo codes: admins only; create, sign up with it, used up, revoke.
 // 5. A stranger can't open the phone app; log out works.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
@@ -93,7 +95,7 @@ const browser = await chromium.launch({
 });
 
 async function newPage(width = 1280, height = 900) {
-  const ctx = await browser.newContext({ viewport: { width, height }, permissions: ["microphone"] });
+  const ctx = await browser.newContext({ viewport: { width, height }, permissions: ["microphone", "camera"] });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
   page.on("console", (m) => {
@@ -383,6 +385,13 @@ try {
     const o = await owner.evaluate(() => window.minivoipCallStats());
     check(c && c.route === "relay>relay" && c.bytesIn > 1000 && o && o.bytesIn > 1000,
       `voice flows both ways through the relay (caller ${c && c.route}, ${c && c.bytesIn} bytes in; phone ${o && o.bytesIn} bytes in)`);
+    // Video through the relay too: the owner turns the camera on.
+    await owner.click('[data-action="camera"]');
+    await caller.waitForTimeout(3000);
+    const v = await caller.evaluate(() => window.minivoipCallStats());
+    check(v && v.videoIn > 20000 && await caller.isVisible('.mv-tile[data-tile="p:owner"].has-video'),
+      `the owner's camera reaches the caller through the relay (${v && v.videoIn} video bytes)`);
+    await caller.screenshot({ path: `${SHOTS}/call-video.png` });
     await caller.click('[data-action="hangup"]:visible');
     await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   }
@@ -475,6 +484,87 @@ try {
   await owner.click('[data-avail-menu] [data-mode="on"]');
   await owner.waitForSelector('[data-avail-state][data-mode="on"]');
   check(true, "the Available switch turns back on");
+
+  // Meeting room ----------------------------------------------------------
+  step = "meeting room links";
+  await owner.goto(BASE + "/dashboard");
+  check((await owner.inputValue("#room-link")).endsWith(`/room/${LINE}`), "the dashboard shows the meeting room link");
+  await owner.goto(BASE + "/app");
+  await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
+  await owner.click('[data-tab="room"]');
+  check((await owner.textContent("[data-room-url]")).trim().endsWith(`/room/${LINE}`) && await owner.isVisible("[data-room-open]"), "the app's Room tab has the link and Open the room");
+
+  step = "guest waits";
+  const roomPushes = pushes.length;
+  const guest = await newPage(390, 844);
+  await guest.goto(BASE + `/room/${LINE}`);
+  check(!(await guest.isVisible("text=You're the host")), "a guest isn't the host");
+  await guest.fill("[data-name]", "Ana Roy");
+  await guest.click('[data-action="join"]');
+  await guest.waitForSelector("text=Waiting for", { timeout: 10000 });
+  await guest.screenshot({ path: `${SHOTS}/room-waiting.png` });
+  await owner.waitForSelector("[data-room-alert]:visible", { timeout: 5000 });
+  check(/Ana Roy is waiting/.test(await owner.textContent("[data-room-alert]")), "the app says who is waiting in the meeting room");
+  await owner.waitForTimeout(800);
+  check(pushesSince(roomPushes).some((p) => p.kind === "room" && p.url === `/room/${LINE}`), "a sleeping phone gets “Someone is waiting in your meeting room”");
+
+  step = "owner opens the room";
+  const [host] = await Promise.all([owner.context().waitForEvent("page"), owner.click("[data-room-alert]")]);
+  host.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
+  await host.waitForSelector('[data-action="join"]:visible');
+  check(await host.isVisible("text=You're the host"), "the owner's room page says they're the host");
+  await host.click('.rm-toggle[data-action="pre-camera"]');
+  await host.waitForSelector("[data-preview].has-video");
+  await host.waitForFunction(() => document.querySelector("[data-preview-video]").videoWidth > 0);
+  check(await host.isHidden("text=This room is full") && await host.isHidden("text=You left the room") && await host.isHidden("text=Waiting for"),
+    "getting ready shows only its own step");
+  await host.waitForTimeout(300);
+  await host.screenshot({ path: `${SHOTS}/room-ready.png` });
+  await host.click('[data-action="join"]');
+  await guest.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  await host.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  check(true, "opening the room lets the waiting guest in");
+  await owner.waitForSelector("[data-room-alert]", { state: "hidden", timeout: 5000 });
+  check(true, "the app's waiting alert goes away");
+  await guest.waitForTimeout(3000);
+  const gs = await guest.evaluate(() => window.minivoipRoomStats());
+  check(gs.length === 1 && gs[0].bytesIn > 1000 && gs[0].videoIn > 5000, `the guest hears and sees the owner (${JSON.stringify(gs)})`);
+
+  step = "third person";
+  const bo = await newPage(1280, 900);
+  await bo.goto(BASE + `/room/${LINE}`);
+  await bo.fill("[data-name]", "Bo");
+  await bo.click('[data-action="join"]');
+  await bo.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  await bo.waitForFunction(() => /3 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 10000 });
+  check(/3 people/.test(await host.textContent("[data-people]")), "a third person comes straight in while the owner is there");
+  await bo.waitForTimeout(3000);
+  const bs = await bo.evaluate(() => window.minivoipRoomStats());
+  check(bs.length === 2 && bs.every((x) => x.bytesIn > 1000), `everyone hears everyone (${bs.map((x) => x.bytesIn).join(", ")} bytes)`);
+  check(await bo.isVisible('.mv-stage[data-layout="grid"]'), "three people show as a grid");
+  await bo.click('.rm-controls [data-action="board"]');
+  await host.waitForSelector(".mv-board", { timeout: 5000 });
+  await guest.waitForSelector(".mv-board", { timeout: 5000 });
+  const paper = await bo.locator(".mv-paper canvas").boundingBox();
+  await bo.mouse.move(paper.x + 100, paper.y + 100);
+  await bo.mouse.down();
+  await bo.mouse.move(paper.x + 300, paper.y + 220, { steps: 10 });
+  await bo.mouse.up();
+  await host.waitForFunction(() => document.querySelector(".mv-stage").meet.wb.strokes.length === 1, null, { timeout: 5000 });
+  await guest.waitForFunction(() => document.querySelector(".mv-stage").meet.wb.strokes.length === 1, null, { timeout: 5000 });
+  check(true, "the whiteboard opens for everyone, and a drawing shows for everyone");
+  await bo.screenshot({ path: `${SHOTS}/room-board.png` });
+  await guest.screenshot({ path: `${SHOTS}/room-phone-board.png` });
+  await bo.click('[data-board="close"]');
+  await bo.waitForTimeout(500);
+  await bo.screenshot({ path: `${SHOTS}/room.png` });
+  await bo.click('.rm-controls [data-action="leave"]');
+  await host.waitForFunction(() => /2 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+  check(await bo.isVisible("text=You left the room"), "Leave leaves; the others see one less");
+  await guest.click('.rm-controls [data-action="leave"]');
+  await host.waitForFunction(() => /just you/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+  await host.click('.rm-controls [data-action="leave"]');
+  await host.close();
 
   // Promo codes (admin) -----------------------------------------------------
   step = "admin only";

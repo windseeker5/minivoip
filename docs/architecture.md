@@ -142,6 +142,37 @@ sequenceDiagram
     end
 ```
 
+## Video, screens, whiteboard and meeting rooms (2026-10-25)
+Same rule as the voice: **the server only introduces people; everything else goes directly between browsers.**
+
+- **In a call:** every call opens, up front, two video lanes (camera and screen) and a small data channel next to the
+  voice. Turning a camera on fills a lane, with no new call setup. The data channel carries who has what on and the
+  whiteboard's lines as they're drawn. Shared by the call window, the owner's app and the meeting room:
+  `assets/js/meet.js` and `assets/css/stage.css`.
+- **Meeting rooms:** `/room/<line>`, its socket `/ws/room?line=` (`calls/room.go`). Guests wait until the owner (the
+  logged-in owner of the line) opens the room; the owner's open apps see who waits (a "room" message on the call
+  socket) and their phones get a "Someone is waiting in your meeting room" notification. Inside, everyone connects
+  to everyone (a mesh): a newcomer gets the list of people there and offers a connection to each. That keeps the
+  server out of the video, so a room fits 4 people; bigger rooms would need a forwarding server.
+- Video through the relay costs more bandwidth than voice (roughly 1 to 2.5 Mbit/s per camera or screen, per person
+  receiving it) on the home server's upload.
+
+```mermaid
+sequenceDiagram
+    participant A as Ana (guest)
+    participant S as Our server
+    participant J as Joe (owner)
+    A->>S: join "Ana"
+    S-->>A: waiting
+    S->>J: app: "Ana is waiting" + push
+    J->>S: join (logged in as the owner)
+    S-->>J: welcome (nobody here yet)
+    S-->>A: welcome (Joe is here)
+    A->>J: offer, ice (passed by the server)
+    J->>A: answer, ice
+    A->J: voice, cameras, screens, whiteboard: direct (or via the relay)
+```
+
 ## The voice menu
 The owner records each prompt. Every option points to one action:
 

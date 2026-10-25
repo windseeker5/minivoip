@@ -127,7 +127,7 @@ func customName(f LineForm) string {
 }
 
 // Dashboard is "My line": the call link and what to do next.
-templ Dashboard(email string, l lines.Line, callURL string, newVoicemails int, plan string) {
+templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemails int, plan string) {
 	@dashShell("My line", email, "/dashboard") {
 		<h1 class="text-3xl font-bold tracking-tight">{ l.Business }</h1>
 		<p class="mt-2 text-muted-foreground">Your receptionist answers at this link. Share it, or put it behind a Call button on your website.</p>
@@ -144,6 +144,24 @@ templ Dashboard(email string, l lines.Line, callURL string, newVoicemails int, p
 					@button.Button(button.Props{Href: callURL, Target: "_blank"}) {
 						@icon.PhoneCall()
 						Test call
+					}
+				</div>
+			}
+			@panel() {
+				<h2 class="flex items-center gap-2 font-semibold">
+					@icon.Video(icon.Props{Class: "size-4"})
+					Meeting room
+				</h2>
+				<p class="mt-2 text-sm text-muted-foreground">Your own room for video meetings: voice, cameras, screen sharing and a whiteboard. Send the link; people join from their browser, nothing to install. They wait until you open the room.</p>
+				<div class="mt-3 flex flex-col gap-2 sm:flex-row">
+					@input.Input(input.Props{ID: "room-link", Value: roomURL, ReadOnly: true, Class: "font-mono text-sm"})
+					@button.Button(button.Props{Variant: button.VariantOutline, Attributes: templ.Attributes{"data-copy": "room-link"}}) {
+						@icon.Copy()
+						Copy
+					}
+					@button.Button(button.Props{Href: roomURL, Target: "_blank"}) {
+						@icon.Video()
+						Open the room
 					}
 				</div>
 			}

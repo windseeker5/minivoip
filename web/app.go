@@ -48,6 +48,8 @@ func (s *Server) phoneApp(w http.ResponseWriter, r *http.Request, u store.User) 
 		Voicemails:  list,
 		VapidKey:    key,
 		CallURL:     strings.TrimPrefix(strings.TrimPrefix(baseURL(r), "https://"), "http://") + "/call/" + l.Name,
+		RoomURL:     baseURL(r) + "/room/" + l.Name,
+		RoomWaiting: s.Rooms.Waiting(l.Name),
 		Devices:     s.Store.DeviceCount(u.AccountID),
 		RingSeconds: int(s.Hub.RingTimeout / time.Second),
 	}))

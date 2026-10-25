@@ -6,7 +6,8 @@
 // offer. The data channel carries who has what on and the whiteboard's
 // strokes. The server never sees any of it.
 //
-//   var s = new MinivoipMeet.Session({ stage: el, me: { name, initials }, mic: stream, onChange: fn });
+//   var s = MinivoipMeet.Session({ stage: el, me: { name, initials }, mic: stream, onChange: fn,
+//                                  camera: track, muted: bool });  // the last two optional
 //   var link = s.link(id, pc, { name, initials, onAudio: fn });  // before the offer or the answer
 //   link.offer() / link.answer(sdp)  -> the local description's SDP
 //   s.camera(), s.screen(), s.board(), s.mute(on), s.drop(id), s.end()
@@ -36,9 +37,10 @@
     this.mic = o.mic || null;
     this.onChange = o.onChange || function () {};
     this.links = {};
-    this.cam = null;      // my camera track
+    this.cam = o.camera || null; // my camera track (one already on, from a preview)
     this.scr = null;      // my screen track
-    this.muted = false;
+    this.muted = !!o.muted;
+    if (this.mic && this.muted) this.mic.getAudioTracks().forEach(function (t) { t.enabled = false; });
     this.focus = [];      // what fills the stage, newest last: "board", "screen:<link id>"
     this.tiles = {};
     this.boardOpen = false;

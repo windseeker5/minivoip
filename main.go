@@ -46,7 +46,12 @@ func main() {
 	hub.OnAnswered = sender.Answered
 
 	// The relay carries the voice when phones can't connect directly.
-	site := &web.Server{Store: db, Hub: hub, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins(), CallLine: callLine()}
+	// Meeting rooms (see calls/room.go); a guest waiting wakes the owner.
+	rooms := calls.NewRooms(db.LineExists)
+	rooms.OriginPatterns = hub.OriginPatterns
+	rooms.OnKnock = sender.RoomKnock
+
+	site := &web.Server{Store: db, Hub: hub, Rooms: rooms, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins(), CallLine: callLine()}
 	site.Relay = startRelay(db)
 	site.Routes(mux)
 

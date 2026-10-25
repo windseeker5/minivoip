@@ -31,7 +31,7 @@ It rings the cell phone the owner already has, with the owner's own voice, and n
 
 ## Capabilities and Constraints
 - Positioning frame: a virtual receptionist for the website that rings the owner's cell. Use receptionist language, never IVR/PBX/VoIP.
-- Planned, not built (Premium): AI front desk answering from the owner's FAQ, video, screen sharing, whiteboard, a team meeting room. Always shown as "Coming soon".
+- Built 2026-10-25 (Premium, for now free for everyone like the rest of the beta): video, screen sharing and a shared whiteboard in a call, and a meeting room per line (up to 4 people, guests wait until the owner opens it). Planned, not built: the AI front desk answering from the owner's FAQ, recording and meeting notes. The landing page still shows Premium as "Coming soon" until Ken decides how to present it.
 - Voice menu options: ring, play a message, voicemail, open a link, sub-menu. Opening hours.
 - Several phones per line; all ring, first to answer wins.
 - Voicemail after 30 s without answer, with a push notification.

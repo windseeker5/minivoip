@@ -7,7 +7,8 @@ ring like a phone call (ringtone until answered, call screen over the lock scree
 - `Ring`: the call notification (channel "Incoming calls", the phone's ringtone, repeating) and missed-call notes.
 - `RingActivity`: the ring screen. Answer opens `/app?answer=<call>` and `phone.js` answers; Decline posts
   `/app/calls/{id}/decline`.
-- `MainActivity`: the web view, microphone, and `window.MinivoipAndroid` (start, settings, clearRing).
+- `MainActivity`: the web view, microphone and camera (video calls, the meeting room), and `window.MinivoipAndroid`
+  (start, settings, clearRing).
 - `Server`: posts with the web view's login cookie; starts Firebase with the settings from `GET /api/android/config`,
   so no `google-services.json` is built in.
 

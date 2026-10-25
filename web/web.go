@@ -39,6 +39,8 @@ type Server struct {
 	CallLine string
 	// Relay is the built-in TURN relay; empty when it isn't running.
 	Relay RelayInfo
+	// Rooms are the lines' meeting rooms (/room/<line>).
+	Rooms *calls.Rooms
 }
 
 // RelayInfo tells browsers how to reach the relay.
@@ -55,6 +57,11 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	s.Hub.CanAnswer = s.canAnswer
 	s.Hub.Available = s.Store.Available
 	s.Hub.OnEnd = s.logCall
+	s.Rooms.IsOwner = s.canAnswer
+	// The owner's open apps show who waits in the meeting room.
+	s.Rooms.OnWaiting = func(line string, names []string) {
+		s.Hub.NotifyOwners(line, calls.Message{Type: "room", Names: names})
+	}
 
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("GET /signup", s.signupPage)
@@ -92,6 +99,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/voicemail", s.uploadVoicemail)
 
 	mux.HandleFunc("GET /call/{line}", s.callPage)
+	mux.HandleFunc("GET /room/{line}", s.roomPage)
+	mux.Handle("GET /ws/room", s.Rooms)
 	mux.HandleFunc("GET /api/ice", s.iceServers)
 	mux.Handle("GET /ws", s.Hub)
 }

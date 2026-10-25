@@ -73,11 +73,20 @@ B&B and may become a SaaS.
   "no-answer" or a voicemail choice; `web/voicemail.go` takes the upload (`POST /api/voicemail`) and tells the
   phone app (`NotifyOwners`). Every finished call goes to `OnEnd` (saved in `call_log`, the app's call history);
   `Available` (the app's Available switch, `line.away_until`) sends calls straight to voicemail while away.
+- Video, screen sharing and the whiteboard: `assets/js/meet.js` (`MinivoipMeet.Session`) and `assets/css/stage.css`,
+  used by `call.js`, `phone.js` and `room.js`. Every connection opens two video lanes (camera, screen) and a data
+  channel up front, so turning a camera on is a track swap, never a new offer; the data channel carries who has what
+  on and the whiteboard's lines. Nothing new goes through the server for calls.
+- Meeting rooms: `/room/{line}` (`roomPage` in `web/dashboard.go`, `pages/room.templ`, `assets/js/room.js`,
+  `assets/css/room.css`) and their socket `/ws/room` (`calls/room.go`, `Rooms`): guests wait until the line's
+  logged-in owner opens the room, then everyone connects to everyone (up to `RoomSize`, 4). The owner's apps get a
+  "room" message on the call socket with who waits (the app's alert and Room tab), and phones a "room" push
+  (`RoomKnock`). Linked from the dashboard and the app's Room tab.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
   `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor with voice recorder: uploads to
   `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
   (the dashboard's list), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
-  (the owner's app `/app`, login required: Calls, Voicemail, Menu and Me tabs on a phone; sidebar and a detail
+  (the owner's app `/app`, login required: Calls, Voicemail, Menu, Room and Me tabs on a phone; sidebar and a detail
   pane on a computer; the incoming call screen).
 - The owner's app has its own plain CSS, `assets/css/app.css` (look C, warm light, DESIGN.md "Owner app"); the
   visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare
@@ -85,7 +94,9 @@ B&B and may become a SaaS.
   logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
 - Checking the app without the server: `node tests/e2e/app.mjs` renders it with sample calls
   (`TestAppPreview` in `pages/app_test.go`) and clicks through it headless with a fake call socket, at phone and
-  computer width (screenshots `tests/e2e/shots/app-*.png`). The visitor's call window the same way:
+  computer width (screenshots `tests/e2e/shots/app-*.png`). Video, screens and the whiteboard in a call:
+  `node tests/e2e/meet.mjs` (the call window and the app connected by a fake call socket in the script, a real
+  WebRTC call between two headless browsers, fake camera and screen; `shots/meet-*.png`). The visitor's call window the same way:
   `node tests/e2e/call.mjs` (`TestCallPreview` in `pages/call_test.go`; every step with a fake call socket and a fake
   browser voice, phone, computer and 200% zoom; `shots/call-*.png`). Real calls are only tested by `site.mjs`.
 - `push/`: web push (VAPID keys in the `setting` table, `webpush-go`), and Firebase for the Android app
@@ -125,7 +136,7 @@ The Go tools live in `~/go/bin` (on PATH via `~/.zshrc`). The project was scaffo
     If those are busy, run `task dev PORT=8091 PROXY_PORT=7332`.
 - `shadcn-templ add <component …>`: copy in more components (into `components/`; they are our code to edit).
 - `task build`: CSS, JS bundle, `templ generate`, then `bin/app`. Don't run it (or `templ generate`) while `task dev` is running; see AGENTS.md.
-- `go test ./...`: tests (`store/` accounts, promo codes, lines; `calls/` call setup; `pages/` landing page renders).
+- `go test ./...`: tests (`store/` accounts, promo codes, lines; `calls/` call setup and meeting rooms; `pages/` page renders).
   One test: `go test ./store -run TestPromoCodes`.
 - `templ` and `shadcn-templ` are also pinned as `tool` lines in `go.mod`; the Taskfile calls them via `go tool`.
 

@@ -64,6 +64,7 @@
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
       else if (m.type === "hangup" && m.id === liveId) endCall();
       else if (m.type === "voicemail") { refreshVoicemail(); refreshCalls(); }
+      else if (m.type === "room") roomWaiting(m.names || []);
     };
   }
 
@@ -153,7 +154,7 @@
 
   // ----------------------------------------------------------- tabs
 
-  var tabs = ["calls", "voicemail", "menu", "me"];
+  var tabs = ["calls", "voicemail", "menu", "room", "me"];
   function openTab(name) {
     if (tabs.indexOf(name) === -1) name = "calls";
     root.querySelectorAll("[data-tab]").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === name)); });
@@ -439,6 +440,7 @@
       return playPause(a.previousElementSibling, a);
     }
     if (t.closest("[data-copy]")) return copyLink(t.closest("[data-copy]"));
+    if (t.closest("[data-copy-room]")) return copyRoom(t.closest("[data-copy-room]"));
     if (t.closest("[data-install-btn]")) return install();
     var b = t.closest("[data-action]");
     if (!b) return;
@@ -565,6 +567,27 @@
       }).then(function () { pushUI("off", "Off on this phone."); });
     }
   });
+
+  // ----------------------------------------------------------- meeting room
+
+  // roomWaiting shows who waits in the meeting room (calls/room.go), with a
+  // Join link; pages/app.templ waitingText says the same.
+  function roomWaiting(names) {
+    var alert = $("[data-room-alert]"), t = "";
+    if (names.length === 1) t = names[0] + " is waiting in your meeting room";
+    else if (names.length === 2) t = names[0] + " and " + names[1] + " are waiting in your meeting room";
+    else if (names.length > 2) t = names[0] + " and " + (names.length - 1) + " others are waiting in your meeting room";
+    $("[data-room-who]").textContent = t;
+    alert.hidden = !names.length;
+  }
+
+  function copyRoom(btn) {
+    var done = function () {
+      btn.textContent = "Copied";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText($("[data-room-url]").textContent.trim()).then(done, function () {});
+  }
 
   // ----------------------------------------------------------- call link
 

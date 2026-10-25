@@ -49,9 +49,23 @@ body:has(> .ap), html:has(.ap) { background: #f6f5f1; color-scheme: light; }
 .ap-offline { position: fixed; z-index: 60; top: calc(10px + env(safe-area-inset-top)); left: 50%; translate: -50% 0;
   padding: 8px 14px; border-radius: 999px; background: var(--ap-ink); color: #fff; font-size: 13px; font-weight: 500; }
 
+/* Someone waits in the meeting room: a dark pill on every tab, just above the
+   tabs on a phone, on top on a computer. */
+.ap-room-alert { position: fixed; z-index: 40; bottom: calc(92px + env(safe-area-inset-bottom)); left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 10px;
+  width: max-content; max-width: calc(100% - 24px); padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--ap-ink); color: #fff;
+  font-size: 14px; font-weight: 500; text-decoration: none; box-shadow: 0 14px 30px -14px rgb(26 26 23 / .6); animation: ap-pop .35s var(--ap-ease); }
+@keyframes ap-pop { from { opacity: 0; scale: .96; } }
+.ap-room-alert .ap-dot { background: #f3840f; box-shadow: 0 0 0 4px rgb(243 132 15 / .25); }
+.ap-room-alert span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-room-alert b { flex: none; padding: 6px 14px; border-radius: 999px; background: #fff; color: var(--ap-ink); font-weight: 600; }
+.ap-room-open { margin-top: 12px; }
+.ap-room-open .ap-btn { height: 46px; padding: 0 20px; text-decoration: none; }
+.ap-room-open svg { width: 18px; height: 18px; }
+.ap-row-sub.ap-wrap { white-space: normal; }
+
 /* ------------------------------------------------------------ tabs */
 
-.ap-tabs { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+.ap-tabs { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   padding: 8px max(8px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   background: rgb(255 255 255 / .9); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid var(--ap-ring); }
 .ap-tab { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; padding: 4px 0; border: 0;
@@ -238,6 +252,7 @@ body:has(> .ap), html:has(.ap) { background: #f6f5f1; color-scheme: light; }
   .ap-call-in { min-height: 0; max-width: 520px; padding: 48px 24px; }
   .ap-call-title { font-size: 52px; }
   .ap-call-bar { margin-top: 0; padding-top: 40px; }
+  .ap-room-alert { top: 18px; bottom: auto; left: calc(236px + (100% - 236px) / 2); }
   .ap-call[data-stage-on="on"] { align-items: stretch; }
   .ap-call[data-stage-on="on"] .ap-call-in { padding: 18px; }
   .ap-call[data-stage-on="on"] .ap-call-bar { width: 100%; max-width: 560px; margin: 0 auto; }
@@ -245,5 +260,5 @@ body:has(> .ap), html:has(.ap) { background: #f6f5f1; color-scheme: light; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ap-call, .ap-answer, .ap-call-state .ap-dot { animation: none; }
+  .ap-call, .ap-answer, .ap-call-state .ap-dot, .ap-room-alert { animation: none; }
 }

@@ -44,13 +44,16 @@ class MainActivity : Activity() {
             }
         }
         web.webChromeClient = object : WebChromeClient() {
+            // The page asks for the microphone (calls) or the camera (video
+            // calls, the meeting room): ask the phone first if needed.
             override fun onPermissionRequest(req: PermissionRequest) {
                 runOnUiThread {
-                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        req.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                    val need = media(req).map { it.second }.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+                    if (need.isEmpty()) {
+                        grant(req)
                     } else {
                         pendingMic = req
-                        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MIC)
+                        requestPermissions(need.toTypedArray(), MIC)
                     }
                 }
             }
@@ -92,10 +95,24 @@ class MainActivity : Activity() {
         if (web.canGoBack()) web.goBack() else super.onBackPressed()
     }
 
+    // media pairs what the page asks for with the phone's permission for it.
+    private fun media(req: PermissionRequest): List<Pair<String, String>> = req.resources.mapNotNull {
+        when (it) {
+            PermissionRequest.RESOURCE_AUDIO_CAPTURE -> it to Manifest.permission.RECORD_AUDIO
+            PermissionRequest.RESOURCE_VIDEO_CAPTURE -> it to Manifest.permission.CAMERA
+            else -> null
+        }
+    }
+
+    // grant gives the page what the phone allows, or says no.
+    private fun grant(req: PermissionRequest) {
+        val ok = media(req).filter { checkSelfPermission(it.second) == PackageManager.PERMISSION_GRANTED }.map { it.first }
+        if (ok.isEmpty()) req.deny() else req.grant(ok.toTypedArray())
+    }
+
     override fun onRequestPermissionsResult(code: Int, perms: Array<out String>, results: IntArray) {
         if (code == MIC) {
-            val ok = results.firstOrNull() == PackageManager.PERMISSION_GRANTED
-            pendingMic?.let { if (ok) it.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) else it.deny() }
+            pendingMic?.let { grant(it) }
             pendingMic = null
         } else {
             report()

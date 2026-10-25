@@ -31,7 +31,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request, u store.User)
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, s.Store.NewVoicemails(u.AccountID), s.planText(u.AccountID)))
+	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, baseURL(r)+"/room/"+l.Name, s.Store.NewVoicemails(u.AccountID), s.planText(u.AccountID)))
 }
 
 func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -220,4 +220,19 @@ func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render(w, r, pages.Call(l, int(s.Hub.RingTimeout/time.Second)))
+}
+
+// roomPage is a line's meeting room. Its owner opens it; guests wait until
+// then (calls/room.go).
+func (s *Server) roomPage(w http.ResponseWriter, r *http.Request) {
+	l, err := s.Store.LineByName(r.PathValue("line"))
+	if errors.Is(err, store.ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	render(w, r, pages.Room(l, s.canAnswer(r, l.Name), baseURL(r)+"/room/"+l.Name))
 }

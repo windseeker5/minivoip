@@ -1,12 +1,15 @@
 # Build plan
 
-Last update: 2026-10-24 · Design: [architecture.md](architecture.md) · Goal: [vision.md](vision.md)
+Last update: 2026-10-25 · Design: [architecture.md](architecture.md) · Goal: [vision.md](vision.md)
 
 ## Where we are (2026-10-24)
 - **Works end to end:** a visitor clicks "Call us", hears the owner's voice menu, and talks to the owner or leaves a
   voicemail. Real calls over HTTPS through the built-in relay (https://voip.dresdell.com while `task dev` runs).
 - **Owner's app** (look C): call history, voicemails, Available / Pause / Off, menu editor. On a computer it rings
   and fills the window; on Android the minivoip app rings like a real phone call, even locked (Ken's Pixel 9).
+- **Visitor's call window** (2026-10-25, look A, `DESIGN.md` "Call window"): white like the landing page, the menu's
+  words written out as they're said, choices as big buttons, a clear ending. Next for it: a panel in the corner of
+  the business's website instead of a new tab, then the business's own colour and logo.
 - **Next, most important first:**
   1. **Security:** anyone who knows a call link can call, robots too.
   2. Container and home server (Phase 6).

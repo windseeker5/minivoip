@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy. `main` has calls end to end, the owner's app (look C), the Android app that rings, and the landing page in look "Voice" (the hero plays the real recorded greeting of minivoip's own line, Funnel type, the logo colours in one band, the code to paste). Plan and progress: `docs/plan.md` "Where we are".
-- Next action: Ken re-records his line's greeting and menu (it still says "Hi, you've reached OMT", one choice): the landing page plays and writes out whatever the line has (planned: 1 Book a demo, 2 How it works and prices, 0 Leave a message). Then: security of call links (the iPhone app is last). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-25. After rejecting several looks, Ken picked look 6 "Voice" from ten mocks (https://claude.ai/artifact/8AZNbvGtZWkXWjugauaBTM), plus the Spectrum band and the Swiss code example. Built in `pages/home.templ`, `pages/voice.go`, `assets/js/landing.js`, `globals.css` `.lp`; `web.home` now passes the line itself. DESIGN.md, PRODUCT.md, `docs/landing-copy.md` updated; `site.mjs` now plays and pauses the greeting. Tests: `go vet`, `go test`, `site.mjs` all good.
+- Status: healthy. `main` has calls end to end, the owner's app (look C), the Android app that rings, the landing page in look "Voice" and the visitor's call window (`/call/<line>`) in look A. Nothing waiting on a branch. Plan and progress: `docs/plan.md` "Where we are".
+- Next action: step 2 of the call window: the call window as a panel in the corner of the business's website (`w.js`); then the meeting room (video and screen sharing in the call first). Ken re-records his line's greeting and menu (it still says "Hi, you've reached OMT", one choice). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-25. Shipped the call window (PR #5) after `go vet`, `go test`, `call.mjs`, `app.mjs` and `site.mjs` all passed. Before that: critique + audit of the old call window (21/40 design, 10/20 code, `.impeccable/critique/`), three propositions (https://claude.ai/artifact/UefEpYx2avVwMxAyRekqLS), Ken picked A. Built in `pages/call.templ`, `assets/css/callscreen.css`, `assets/js/call.js`, new `layouts/plain.templ`; DESIGN.md "Call window", CLAUDE.md updated; new `tests/e2e/call.mjs`, `site.mjs` updated.
 
 ## Rules
 

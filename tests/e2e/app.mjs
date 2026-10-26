@@ -240,6 +240,23 @@ for (const [w, h, name] of [[390, 844, "phone"], [1280, 800, "desk"]]) {
 }
 
 for (const e of errors) failures.push("browser error: " + e);
+// --- The Android app: its version, and Update when a newer one is ready ---
+for (const [mine, want, update] of [["0.3", "minivoip for Android 0.3, the latest version", false], ["", "Version 0.3 is ready", true]]) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript((v) => {
+    window.MinivoipAndroid = { start() {}, settings() {}, clearRing() {} };
+    if (v) window.MinivoipAndroid.version = () => v;
+  }, mine);
+  await ctx.routeWebSocket(/\/ws/, () => {});
+  const page = await ctx.newPage();
+  await page.goto(BASE + "/app#me");
+  const text = await page.textContent("[data-install-text]");
+  check(text.includes(want) && (await page.isVisible("[data-android-update]")) === update,
+    `android ${mine || "0.2"}: the Me tab says “${text.trim()}”${update ? " with Update to 0.3" : ""}`);
+  if (update) await page.screenshot({ path: `${SHOTS}/app-phone-update.png` });
+  await ctx.close();
+}
+
 // --- Basic plan: no video tools, the Room tab says what Premium adds ------
 {
   const { page } = await open(390, 844, "/app?basic");

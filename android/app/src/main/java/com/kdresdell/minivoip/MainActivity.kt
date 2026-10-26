@@ -162,6 +162,11 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun clearRing() = Ring.stop(this@MainActivity)
+
+        // version is this app's version name ("0.3"), so the page can say
+        // when a newer one is ready (0.2 and older don't have it).
+        @JavascriptInterface
+        fun version(): String = BuildConfig.VERSION_NAME
     }
 
     companion object {

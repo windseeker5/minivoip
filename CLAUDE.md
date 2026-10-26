@@ -119,7 +119,9 @@ B&B and may become a SaaS.
 - `android/`: the Android app (Kotlin, no Compose; see `android/README.md`): a web view on `/app` (the page finds it
   as `window.MinivoipAndroid` in `phone.js`) plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
   call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,
-  Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`.
+  Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`; its
+  version is in `data/android/version`, and the app's Me tab shows the installed version (`MinivoipAndroid.version()`)
+  with "Update to …" when a newer one is published.
 - `relay/`: built-in TURN relay (pion/turn) on 3478 UDP+TCP, voice on 49160-49200 UDP (the ports the router
   forwards; the old coturn used them). Public address: `MINIVOIP_PUBLIC_IP`, else DNS of `MINIVOIP_TURN_HOST`
   (default voip.dresdell.com). Logins: `GET /api/ice` gives STUN + a 2-hour TURN REST login (secret in the

@@ -51,6 +51,7 @@ func (s *Server) phoneApp(w http.ResponseWriter, r *http.Request, u store.User) 
 		RoomURL:     baseURL(r) + "/room/" + l.Name,
 		RoomWaiting: s.Rooms.Waiting(l.Name),
 		Devices:     s.Store.DeviceCount(u.AccountID),
+		Android:     androidLatest(),
 		RingSeconds: int(s.Hub.RingTimeout / time.Second),
 	}))
 }

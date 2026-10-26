@@ -22,6 +22,7 @@ type AppData struct {
 	RingSeconds int
 	RoomURL     string   // the meeting room's full link
 	RoomWaiting []string // guests waiting in the meeting room now
+	Android     string   // the Android app's latest version ("0.3"), or ""
 }
 
 // localTime reads a stored UTC time in the server's time zone.
@@ -421,7 +422,7 @@ templ Phone(d AppData) {
 	@layouts.Base("minivoip", "") {
 		<link rel="stylesheet" href="/assets/css/app.css"/>
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
-		<div class="ap" data-phone data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) }>
+		<div class="ap" data-phone data-android-latest={ d.Android } data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) }>
 			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
 			if d.Line.Premium {
 				<a class="ap-room-alert" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-alert hidden={ len(d.RoomWaiting) == 0 } role="status">
@@ -552,11 +553,12 @@ templ Phone(d AppData) {
 					</div>
 					<h2 class="ap-day">Install</h2>
 					<div class="ap-card ap-setting" data-install>
-						<p class="ap-setting-title">Put minivoip on this device</p>
+						<p class="ap-setting-title" data-install-title>Put minivoip on this device</p>
 						<p class="ap-muted" data-install-text>Install the app to open it from your home screen or dock, in its own window.</p>
 						<div class="ap-actions">
 							<button type="button" class="ap-btn is-ink" data-install-btn hidden>Install minivoip</button>
 							<a class="ap-btn is-ink" href="/download/minivoip.apk" data-android-get hidden>Get the Android app</a>
+							<a class="ap-btn is-ink" href="/download/minivoip.apk" data-android-update hidden>Update the app</a>
 						</div>
 					</div>
 					<form method="post" action="/logout" class="ap-logout">

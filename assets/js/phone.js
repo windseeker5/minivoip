@@ -616,12 +616,28 @@
     var androidWeb = !android && /Android/.test(navigator.userAgent);
     $("[data-android-get]").hidden = !androidWeb;
     btn.hidden = !installEvt || androidWeb;
-    if (android) text.textContent = "Installed. You're using the minivoip Android app.";
+    if (android) $("[data-install-title]").textContent = "This app";
+    var update = $("[data-android-update]"), latest = root.dataset.androidLatest || "";
+    var mine = android && android.version ? android.version() : "";
+    update.hidden = !android || !latest || !newer(latest, mine);
+    if (android && !update.hidden) {
+      text.textContent = "You have minivoip for Android " + (mine || "0.2 or older") + ". Version " + latest + " is ready: download it and install it over this one.";
+      update.textContent = "Update to " + latest;
+    } else if (android) text.textContent = "Installed: minivoip for Android " + (mine || "0.2 or older") + (latest && mine ? ", the latest version." : ".");
     else if (androidWeb) text.textContent = "Get the minivoip Android app: it rings like a phone call, even when your phone is locked.";
     else if (standalone) text.textContent = "Installed. You're using the minivoip app.";
     else if (installEvt) text.textContent = "Install the app to open it from your home screen or dock, in its own window.";
     else if (ios) text.textContent = "In Safari, tap Share, then “Add to Home Screen”.";
     else text.textContent = "In Chrome, open the browser menu and pick “Install minivoip” (or “Add to Home screen”).";
+  }
+  // newer says whether version a ("0.10") is after b ("0.9"); "" is oldest.
+  function newer(a, b) {
+    var x = a.split("."), y = b ? b.split(".") : [];
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var d = (+x[i] || 0) - (+y[i] || 0);
+      if (d) return d > 0;
+    }
+    return false;
   }
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();

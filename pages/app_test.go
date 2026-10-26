@@ -44,6 +44,7 @@ func sampleApp() AppData {
 		RoomURL:     "https://voip.example.com/room/joesbnb",
 		Devices:     2,
 		RingSeconds: 30,
+		Android:     "0.3",
 	}
 }
 

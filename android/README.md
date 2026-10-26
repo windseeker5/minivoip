@@ -18,10 +18,13 @@ ring like a phone call (ringtone until answered, call screen over the lock scree
 cd android
 ANDROID_HOME=~/Android/Sdk JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleRelease
 cp app/build/outputs/apk/release/app-release.apk ../data/android/minivoip.apk
+echo 0.3 > ../data/android/version   # the versionName you just built
 ```
 
-Phones download it at `/download/minivoip.apk` (Me tab, "Get the Android app"). Bump `versionCode` in
-`app/build.gradle.kts` for each new build.
+Phones download it at `/download/minivoip.apk` (Me tab, "Get the Android app"). Bump `versionCode` and
+`versionName` in `app/build.gradle.kts` for each new build, and write the new `versionName` to
+`data/android/version`: the app tells the page its version (`MinivoipAndroid.version()`, from 0.3), and the Me tab
+shows it, with "Update to …" when the published one is newer.
 
 **Signing key:** `android/release-keystore.jks`, passwords in `android/local.properties` (both gitignored). Back them
 up: without that key, phones can't update the app and must uninstall it first. The server address is `SERVER` in

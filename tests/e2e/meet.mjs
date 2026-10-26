@@ -151,11 +151,22 @@ for (const [name, vw, vh] of [["phone", 390, 844], ["desk", 1280, 860]]) {
   const shared = await owner.click('[data-action="screen"]').then(() => until(async () => { const x = await stage(visitor); return x.layout === "present" && x.vids.some((y) => y.tile === "screen:owner" && y.w > 0); }), () => false);
   v = await stage(visitor);
   check(shared && v.vids.some((x) => x.tile === "screen:owner" && x.w > 0), `${name}: the owner's screen fills the visitor's stage (${JSON.stringify(v.vids)})`);
-  check(await owner.isVisible("text=You're showing your screen"), `${name}: the owner sees "You're showing your screen"`);
-  await visitor.waitForTimeout(800);
+  const mine = await until(async () => (await stage(owner)).vids.some((x) => x.tile === "screen:me" && x.w > 0));
+  check(mine && await owner.isVisible('.mv-strip [data-tile="screen:me"] .mv-stop'), `${name}: the owner sees their own screen, small, with Stop sharing`);
   await visitor.screenshot({ path: `${SHOTS}/meet-${name}-screen.png` });
+  // The whiteboard while a screen shows: it fills both stages, the screen goes small (Ken's test, 2026-10-26).
+  await owner.click('[data-action="board"]');
+  const both = async (p, small) => (await p.isVisible(".mv-main .mv-board")) && (await p.isVisible(`.mv-strip [data-focus="${small}"]`));
+  check(await until(() => both(owner, "screen:me")) && await until(() => both(visitor, "screen:owner")), `${name}: the whiteboard fills both stages, the screen small under it`);
   await owner.screenshot({ path: `${SHOTS}/meet-owner-${name}-sharing.png` });
-  await owner.click(".mv-sharing button");
+  await visitor.click('[data-focus="screen:owner"]');
+  check(await until(() => visitor.isVisible('.mv-main [data-tile="screen:owner"]')) && await visitor.isVisible('.mv-strip [data-focus="board"]'), `${name}: a click on the small screen swaps it with the whiteboard`);
+  await visitor.screenshot({ path: `${SHOTS}/meet-${name}-swap.png` });
+  await owner.click('[data-focus="screen:me"]');
+  check(await until(() => owner.isVisible('.mv-main [data-tile="screen:me"] .mv-stop')), `${name}: the owner can show their own screen big`);
+  await owner.click('[data-action="board"]');
+  check(await until(async () => !(await stage(visitor)).board && !(await stage(owner)).board), `${name}: the Whiteboard button closes it for both`);
+  await owner.click(".mv-stop");
   check(await until(async () => (await stage(visitor)).layout === "pair"), `${name}: Stop ends the screen on both sides`);
 
   // The visitor opens the whiteboard: it opens for the owner too, and both draw.

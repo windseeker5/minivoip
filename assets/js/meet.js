@@ -28,6 +28,7 @@
   }
 
   var personIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>';
+  var penIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.4 3.6a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
   var mutedIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5a3 3 0 0 1 6 0v5M15 13.5A3 3 0 0 1 9 11V9M19 11a7 7 0 0 1-11.5 5.4M5 11a7 7 0 0 0 .7 3M12 18v3M3 3l18 18"></path></svg>';
 
   // ------------------------------------------------------------ session
@@ -114,6 +115,7 @@
     if (!on) {
       if (s.scr) { s.scr.onended = null; s.scr.stop(); s.scr = null; }
       s.each(function (l) { l.put(SCREEN, null); });
+      s.unfocus("screen:me");
       s.changed();
       return Promise.resolve(false);
     }
@@ -124,8 +126,6 @@
       try { s.scr.contentHint = "detail"; } catch (e) {}
       s.scr.onended = function () { s.screen(false); };
       s.each(function (l) { l.put(SCREEN, s.scr); });
-      // Showing my screen hides the board on my side, like on theirs.
-      s.unfocus("board");
       s.changed();
       return true;
     });
@@ -157,6 +157,15 @@
   };
   Session.prototype.unfocus = function (key) {
     this.focus = this.focus.filter(function (k) { return k !== key; });
+  };
+
+  // enlarge makes a small screen or the whiteboard fill the stage; my own
+  // screen goes back to small when clicked again.
+  Session.prototype.enlarge = function (key) {
+    var m = this.main();
+    if (key === "screen:me" && m && m.key === key) this.unfocus(key);
+    else this.refocus(key);
+    this.render();
   };
 
   // end stops my camera and screen and clears the stage.
@@ -195,16 +204,25 @@
     return list;
   };
 
+  // shows is what can fill the stage: the whiteboard and the screens being
+  // shown, mine included.
+  Session.prototype.shows = function () {
+    var list = [];
+    if (this.scr) list.push({ key: "screen:me", label: "Your screen", track: this.scr, screen: true });
+    this.each(function (l) {
+      if (l.showScreen()) list.push({ key: "screen:" + l.id, label: l.name + "'s screen", track: l.tracks[SCREEN], screen: true });
+    });
+    if (this.boardOpen) list.push({ key: "board", label: "Whiteboard", icon: penIcon, board: true });
+    return list;
+  };
+
   // main is what fills the stage: the newest of the whiteboard and the
-  // screens being shown, else nothing (people only).
+  // screens being shown, else nothing (people only). My own screen fills it
+  // only when I click it: a full-size copy of my screen repeats itself.
   Session.prototype.main = function () {
+    var shows = this.shows();
     for (var i = this.focus.length - 1; i >= 0; i--) {
-      var k = this.focus[i];
-      if (k === "board" && this.boardOpen) return { key: "board" };
-      if (k.indexOf("screen:") === 0) {
-        var l = this.links[k.slice(7)];
-        if (l && l.showScreen()) return { key: k, name: l.name, track: l.tracks[SCREEN] };
-      }
+      for (var j = 0; j < shows.length; j++) if (shows[j].key === this.focus[i]) return shows[j];
     }
     return null;
   };
@@ -219,6 +237,12 @@
     t.video.playsInline = true;
     t.video.setAttribute("playsinline", "");
     t.box.append(t.face, t.video, t.label);
+    if (key === "screen:me") {
+      var stop = el("button", "mv-stop", "Stop sharing");
+      stop.type = "button";
+      stop.dataset.meet = "stop-screen";
+      t.box.append(stop);
+    }
     return t;
   };
 
@@ -230,35 +254,54 @@
     t.box.classList.toggle("has-video", !!p.track);
     t.box.classList.toggle("is-self", !!p.self);
     t.box.classList.toggle("is-screen", !!p.screen);
+    t.box.classList.toggle("is-board", !!p.board);
     t.box.classList.toggle("is-lost", !!p.lost);
     if (p.initials) t.face.textContent = p.initials;
-    else t.face.innerHTML = personIcon;
+    else t.face.innerHTML = p.icon || personIcon;
     t.label.innerHTML = "";
     if (p.muted) t.label.insertAdjacentHTML("beforeend", mutedIcon);
-    t.label.append(p.screen ? p.name + "'s screen" : p.self ? "You" : p.lost ? p.name + " · reconnecting…" : p.name);
+    t.label.append(p.label || (p.self ? "You" : p.lost ? p.name + " · reconnecting…" : p.name));
   };
+
+  // clickable marks a small screen or whiteboard tile that fills the stage
+  // when clicked (and my own screen, both ways).
+  function clickable(t, label) {
+    if (!label) {
+      delete t.box.dataset.focus;
+      t.box.removeAttribute("role");
+      t.box.removeAttribute("tabindex");
+      t.box.removeAttribute("aria-label");
+      t.box.removeAttribute("title");
+      return;
+    }
+    t.box.dataset.focus = t.box.dataset.tile;
+    t.box.setAttribute("role", "button");
+    t.box.tabIndex = 0;
+    t.box.setAttribute("aria-label", label);
+    t.box.title = label;
+  }
 
   Session.prototype.render = function () {
     var stage = this.stage;
     if (!stage) return;
-    var s = this, people = this.people(), main = this.main(), used = {};
+    var s = this, people = this.people(), shows = this.shows(), main = this.main(), used = {};
     var layout = main ? "present" : people.length <= 2 ? "pair" : "grid";
-    if (!stage.firstChild) {
-      stage.append(el("div", "mv-main"), el("div", "mv-strip"));
-      stage.append(this.sharing = el("div", "mv-sharing"));
-      this.sharing.innerHTML = '<span><i></i>You\'re showing your screen</span><button type="button" data-meet="stop-screen">Stop</button>';
-    }
+    if (!stage.firstChild) stage.append(el("div", "mv-main"), el("div", "mv-strip"));
     var mainBox = stage.querySelector(".mv-main"), strip = stage.querySelector(".mv-strip");
     stage.dataset.layout = layout;
     var wantMain = [], wantStrip = [];
-    if (main && main.key === "board") {
-      wantMain.push(this.wb.box);
-    } else if (main) {
-      var st = this.tile(main.key);
-      this.fill(st, { name: main.name, track: main.track, screen: true });
-      used[main.key] = true;
-      wantMain.push(st.box);
-    }
+    // What can fill the stage: the main one big, the others small first in
+    // the strip, a click away from filling it.
+    shows.forEach(function (x) {
+      var big = main && main.key === x.key;
+      if (big && x.board) { wantMain.push(s.wb.box); return; }
+      var t = s.tile(x.key);
+      s.fill(t, x);
+      t.box.classList.remove("is-pip");
+      used[x.key] = true;
+      clickable(t, big ? (x.key === "screen:me" ? "Make your screen small again" : "") : "Show " + (x.key === "screen:me" ? "your screen" : x.label.charAt(0).toLowerCase() + x.label.slice(1)) + " bigger");
+      (big ? wantMain : wantStrip).push(t.box);
+    });
     people.forEach(function (p) {
       var t = s.tile(p.key);
       s.fill(t, p);
@@ -286,7 +329,6 @@
     for (var k in this.tiles) {
       if (!used[k]) { this.tiles[k].box.remove(); this.tiles[k].video.srcObject = null; delete this.tiles[k]; }
     }
-    this.sharing.hidden = !this.scr;
     stage.querySelectorAll("video").forEach(function (v) { if (v.srcObject && v.paused) v.play().catch(function () {}); });
     if (main && main.key === "board") this.wb.fit();
     this.onChange(this);
@@ -600,13 +642,22 @@
     b.canvas.addEventListener("pointercancel", up);
   };
 
-  // The stage's own buttons ("Stop" while showing my screen).
-  document.addEventListener("click", function (e) {
+  // The stage's own buttons: "Stop sharing" on my screen, and a click on a
+  // small screen or the whiteboard makes it fill the stage.
+  function stageClick(e) {
+    var stage = e.target.closest(".mv-stage"), s = stage && stage.meet;
+    if (!s) return;
     var b = e.target.closest("[data-meet]");
-    if (!b) return;
-    var stage = b.closest(".mv-stage");
-    var s = stage && stage.meet;
-    if (s && b.dataset.meet === "stop-screen") s.screen(false);
+    if (b) {
+      if (b.dataset.meet === "stop-screen") s.screen(false);
+      return;
+    }
+    var t = e.target.closest("[data-focus]");
+    if (t) { e.preventDefault(); s.enlarge(t.dataset.focus); }
+  }
+  document.addEventListener("click", stageClick);
+  document.addEventListener("keydown", function (e) {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-focus]")) stageClick(e);
   });
   // cameraError says why the camera didn't start, in plain words; blocked is
   // the page's own "allow it" advice.

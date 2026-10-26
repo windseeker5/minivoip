@@ -108,10 +108,12 @@ One look for the call window, the owner's app and the meeting room (`assets/css/
 dark tiles (#18181b, 18px radius) on whatever page holds them; a person without a camera is their initials on a
 grey circle; names in a small dark pill at the bottom left, with a red crossed mic when muted. Two people: the other
 fills the stage, me in a small corner tile (only with my camera on, mirrored). Three or more: a grid. A screen or the
-whiteboard fills the stage, with everyone in a strip under it; showing my own screen shows "You're showing your
-screen · Stop" on top instead of the screen itself. The whiteboard is white paper with a faint dot grid (16:10, it
+whiteboard fills the stage (the newest one), with the others small and everyone in a strip under it; a click on a
+small screen or the whiteboard makes it fill the stage. My own screen shows small as "Your screen" with a red
+"Stop sharing" on it, never big unless I click it (a full-size copy of my screen repeats itself); Ken asked for this
+after his first test, 2026-10-26. The whiteboard is white paper with a faint dot grid (16:10, it
 fits the space like a slide) on a light grey board, five pens (ink, orange, blue, green, red), Undo, Clear and a
-close button. Opening or closing it does so for everyone.
+close button. Opening or closing it does so for everyone. The whiteboard stays open on my side while I show my screen.
 
 ## Meeting room (2026-10-25)
 

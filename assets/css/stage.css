@@ -56,13 +56,22 @@
 .mv-strip .mv-name { left: 6px; bottom: 6px; padding: 2px 7px; font-size: 11px; }
 @media (max-width: 600px) { .mv-strip .mv-tile { width: 112px; } }
 
-/* "You're showing your screen" while I share. */
-.mv-sharing { position: absolute; z-index: 3; top: 12px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 12px;
-  padding: 6px 6px 6px 14px; border-radius: 999px; background: rgb(12 12 13 / .82); color: #fff; font-size: 13.5px; font-weight: 500;
-  white-space: nowrap; box-shadow: 0 10px 30px -12px rgb(0 0 0 / .5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-.mv-sharing span { display: flex; align-items: center; gap: 8px; }
-.mv-sharing i { width: 8px; height: 8px; border-radius: 50%; background: var(--mv-red); }
-.mv-sharing button { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #fff; color: var(--mv-ink); font: inherit; font-weight: 600; cursor: pointer; }
+/* My own screen: "Stop sharing" on its tile. */
+.mv-stop { position: absolute; z-index: 2; top: 8px; right: 8px; height: 30px; padding: 0 13px; border: 0; border-radius: 999px;
+  background: var(--mv-red); color: #fff; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 6px 18px -8px rgb(0 0 0 / .6); }
+.mv-stop:hover { background: #b92f22; }
+.mv-strip .mv-stop { top: 6px; right: 6px; height: 24px; padding: 0 9px; font-size: 11.5px; }
+.mv-stop:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* A small screen or the whiteboard: a click makes it fill the stage. */
+.mv-tile[data-focus] { cursor: pointer; }
+.mv-tile[data-focus]:is(:hover, :focus-visible) { outline: none; box-shadow: inset 0 0 0 2px #fff; }
+.mv-strip .mv-tile[data-focus]:is(:hover, :focus-visible) { box-shadow: inset 0 0 0 2px var(--mv-ink); }
+.mv-tile.is-board { background: #fff radial-gradient(circle, #dedee2 1px, transparent 1.2px) 0 0 / 12px 12px; color: var(--mv-ink); }
+.mv-tile.is-board:not(:hover, :focus-visible) { box-shadow: inset 0 0 0 1px rgb(12 12 13 / .1); }
+.mv-tile.is-board .mv-face { background: #ececef; }
+.mv-tile.is-board .mv-face svg { color: var(--mv-ink); }
 
 /* ------------------------------------------------------------ whiteboard */
 

@@ -54,6 +54,7 @@ templ Room(l lines.Line, isOwner bool, url string) {
 							@iconCamera()
 						</button>
 					</div>
+					<p class="rm-cam-note" data-cam-note role="status" hidden></p>
 				</div>
 				<div class="rm-side">
 					<span class="rm-badge" aria-hidden="true">{ initials(l.Business) }</span>
@@ -64,7 +65,7 @@ templ Room(l lines.Line, isOwner bool, url string) {
 							<p class="rm-text">You're the host. People who open your link wait here until you open the room.</p>
 						} else {
 							<label class="rm-label" for="rm-name">Your name</label>
-							<input class="rm-input" id="rm-name" data-name autocomplete="name" maxlength="40" placeholder="So { owner } knows who you are"/>
+							<input class="rm-input" id="rm-name" data-name autocomplete="name" maxlength="40" placeholder={ "So " + owner + " knows who you are" }/>
 						}
 						<button type="button" class="rm-btn is-primary" data-action="join">
 							if isOwner {

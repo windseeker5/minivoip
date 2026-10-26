@@ -524,7 +524,7 @@
   function camera() {
     if (!meet) return;
     meetNote("");
-    meet.camera().catch(function () { meetNote("Your browser blocked the camera. Allow it next to the web address, then try again."); });
+    meet.camera().catch(function (e) { meetNote(MinivoipMeet.cameraError(e, "Your browser blocked the camera. Allow it next to the web address, then try again.")); });
   }
   function screen() {
     if (!meet) return;

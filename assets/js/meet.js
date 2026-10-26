@@ -11,6 +11,7 @@
 //   var link = s.link(id, pc, { name, initials, onAudio: fn });  // before the offer or the answer
 //   link.offer() / link.answer(sdp)  -> the local description's SDP
 //   s.camera(), s.screen(), s.board(), s.mute(on), s.drop(id), s.end()
+//   MinivoipMeet.cameraError(err, blockedText): why the camera didn't start
 (function () {
   var CAMERA = 0, SCREEN = 1;
   var BOARD_W = 1600, BOARD_H = 1000; // the whiteboard's own units (16:10)
@@ -607,8 +608,17 @@
     var s = stage && stage.meet;
     if (s && b.dataset.meet === "stop-screen") s.screen(false);
   });
+  // cameraError says why the camera didn't start, in plain words; blocked is
+  // the page's own "allow it" advice.
+  function cameraError(e, blocked) {
+    var n = e && e.name;
+    if (n === "NotFoundError" || n === "OverconstrainedError") return "No camera found on this device.";
+    if (n === "NotReadableError") return "The camera is busy in another app. Close it, then try again.";
+    return blocked;
+  }
   var make = Session;
   window.MinivoipMeet = {
+    cameraError: cameraError,
     Session: function (o) {
       var s = new make(o);
       if (o.stage) o.stage.meet = s;

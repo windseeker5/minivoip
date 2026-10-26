@@ -26,6 +26,11 @@
     if (f && !view.contains(document.activeElement)) f.focus({ preventScroll: true });
   }
   function status(t) { $("[data-status]").textContent = t; }
+  function camNote(t) {
+    var n = $("[data-cam-note]");
+    n.textContent = t || "";
+    n.hidden = !t;
+  }
 
   // initials are a guest's face until their camera is on: "Ana Roy" is "AR".
   function initials(name) {
@@ -54,9 +59,10 @@
     }
     navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } }).then(function (st) {
       cam = st.getVideoTracks()[0];
+      camNote("");
       preview();
-    }, function () {
-      status("Your browser blocked the camera.");
+    }, function (e) {
+      camNote(MinivoipMeet.cameraError(e, "Your browser blocked the camera. Allow it next to the web address, then try again."));
       b.setAttribute("aria-pressed", "false");
     });
   }
@@ -267,7 +273,7 @@
       case "camera":
         if (!meet) break;
         meetNote("");
-        meet.camera().catch(function () { meetNote("Your browser blocked the camera. Allow it next to the web address, then try again."); });
+        meet.camera().catch(function (e) { meetNote(MinivoipMeet.cameraError(e, "Your browser blocked the camera. Allow it next to the web address, then try again.")); });
         break;
       case "screen":
         if (!meet) break;

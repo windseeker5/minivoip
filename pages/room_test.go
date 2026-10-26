@@ -9,7 +9,7 @@ func TestRoomRenders(t *testing.T) {
 	guest := render(t, Room(sampleCallLine(), false, "https://voip.example.com/room/auberge"))
 	for _, want := range []string{
 		"<title>Auberge des Pins · Meeting room</title>", `data-name`, ">Join<", "Waiting for Marie to open the room",
-		`"isOwner":false`, `"url":"https://voip.example.com/room/auberge"`, "meet.js", "room.js",
+		`placeholder="So Marie knows who you are"`, `"isOwner":false`, `"url":"https://voip.example.com/room/auberge"`, "meet.js", "room.js",
 	} {
 		if !strings.Contains(guest, want) {
 			t.Errorf("guest's room page is missing %q", want)

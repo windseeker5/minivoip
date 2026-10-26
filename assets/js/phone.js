@@ -462,7 +462,7 @@
       else if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
     } else if (b.dataset.action === "camera" && meet) {
       meetNote("");
-      meet.camera().catch(function () { meetNote("The camera is blocked. Allow it for this app, then try again."); });
+      meet.camera().catch(function (e) { meetNote(MinivoipMeet.cameraError(e, "The camera is blocked. Allow it for this app, then try again.")); });
     } else if (b.dataset.action === "screen" && meet) {
       meetNote("");
       meet.screen().catch(function (e) { if (e && e.name !== "NotAllowedError") meetNote("Your screen couldn't be shown. Try again."); });

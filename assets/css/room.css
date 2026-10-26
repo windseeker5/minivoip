@@ -63,6 +63,8 @@
 .rm-btn.is-primary:hover { background: #2a2a2e; }
 .rm-btn.is-plain { min-height: 3rem; background: var(--rm-soft); }
 .rm[data-state="joining"] [data-action="join"] { opacity: .5; pointer-events: none; }
+.rm-cam-note { position: absolute; top: .875rem; left: 50%; translate: -50% 0; width: max-content; max-width: calc(100% - 1.75rem); margin: 0;
+  padding: .375rem .875rem; border-radius: 999px; background: rgb(0 0 0 / .62); color: #fff; font-size: .8125rem; text-align: center; }
 .rm-note { margin: .25rem 0 0; color: var(--rm-muted); font-size: .875rem; line-height: 1.5; }
 .rm-waiting { display: flex; align-items: center; gap: .625rem; margin: 0; font-size: 1.125rem; font-weight: 600; }
 .rm-waiting i { width: .625rem; height: .625rem; border-radius: 50%; background: #f46422; animation: rm-pulse 1.4s ease-in-out infinite; }

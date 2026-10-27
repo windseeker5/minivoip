@@ -83,6 +83,25 @@ voice in the middle, B answers first, C like a text conversation).
   almost the whole screen.
 - **Keys:** the number keys pick a choice (not with Ctrl, Alt or Cmd); Escape hangs up.
 
+## Call button on a business's website (chosen 2026-10-27)
+
+`w.js` (`assets/js/w.js`), pasted by the business into its own site; Ken picked it from the mock
+https://claude.ai/artifact/GUgtWk5t9fAzWQMFrn9aUK. A pill in the bottom-right corner, in a shadow root so the site's
+styles and ours never mix; system fonts (the site's page doesn't load ours).
+
+- **Here** (Available switch on, a choice that rings, and a phone that can ring: an open app or one with push): ink
+  pill, the business's logo (else initials) on a white circle with a green dot that pulses, a phone icon, "Talk to us
+  now". A small white note above: "<Owner> is here. Talk to us now."
+- **Away:** white pill with a hairline ring, the logo greyed with a grey dot, a message icon, "Leave us a message";
+  the note says "We're away. Our menu answers, or leave a message." The menu still plays (hours, links, answers):
+  a ringing choice says "Away now: leave a message" and goes to voicemail.
+- The note has an ×, remembered for the visit; it's hidden on phones. The status is read again every minute.
+- **Click:** on a computer, the call page opens in a 400px panel above the button (it grows to almost the whole
+  window while a camera, a screen or the whiteboard is on; × or the call page's Back closes it and ends the call);
+  on a phone, the call page takes the whole screen.
+- **The call page** says it too: under the name a green "<Owner> is here" or a grey "Away right now", and the big
+  button reads "Hear our menu" (white, ink ring) when away.
+
 ## Owner app (chosen 2026-10-24: look C)
 
 One installable web app for the owner, on the phone and the computer (Chrome "Install", or "Add to Home Screen" on

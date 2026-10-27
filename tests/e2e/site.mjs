@@ -96,6 +96,9 @@ const browser = await chromium.launch({
   args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"],
 });
 
+// until retries fn until it gives something truthy, or ms run out.
+const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v; while (Date.now() < end) { v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 200)); } return v; };
+
 async function newPage(width = 1280, height = 900) {
   const ctx = await browser.newContext({ viewport: { width, height }, permissions: ["microphone", "camera"] });
   const page = await ctx.newPage();
@@ -531,6 +534,74 @@ try {
   await owner.click('[data-avail-menu] [data-mode="on"]');
   await owner.waitForSelector('[data-avail-state][data-mode="on"]');
   check(true, "the Available switch turns back on");
+
+  // The Call button on a business's own website (w.js), pasted from the dashboard ----
+  step = "website button";
+  const dashHTML = await (await owner.request.get(BASE + "/dashboard")).text();
+  const pasted = (dashHTML.match(/id="button-code"[^>]*value="([^"]*)"/) || dashHTML.match(/value="([^"]*w\.js[^"]*)"/) || [])[1] || "";
+  const snippet = pasted.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#34;|&quot;/g, '"').replace(/&amp;/g, "&");
+  check(snippet.includes(`/w.js" data-line="${LINE}"`), `the dashboard gives the line to paste (${snippet})`);
+  const bizSite = createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>E2E Shop</title>
+      <style>body{margin:0;font:16px Georgia,serif;background:#f7f4ee;color:#23302a}h1{font-size:56px;margin:120px 72px 0}button{all:unset}</style></head>
+      <body><h1>E2E Shop, a business website</h1><p style="margin:16px 72px">Its own styles must not touch the button.</p>${snippet}</body></html>`);
+  });
+  await new Promise((r) => bizSite.listen(0, "127.0.0.1", r));
+  const BIZ = `http://127.0.0.1:${bizSite.address().port}/`;
+  const biz = await newPage(1280, 860);
+  const btnState = (p) => p.evaluate(() => { const m = document.querySelector("[data-minivoip]")?.shadowRoot?.querySelector(".mv"); return m && !m.hidden ? m.dataset.here : null; });
+  await biz.goto(BIZ);
+  check(await until(async () => (await btnState(biz)) === "true") && (await biz.locator(".btn").textContent()).includes("Talk to us now"),
+    'the button on the website says "Talk to us now" while the owner is available');
+  await biz.screenshot({ path: `${SHOTS}/button-here.png` });
+  await owner.click("[data-avail-btn]");
+  await owner.click('[data-avail-menu] [data-mode="off"]');
+  await owner.waitForSelector('[data-avail-state][data-mode="off"]');
+  await biz.reload();
+  check(await until(async () => (await btnState(biz)) === "false") && (await biz.locator(".btn").textContent()).includes("Leave us a message"),
+    'the button says "Leave us a message" while the owner is off');
+  await biz.screenshot({ path: `${SHOTS}/button-away.png` });
+  const awayPage = await newPage(390, 760);
+  await awayPage.goto(BASE + `/call/${LINE}`);
+  check(await awayPage.isVisible("text=Away right now") && await awayPage.isVisible("text=Hear our menu"), "the call page says the owner is away, and the menu still answers");
+  await awayPage.screenshot({ path: `${SHOTS}/call-away.png` });
+  await owner.click("[data-avail-btn]");
+  await owner.click('[data-avail-menu] [data-mode="on"]');
+  await owner.waitForSelector('[data-avail-state][data-mode="on"]');
+  check(await until(async () => (await awayPage.evaluate(() => document.querySelector("[data-call]").dataset.here)) === "true", 40000),
+    "an open call page sees the owner come back, without a reload");
+  await awayPage.context().close();
+  // A computer: the call opens in a panel in the corner, and a real call works in it.
+  await biz.reload();
+  await until(async () => (await btnState(biz)) === "true");
+  await biz.click(".btn");
+  const panelFrame = await until(async () => biz.frames().find((f) => f.url().includes(`/call/${LINE}`)), 10000);
+  check(!!panelFrame, "a click opens the call page in a panel on the website");
+  await panelFrame.waitForSelector('[data-action="call"]:visible');
+  await panelFrame.click('[data-action="call"]:visible');
+  await panelFrame.waitForSelector('[data-key="1"]:visible');
+  await panelFrame.click('[data-key="1"]');
+  await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  await owner.click('[data-action="accept"]');
+  check(await until(async () => (await panelFrame.evaluate(() => document.querySelector("[data-call]").dataset.state)) === "talking", 15000),
+    "a call from the website's panel connects (microphone allowed in the panel)");
+  await biz.screenshot({ path: `${SHOTS}/button-panel.png` });
+  await panelFrame.click('[data-action="hangup"]:visible');
+  await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
+  await biz.click(".close");
+  check(await until(async () => biz.frames().length === 1), "Close takes the panel away");
+  await biz.context().close();
+  // A phone: the call page takes the whole screen.
+  const bizPhone = await newPage(390, 844);
+  await bizPhone.goto(BIZ);
+  await until(async () => (await btnState(bizPhone)) === "true");
+  await bizPhone.screenshot({ path: `${SHOTS}/button-phone.png` });
+  await bizPhone.click(".btn");
+  await bizPhone.waitForURL(new RegExp(`/call/${LINE}`));
+  check(true, "on a phone, the button opens the call page full screen");
+  await bizPhone.context().close();
+  bizSite.close();
 
   // Meeting room ----------------------------------------------------------
   step = "meeting room links";

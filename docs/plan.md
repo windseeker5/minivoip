@@ -8,8 +8,12 @@ Last update: 2026-10-25 · Design: [architecture.md](architecture.md) · Goal: [
 - **Owner's app** (look C): call history, voicemails, Available / Pause / Off, menu editor. On a computer it rings
   and fills the window; on Android the minivoip app rings like a real phone call, even locked (Ken's Pixel 9).
 - **Visitor's call window** (2026-10-25, look A, `DESIGN.md` "Call window"): white like the landing page, the menu's
-  words written out as they're said, choices as big buttons, a clear ending. Next for it: a panel in the corner of
-  the business's website instead of a new tab, then the business's own colour and logo.
+  words written out as they're said, choices as big buttons, a clear ending. The business's logo since 2026-10-27;
+  its own colour later.
+- **The Call button on a business's website** (2026-10-27, branch `call-button`, `w.js`): one line to paste, shown
+  on the dashboard. It says "Talk to us now" (ink, the logo with a green dot) when the owner is here, else "Leave us
+  a message" (white, grey); the menu answers either way. On a computer the call opens in a panel in the corner, on a
+  phone full screen.
 - **Premium, first pieces** (2026-10-25): in a call, both sides can turn on their camera, show their screen (on a
   computer) and draw on a shared whiteboard. Each line has a meeting room, `/room/<line>`, for up to 4 people;
   guests wait until the owner opens it, and the owner's app says who is waiting. Not yet: recording and meeting

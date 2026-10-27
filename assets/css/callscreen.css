@@ -77,6 +77,16 @@
 .cw-dial:active .cw-dial-btn { transform: scale(.97); }
 .cw-dial-btn svg { width: 2.5rem; height: 2.5rem; }
 .cw-dial-label { font-size: 1.0625rem; font-weight: 600; }
+
+/* Here or away (data-here, kept live by call.js): a green "Marie is here",
+   else a grey "Away right now" and a white "Hear our menu" button. */
+.cw-screen[data-here="true"] .cw-if-away, .cw-screen:not([data-here="true"]) .cw-if-here { display: none; }
+.cw-presence { display: inline-flex; align-items: center; gap: .4375rem; margin: .75rem 0 0; padding: .3125rem .75rem; border-radius: 999px;
+  background: #e8f5ee; color: #17713f; font-size: .8125rem; font-weight: 600; }
+.cw-presence i { width: .4375rem; height: .4375rem; border-radius: 50%; background: #1f9d55; }
+.cw-screen:not([data-here="true"]) .cw-presence { background: var(--cw-soft); color: #4a4a50; }
+.cw-screen:not([data-here="true"]) .cw-presence i { background: #9a9aa0; }
+.cw-screen:not([data-here="true"]) .cw-dial-btn { background: var(--cw-bg); color: var(--cw-ink); box-shadow: inset 0 0 0 1.5px var(--cw-ink), 0 18px 36px -20px rgb(12 12 13 / .35); }
 .cw-note { max-width: 18rem; margin: 1.875rem auto 0; color: var(--cw-muted); font-size: .875rem; line-height: 1.5; text-align: center; text-wrap: pretty; }
 .cw-foot { margin: 1rem 0 0; color: var(--cw-muted); font-size: .8125rem; text-align: center; }
 .cw-foot a { color: inherit; text-underline-offset: 3px; }

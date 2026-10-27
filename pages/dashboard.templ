@@ -2,6 +2,7 @@ package pages
 
 import (
 	"strconv"
+	"strings"
 
 	"minivoip/components/button"
 	"minivoip/components/icon"
@@ -200,6 +201,7 @@ func logoNote(msg string) (text string, bad bool) {
 
 // Dashboard is "My line": the call link and what to do next.
 templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemails int, plan, logoMsg string) {
+	{{ snippet := `<script src="` + strings.TrimSuffix(callURL, "/call/"+l.Name) + `/w.js" data-line="` + l.Name + `" async></script>` }}
 	@dashShell("My line", email, "/dashboard") {
 		<div class="flex items-center gap-4">
 			@dashBadge(l, "size-14 text-lg")
@@ -219,6 +221,20 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 					@button.Button(button.Props{Href: callURL, Target: "_blank"}) {
 						@icon.PhoneCall()
 						Test call
+					}
+				</div>
+			}
+			@panel() {
+				<h2 class="flex items-center gap-2 font-semibold">
+					@icon.Code(icon.Props{Class: "size-4"})
+					A Call button on your website
+				</h2>
+				<p class="mt-2 text-sm text-muted-foreground">Paste this line into your website, just before <code class="font-mono text-xs">&lt;/body&gt;</code>. A button appears in the corner: "Talk to us now" when you're available in the phone app, "Leave us a message" when you're not. Your menu answers either way.</p>
+				<div class="mt-3 flex flex-col gap-2 sm:flex-row">
+					@input.Input(input.Props{ID: "button-code", Value: snippet, ReadOnly: true, Class: "font-mono text-xs"})
+					@button.Button(button.Props{Variant: button.VariantOutline, Attributes: templ.Attributes{"data-copy": "button-code"}}) {
+						@icon.Copy()
+						Copy
 					}
 				</div>
 			}

@@ -110,8 +110,9 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 	})
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assetHandler))
 
-	// Two files the phone app needs at the site's root: the service worker
-	// (its scope is the folder it's served from) and the install manifest.
+	// Files at the site's root: the phone app's service worker (its scope is
+	// the folder it's served from) and install manifest, and w.js, the Call
+	// button businesses paste into their website.
 	at := func(file, contentType string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", contentType)
@@ -122,6 +123,7 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /sw.js", at("js/sw.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /manifest.webmanifest", at("brand/manifest.webmanifest", "application/manifest+json"))
+	mux.HandleFunc("GET /w.js", at("js/w.js", "text/javascript; charset=utf-8"))
 }
 
 // admins can manage promo codes: MINIVOIP_ADMINS (comma-separated emails).

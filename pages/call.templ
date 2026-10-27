@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -55,6 +56,21 @@ func ownerName(l lines.Line) string {
 	return l.Business
 }
 
+// Presence is whether a line's owner can talk now, for the Call button on
+// a business's website (w.js, /api/status/<line>) and the call page.
+type Presence struct {
+	Here     bool   `json:"here"`
+	Business string `json:"business"`
+	Owner    string `json:"owner"`
+	Initials string `json:"initials"`
+	Logo     string `json:"logo,omitempty"` // a path on this site
+	Call     string `json:"call"`           // the call page's path
+}
+
+func NewPresence(l lines.Line, here bool) Presence {
+	return Presence{Here: here, Business: l.Business, Owner: ownerName(l), Initials: initials(l.Business), Logo: logoURL(l), Call: "/call/" + l.Name}
+}
+
 // logoURL is where a line's logo is served, "" without one.
 func logoURL(l lines.Line) string {
 	if l.Logo == "" {
@@ -101,15 +117,6 @@ func choiceHint(o lines.Option) string {
 	return ""
 }
 
-// ringsOwner reports whether a choice of the line rings the owner.
-func ringsOwner(l lines.Line) bool {
-	for _, o := range l.Options {
-		if o.Action == lines.Ring {
-			return true
-		}
-	}
-	return false
-}
 
 templ iconPhone() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.7 4.2-2.1 1.3a11 11 0 0 0 5.4 5.4l1.3-2.1L19 14.5V18a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2Z"></path></svg>
@@ -166,14 +173,17 @@ templ callFoot() {
 // Call is the visitor's call window: /call/<line>, look A (DESIGN.md "Call
 // window"). One view per call state; call.js shows the view whose data-show
 // lists the state, writes out what the voice says, and runs the call.
-templ Call(l lines.Line, ringSeconds int) {
+// here: the owner can talk now (web/status.go); the page then says so, else
+// "Away right now" and "Hear our menu" (the menu still answers, a ringing
+// choice goes to voicemail). call.js keeps it up to date.
+templ Call(l lines.Line, ringSeconds int, here bool) {
 	{{ owner := ownerName(l) }}
 	@layouts.Plain("Call " + l.Business) {
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
 		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
 		<main class="cw">
-			<div class="cw-screen" data-call data-state="idle">
+			<div class="cw-screen" data-call data-state="idle" data-here={ strconv.FormatBool(here) }>
 				<p class="cw-sr" data-status role="status" aria-live="polite"></p>
 				<section class="cw-view" data-show="idle" aria-label={ "Call " + l.Business }>
 					<div class="cw-top">
@@ -184,17 +194,26 @@ templ Call(l lines.Line, ringSeconds int) {
 					<div class="cw-center">
 						@faceBadge(l, l.Business, "cw-badge is-xl")
 						<h1 class="cw-title" tabindex="-1" data-focus>{ l.Business }</h1>
+						if l.Rings() {
+							<p class="cw-presence" data-presence>
+								<i aria-hidden="true"></i>
+								<span class="cw-if-here">{ owner } is here</span>
+								<span class="cw-if-away">Away right now</span>
+							</p>
+						}
 					</div>
 					<button type="button" class="cw-dial" data-action="call">
 						<span class="cw-dial-btn">
 							@iconPhone()
 						</span>
-						<span class="cw-dial-label">Call us</span>
+						<span class="cw-dial-label cw-if-here">Call us</span>
+						<span class="cw-dial-label cw-if-away">Hear our menu</span>
 					</button>
 					<p class="cw-note">
 						Free call from your browser.
-						if ringsOwner(l) {
-							Before you talk to { owner }, your browser will ask to use your microphone.
+						if l.Rings() {
+							<span class="cw-if-here">Before you talk to { owner }, your browser will ask to use your microphone.</span>
+							<span class="cw-if-away">The menu answers, and you can leave a message.</span>
 						}
 					</p>
 					@callFoot()
@@ -215,7 +234,9 @@ templ Call(l lines.Line, ringSeconds int) {
 								<button type="button" class="cw-choice" data-key={ o.Key }>
 									<b>{ o.Key }</b>
 									<span>{ o.Label }</span>
-									if h := choiceHint(o); h != "" {
+									if o.Action == lines.Ring {
+										<small><span class="cw-if-here">Live call</span><span class="cw-if-away">Away now: leave a message</span></small>
+									} else if h := choiceHint(o); h != "" {
 										<small>{ h }</small>
 									}
 								</button>

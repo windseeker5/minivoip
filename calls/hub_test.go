@@ -58,8 +58,14 @@ func TestAnsweredCall(t *testing.T) {
 	h.OnAnswered = func(line, callID string) { answered <- callID }
 	srv := httptest.NewServer(h)
 	defer srv.Close()
+	if h.OwnersOnline("joesbnb") != 0 {
+		t.Fatal("no phone app is open yet")
+	}
 	owner := ready(t, srv)
 	visitor := dial(t, srv, "visitor")
+	if n := h.OwnersOnline("joesbnb"); n != 1 {
+		t.Fatalf("OwnersOnline = %d, want 1 (a visitor isn't a phone app)", n)
+	}
 
 	send(t, visitor, Message{Type: "call", Option: "Talk to Joe"})
 	id := expect(t, visitor, "ringing").ID

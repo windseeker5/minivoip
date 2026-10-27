@@ -144,6 +144,16 @@ func (h *Hub) line(name string) *line {
 	return l
 }
 
+// OwnersOnline counts the line's open phone apps.
+func (h *Hub) OwnersOnline(name string) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if l := h.lines[name]; l != nil {
+		return len(l.owners)
+	}
+	return 0
+}
+
 // ServeHTTP is the socket at /ws?line=<name>&role=visitor|owner.
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("line")

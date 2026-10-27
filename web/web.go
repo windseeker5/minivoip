@@ -103,6 +103,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/voicemail", s.uploadVoicemail)
 
 	mux.HandleFunc("GET /call/{line}", s.callPage)
+	mux.HandleFunc("GET /api/status/{line}", s.status)
 	mux.HandleFunc("GET /room/{line}", s.roomPage)
 	mux.Handle("GET /ws/room", s.Rooms)
 	mux.HandleFunc("GET /api/ice", s.iceServers)

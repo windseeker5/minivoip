@@ -24,6 +24,33 @@
     $$("[data-back]").forEach(function (a) { a.href = document.referrer; a.hidden = false; });
   }
 
+  // Inside the Call button's panel on a business's website (w.js): Back
+  // closes the panel, and the panel grows while the stage is on.
+  var embedded = window.parent !== window, stageWas = false;
+  function tellPage(m) {
+    if (!embedded) return;
+    m.minivoip = true;
+    window.parent.postMessage(m, "*");
+  }
+  if (embedded) {
+    $$("[data-back]").forEach(function (a) {
+      a.hidden = false;
+      a.addEventListener("click", function (e) { e.preventDefault(); tellPage({ type: "close" }); });
+    });
+  }
+
+  // Here or away: whether the owner can talk now (web/status.go), checked
+  // again every 30 s until the caller calls.
+  function presence() {
+    if ((phase !== "idle" && phase !== "menu") || document.hidden) return;
+    fetch("/api/status/" + encodeURIComponent(line.line), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (p) { if (p) root.dataset.here = String(!!p.here); })
+      .catch(function () {});
+  }
+  setInterval(presence, 30000);
+  document.addEventListener("visibilitychange", presence);
+
   // show switches to the view for call state p. Keyboard and screen reader
   // users land on the new view's title.
   function show(p) {
@@ -508,6 +535,7 @@
   // the whiteboard is on, and the buttons say what's on.
   function meetChanged(m) {
     root.dataset.stageOn = m.active() ? "on" : "";
+    if (m.active() !== stageWas) { stageWas = m.active(); tellPage({ type: "stage", on: stageWas }); }
     pressed("camera", !!m.cam);
     pressed("screen", !!m.scr);
     pressed("board", m.boardOpen);

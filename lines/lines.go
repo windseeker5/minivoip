@@ -70,6 +70,16 @@ type Line struct {
 	Premium bool
 }
 
+// Rings says whether a choice of the menu rings the owner's phones.
+func (l Line) Rings() bool {
+	for _, o := range l.Options {
+		if o.Action == Ring {
+			return true
+		}
+	}
+	return false
+}
+
 // Menu is the spoken menu: "Press 1 for bookings, press 2 ...".
 func (l Line) Menu() string {
 	if len(l.Options) == 0 {

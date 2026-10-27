@@ -89,9 +89,10 @@ The iPhone limit comes from Apple. We stay a web app on every device (decided 20
 ## Putting the button on a website
 Joe pastes this one line into the website, just before `</body>`:
 ```html
-<script src="https://minivoip.example/w.js" data-line="joesbnb"></script>
+<script src="https://minivoip.example/w.js" data-line="joesbnb" async></script>
 ```
-- It adds a "Call us" button. The call opens in a small window served from **our** domain, so the website never touches the microphone and needs nothing else installed.
+- The dashboard shows this line with Copy. It adds a button in the corner that says whether Joe is here ("Talk to us now") or away ("Leave us a message"), read from `GET /api/status/<line>` (open to any website) every minute. Here means: the Available switch is on, a choice rings, and a phone can ring (an open app, or one that gets pushes).
+- The call opens in a panel served from **our** domain (an `<iframe>` allowed the microphone and camera), so the website never touches the microphone and needs nothing else installed. On a phone it opens our call page full screen.
 - Website builders all have a place for it: WordPress ("Custom HTML" block), Wix ("Embed code"), Squarespace ("Code" block), Shopify (theme code).
 - **Joe can't edit the website?** Use the call link `minivoip.example/joesbnb` instead, as a normal link, a QR code or a Google Maps "website" link.
 

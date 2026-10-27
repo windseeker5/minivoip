@@ -21,7 +21,7 @@ func sampleCallLine() lines.Line {
 }
 
 func TestCallRenders(t *testing.T) {
-	page := render(t, Call(sampleCallLine(), 30))
+	page := render(t, Call(sampleCallLine(), 30, true))
 	for _, want := range []string{
 		"<title>Call Auberge des Pins</title>",
 		`data-key="1"`, `data-key="4"`, "Live call", "Hear the answer", "Opens a page", "Up to 2 minutes",
@@ -52,7 +52,7 @@ func TestCallRenders(t *testing.T) {
 	// Basic: voice only.
 	basic := sampleCallLine()
 	basic.Premium = false
-	page = render(t, Call(basic, 30))
+	page = render(t, Call(basic, 30, true))
 	for _, not := range []string{`data-action="camera"`, `data-action="screen"`, `data-action="board"`, "is-meet"} {
 		if strings.Contains(page, not) {
 			t.Errorf("a Basic line's call shows %q", not)
@@ -86,9 +86,9 @@ func TestCallPreview(t *testing.T) {
 		many.Options = append(many.Options, lines.Option{Key: k, Label: "Group bookings and special events", Action: lines.Play, Say: "Call us."})
 	}
 	files := map[string]string{
-		"call.html":      render(t, Call(sampleCallLine(), 30)),
-		"call-one.html":  render(t, Call(one, 30)),
-		"call-many.html": render(t, Call(many, 30)),
+		"call.html":      render(t, Call(sampleCallLine(), 30, true)),
+		"call-one.html":  render(t, Call(one, 30, true)),
+		"call-many.html": render(t, Call(many, 30, true)),
 	}
 	for name, page := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(page), 0o644); err != nil {
@@ -103,7 +103,7 @@ func TestLogoShows(t *testing.T) {
 	l := sampleCallLine()
 	l.Logo = "logo-0123456789abcdef0123456789abcdef.png"
 	src := `src="/logo/logo-0123456789abcdef0123456789abcdef.png"`
-	page := render(t, Call(l, 30))
+	page := render(t, Call(l, 30, true))
 	if strings.Count(page, src) != 5 || strings.Contains(page, ">AP<") || strings.Contains(page, ">M<") {
 		t.Errorf("call page: %d logos, initials still there: %v", strings.Count(page, src), strings.Contains(page, ">AP<"))
 	}
@@ -132,5 +132,23 @@ func TestLogoShows(t *testing.T) {
 	}
 	if !strings.Contains(render(t, NewLine("marie@example.com", LineForm{Host: "x"})), `name="logo"`) {
 		t.Error("creating a line doesn't ask for the logo")
+	}
+}
+
+// Away (Available switch off, or no phone online): the call page says so and
+// offers the menu; a ringing choice says it leads to a message.
+func TestCallAway(t *testing.T) {
+	page := render(t, Call(sampleCallLine(), 30, false))
+	for _, want := range []string{`data-here="false"`, "Away right now", "Hear our menu", "Away now: leave a message", "Marie is here"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("away call page is missing %q", want)
+		}
+	}
+	if !strings.Contains(render(t, Call(sampleCallLine(), 30, true)), `data-here="true"`) {
+		t.Error("a call page with the owner here says so")
+	}
+	dash := render(t, Dashboard("marie@example.com", sampleCallLine(), "https://voip.example.com/call/auberge", "https://voip.example.com/room/auberge", 0, "", ""))
+	if !strings.Contains(dash, `value="&lt;script src=&#34;https://voip.example.com/w.js&#34; data-line=&#34;auberge&#34; async&gt;&lt;/script&gt;"`) {
+		t.Error("the dashboard doesn't give the Call button's line to paste")
 	}
 }

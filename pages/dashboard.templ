@@ -98,7 +98,11 @@ templ NewLine(email string, f LineForm) {
 				</div>
 			</div>
 			@formField("logo", "Your logo (optional)") {
-				@input.Input(input.Props{ID: "logo", Name: "logo", Type: "file", Accept: logoAccept})
+				<div class="flex items-center gap-3">
+					<img data-logo-preview hidden alt="Your logo, framed" class="size-14 flex-none rounded-xl bg-white object-contain ring-1 ring-border"/>
+					@input.Input(input.Props{ID: "logo", Name: "logo", Type: "file", Accept: logoAccept, Attributes: templ.Attributes{"data-logo-input": ""}})
+				</div>
+				<p class="text-sm text-destructive" data-logo-error hidden role="alert"></p>
 				<p class="text-xs text-muted-foreground">{ logoHint }</p>
 			}
 			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "h-10 w-full"}) {
@@ -109,6 +113,7 @@ templ NewLine(email string, f LineForm) {
 			Signed in as { email }.
 			<button type="submit" class="font-medium text-foreground underline underline-offset-4">Log out</button>
 		</form>
+		@logoCrop()
 		<script src="/assets/js/dashboard.js" defer></script>
 	}
 }
@@ -131,7 +136,45 @@ func customName(f LineForm) string {
 }
 
 const logoAccept = "image/png,image/jpeg,image/webp"
-const logoHint = "Callers see it when they call you and in your meeting room. PNG, JPG or WebP, 2 MB at most; a square one looks best."
+const logoHint = "Callers see it when they call you and in your meeting room. Pick a PNG, JPG or WebP picture; you frame it next."
+
+// logoCrop is the window where the owner frames the logo they picked
+// (assets/js/logo.js, with Cropper.js).
+templ logoCrop() {
+	<link rel="stylesheet" href="/assets/vendor/cropperjs-1.6.2/cropper.min.css"/>
+	<style>[data-logo-crop] .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; } [data-logo-crop] .cropper-line, [data-logo-crop] .cropper-point { display: none; }</style>
+	<dialog data-logo-crop aria-labelledby="logo-crop-title" class="m-auto w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/50">
+		<div class="px-5 pt-5">
+			<h2 id="logo-crop-title" class="font-semibold">Frame your logo</h2>
+			<p class="mt-1 text-sm text-muted-foreground">Drag to move it, zoom to fit. The square is what callers see.</p>
+		</div>
+		<div class="mt-4 h-80 bg-muted">
+			<img data-logo-crop-img alt="" class="block max-w-full"/>
+		</div>
+		<div class="flex items-center gap-2 px-5 pt-4">
+			@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeIcon, Attributes: templ.Attributes{"data-crop": "out", "aria-label": "Zoom out"}}) {
+				@icon.ZoomOut()
+			}
+			@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeIcon, Attributes: templ.Attributes{"data-crop": "in", "aria-label": "Zoom in"}}) {
+				@icon.ZoomIn()
+			}
+			@button.Button(button.Props{Variant: button.VariantOutline, Attributes: templ.Attributes{"data-crop": "fit"}}) {
+				@icon.Scan()
+				Whole logo
+			}
+		</div>
+		<div class="flex justify-end gap-2 p-5">
+			@button.Button(button.Props{Variant: button.VariantGhost, Attributes: templ.Attributes{"data-crop": "cancel"}}) {
+				Cancel
+			}
+			@button.Button(button.Props{Attributes: templ.Attributes{"data-crop": "use"}}) {
+				Use this logo
+			}
+		</div>
+	</dialog>
+	<script src="/assets/vendor/cropperjs-1.6.2/cropper.min.js" defer></script>
+	<script src="/assets/js/logo.js" defer></script>
+}
 
 // dashBadge is the business's logo (or initials) on the dashboard.
 templ dashBadge(l lines.Line, size string) {
@@ -196,7 +239,7 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 						@dashBadge(l, "size-20 text-2xl")
 						<div class="flex min-w-0 flex-1 flex-col gap-2">
 							<form method="post" action="/dashboard/logo" enctype="multipart/form-data" class="flex flex-col gap-2 sm:flex-row" data-logo-form>
-								@input.Input(input.Props{ID: "logo-file", Name: "logo", Type: "file", Accept: logoAccept, Required: true, Attributes: templ.Attributes{"aria-label": "Logo file"}})
+								@input.Input(input.Props{ID: "logo-file", Name: "logo", Type: "file", Accept: logoAccept, Required: true, Attributes: templ.Attributes{"aria-label": "Logo file", "data-logo-input": "", "data-logo-submit": ""}})
 								@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline}) {
 									if l.Logo != "" {
 										Change logo
@@ -205,6 +248,7 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 									}
 								}
 							</form>
+							<p class="text-sm text-destructive" data-logo-error hidden role="alert"></p>
 							<p class="text-xs text-muted-foreground">
 								{ logoHint }
 								The name comes from your <a href="/dashboard/menu" class="underline underline-offset-4">voice menu</a>.
@@ -284,6 +328,7 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 				}
 			</div>
 		</div>
+		@logoCrop()
 		<script src="/assets/js/dashboard.js" defer></script>
 	}
 }

@@ -203,13 +203,29 @@ try {
   await owner.fill("#name", LINE);
   check(await owner.textContent("[data-link-preview]") === LINE, "'Change it' edits the call link");
   await owner.fill("#business", "E2E Shop");
-  // The logo, asked here too: a file that isn't a picture is refused, the rest of the form kept.
+  // The logo, asked here too. A file that isn't a picture: the page refuses it, and so does the server.
   await owner.setInputFiles("#logo", { name: "logo.txt", mimeType: "text/plain", buffer: Buffer.from("not a picture") });
-  await owner.click("form[data-new-line] button[type=submit]");
-  await owner.waitForSelector("form[data-new-line] [role=alert]");
-  check((await owner.textContent("[role=alert]")).includes("PNG, JPG or WebP") && await owner.inputValue("#business") === "E2E Shop" && await owner.inputValue("#name") === LINE,
-    "a file that isn't a picture is refused as a logo, the name and link kept");
-  await owner.setInputFiles("#logo", "assets/brand/app-icon-192.png");
+  check(await owner.isVisible("[data-logo-error]") && (await owner.textContent("[data-logo-error]")).includes("isn't a picture") && await owner.inputValue("#logo") === "",
+    "a file that isn't a picture is refused right away");
+  const sent = await owner.request.post(BASE + "/dashboard/line", { multipart: { business: "E2E Shop", name: LINE, logo: { name: "logo.png", mimeType: "image/png", buffer: Buffer.from("not a picture") } } });
+  check(sent.status() === 422 && (await sent.text()).includes("PNG, JPG or WebP"), "the server refuses it too, without making the line");
+  // A big photo (about 10 MB): framed in the crop window, sent as a small square.
+  const big = Buffer.from(await owner.evaluate(() => {
+    const c = Object.assign(document.createElement("canvas"), { width: 2400, height: 1500 }), g = c.getContext("2d"), d = g.createImageData(2400, 1500);
+    for (let i = 0; i < d.data.length; i++) d.data[i] = i % 4 === 3 ? 255 : Math.random() * 255;
+    g.putImageData(d, 0, 0);
+    g.fillStyle = "#f46422"; g.fillRect(700, 400, 1000, 700);
+    return c.toDataURL("image/png").split(",")[1];
+  }), "base64");
+  await owner.setInputFiles("#logo", { name: "photo.png", mimeType: "image/png", buffer: big });
+  await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
+  await owner.click('[data-crop="in"]');
+  await owner.screenshot({ path: `${SHOTS}/logo-crop.png` });
+  await owner.click('[data-crop="use"]');
+  await owner.waitForSelector("[data-logo-preview]:visible");
+  const framed = await owner.evaluate(() => { const f = document.querySelector("#logo").files[0]; return f && { size: f.size, type: f.type }; });
+  check(framed && framed.size < 600000 && /image\/(webp|png)/.test(framed.type) && !(await owner.locator("[data-logo-crop]").evaluate((d) => d.open)),
+    `a ${(big.length / 1e6).toFixed(1)} MB photo goes up framed and small (${framed && framed.type}, ${framed && Math.round(framed.size / 1000)} KB)`);
   await owner.click("form[data-new-line] button[type=submit]");
   await owner.waitForSelector("[data-add-choice]");
   check(true, "creating the line opens the menu editor");
@@ -702,13 +718,33 @@ try {
   check((await owner.locator("[data-logo-badge]").count()) === 0, "Remove the logo goes back to the initials");
   await owner.click('form[data-logo-form] button[type=submit]');
   check(await owner.evaluate(() => !document.querySelector("#logo-file").validity.valid), "Add my logo asks for a file first");
+  // Cancel in the crop window: nothing is sent.
   await owner.setInputFiles("#logo-file", "assets/brand/apple-touch-icon.png");
-  await owner.click('form[data-logo-form] button[type=submit]');
+  await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
+  await owner.click('[data-crop="cancel"]');
+  const afterCancel = [await owner.inputValue("#logo-file"), await owner.locator("[data-logo-badge]").count(), owner.url()];
+  check(afterCancel[0] === "" && afterCancel[1] === 0, `Cancel in the crop window leaves the logo as it was (${JSON.stringify(afterCancel)})`);
+  // Pick, frame, Use this logo: it goes up right away.
+  await owner.setInputFiles("#logo-file", "assets/brand/apple-touch-icon.png");
+  await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
+  await owner.click('[data-crop="fit"]');
+  await owner.click('[data-crop="use"]');
   await owner.waitForSelector("text=Callers see your new logo right away");
   check(await loaded(owner, "[data-logo-badge] img") === 2, "Add my logo puts a new one on the dashboard");
   await owner.screenshot({ path: `${SHOTS}/dashboard-logo.png` });
   await owner.click('form[action="/dashboard/logo/remove"] button');
   await owner.waitForSelector("text=Callers see your initials instead");
+  step = "sign up while logged in";
+  await owner.goto(BASE + "/signup");
+  check((await owner.textContent("[data-signed-in]")).includes(EMAIL), "the sign up page says who is logged in, instead of jumping to the dashboard");
+  await owner.click("text=Log out and create another account");
+  await owner.waitForSelector("form[action='/signup'] #email");
+  check(new URL(owner.url()).pathname === "/signup", "Log out and create another account opens a fresh sign up");
+  await owner.goto(BASE + "/login");
+  await owner.fill("#email", EMAIL);
+  await owner.fill("#password", "e2e-password");
+  await owner.click("main button[type=submit]");
+  await owner.waitForURL(/\/dashboard/);
   step = "log out";
   await owner.goto(BASE + "/dashboard");
   await owner.click("header button[type=submit]");

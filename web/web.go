@@ -223,8 +223,9 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 // ------------------------------------------------------------- sign up, log in
 
 func (s *Server) signupPage(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.user(r); ok {
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	// Already logged in: say so, instead of a silent jump to the dashboard.
+	if u, ok := s.user(r); ok {
+		render(w, r, pages.SignupLoggedIn(u.Email))
 		return
 	}
 	render(w, r, pages.Signup(pages.AccountForm{}))
@@ -312,8 +313,12 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", Expires: time.Unix(0, 0), MaxAge: -1})
 	// The phone app logs out to its own login screen.
-	if r.FormValue("next") == "/app" {
+	switch r.FormValue("next") {
+	case "/app":
 		http.Redirect(w, r, "/login?next=/app", http.StatusSeeOther)
+		return
+	case "/signup": // "Log out and sign up" on the sign up page
+		http.Redirect(w, r, "/signup", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)

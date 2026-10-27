@@ -28,7 +28,8 @@ type User struct {
 }
 
 // CreateAccount makes an account with its first user. A promo code is
-// optional; when given it must be valid, and it is used up by one.
+// optional; when given it must be valid, it is used up by one, and the
+// account gets its plan. Without one, the account is Basic.
 func (s *Store) CreateAccount(email, password, promo string) (User, error) {
 	email = strings.TrimSpace(email)
 	promo = strings.TrimSpace(promo)
@@ -51,6 +52,7 @@ func (s *Store) CreateAccount(email, password, promo string) (User, error) {
 	}
 
 	var promoArg any
+	plan := Basic
 	if promo != "" {
 		res, err := tx.Exec(`
 			UPDATE promo_code SET times_used = times_used + 1
@@ -64,13 +66,13 @@ func (s *Store) CreateAccount(email, password, promo string) (User, error) {
 		if n, _ := res.RowsAffected(); n == 0 {
 			return User{}, ErrBadPromo
 		}
-		if err := tx.QueryRow("SELECT code FROM promo_code WHERE code = ?", promo).Scan(&promo); err != nil {
+		if err := tx.QueryRow("SELECT code, plan FROM promo_code WHERE code = ?", promo).Scan(&promo, &plan); err != nil {
 			return User{}, err
 		}
 		promoArg = promo
 	}
 
-	res, err := tx.Exec("INSERT INTO account (name, promo_code) VALUES (?, ?)", email, promoArg)
+	res, err := tx.Exec("INSERT INTO account (name, promo_code, plan) VALUES (?, ?, ?)", email, promoArg, plan)
 	if err != nil {
 		return User{}, err
 	}

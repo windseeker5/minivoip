@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -97,6 +98,17 @@ func (s *Server) androidConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cfg)
+}
+
+// androidLatest is the version of the Android app phones download
+// (data/android/version, written when it's published; android/README.md),
+// or "" when unknown.
+func androidLatest() string {
+	b, err := os.ReadFile(filepath.Join("data", "android", "version"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
 }
 
 // androidAPK serves the Android app (android/, built into data/android).

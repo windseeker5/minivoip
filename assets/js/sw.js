@@ -64,9 +64,12 @@ function receipt(id, shownAs, note) {
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();
   var url = new URL((e.notification.data && e.notification.data.url) || "/app", self.location.origin).href;
+  // The app's notifications bring the app forward; a meeting room's opens the room.
+  var app = new URL(url).pathname.indexOf("/app") === 0;
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
     for (var i = 0; i < list.length; i++) {
-      if (list[i].url.indexOf("/app") !== -1 && "focus" in list[i]) return list[i].focus();
+      var same = app ? list[i].url.indexOf("/app") !== -1 : list[i].url.split("?")[0] === url;
+      if (same && "focus" in list[i]) return list[i].focus();
     }
     return self.clients.openWindow(url);
   }));

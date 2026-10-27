@@ -228,6 +228,12 @@ func (s *Sender) Voicemail(line string) {
 		URL: "/app", Tag: "voicemail", Renotify: true}, 7*24*time.Hour, false)
 }
 
+// RoomKnock says a guest is waiting in the meeting room.
+func (s *Sender) RoomKnock(line, name string) {
+	go s.ToLine(line, Notification{Kind: "room", Title: "Someone is waiting in your meeting room", Body: name + " is waiting for you. Tap to open the room.",
+		URL: "/room/" + line, Tag: "room", Renotify: true}, 10*time.Minute, true)
+}
+
 var errGone = &statusError{http.StatusGone, "subscription gone"}
 
 type statusError struct {

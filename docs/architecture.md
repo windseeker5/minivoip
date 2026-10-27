@@ -89,9 +89,10 @@ The iPhone limit comes from Apple. We stay a web app on every device (decided 20
 ## Putting the button on a website
 Joe pastes this one line into the website, just before `</body>`:
 ```html
-<script src="https://minivoip.example/w.js" data-line="joesbnb"></script>
+<script src="https://minivoip.example/w.js" data-line="joesbnb" async></script>
 ```
-- It adds a "Call us" button. The call opens in a small window served from **our** domain, so the website never touches the microphone and needs nothing else installed.
+- The dashboard shows this line with Copy. It adds a button in the corner that says whether Joe is here ("Talk to us now") or away ("Leave us a message"), read from `GET /api/status/<line>` (open to any website) every minute. Here means: the Available switch is on, a choice rings, and a phone can ring (an open app, or one that gets pushes).
+- The call opens in a panel served from **our** domain (an `<iframe>` allowed the microphone and camera), so the website never touches the microphone and needs nothing else installed. On a phone it opens our call page full screen.
 - Website builders all have a place for it: WordPress ("Custom HTML" block), Wix ("Embed code"), Squarespace ("Code" block), Shopify (theme code).
 - **Joe can't edit the website?** Use the call link `minivoip.example/joesbnb` instead, as a normal link, a QR code or a Google Maps "website" link.
 
@@ -142,6 +143,37 @@ sequenceDiagram
     end
 ```
 
+## Video, screens, whiteboard and meeting rooms (2026-10-25)
+Same rule as the voice: **the server only introduces people; everything else goes directly between browsers.**
+
+- **In a call:** every call opens, up front, two video lanes (camera and screen) and a small data channel next to the
+  voice. Turning a camera on fills a lane, with no new call setup. The data channel carries who has what on and the
+  whiteboard's lines as they're drawn. Shared by the call window, the owner's app and the meeting room:
+  `assets/js/meet.js` and `assets/css/stage.css`.
+- **Meeting rooms:** `/room/<line>`, its socket `/ws/room?line=` (`calls/room.go`). Guests wait until the owner (the
+  logged-in owner of the line) opens the room; the owner's open apps see who waits (a "room" message on the call
+  socket) and their phones get a "Someone is waiting in your meeting room" notification. Inside, everyone connects
+  to everyone (a mesh): a newcomer gets the list of people there and offers a connection to each. That keeps the
+  server out of the video, so a room fits 4 people; bigger rooms would need a forwarding server.
+- Video through the relay costs more bandwidth than voice (roughly 1 to 2.5 Mbit/s per camera or screen, per person
+  receiving it) on the home server's upload.
+
+```mermaid
+sequenceDiagram
+    participant A as Ana (guest)
+    participant S as Our server
+    participant J as Joe (owner)
+    A->>S: join "Ana"
+    S-->>A: waiting
+    S->>J: app: "Ana is waiting" + push
+    J->>S: join (logged in as the owner)
+    S-->>J: welcome (nobody here yet)
+    S-->>A: welcome (Joe is here)
+    A->>J: offer, ice (passed by the server)
+    J->>A: answer, ice
+    A->J: voice, cameras, screens, whiteboard: direct (or via the relay)
+```
+
 ## The voice menu
 The owner records each prompt. Every option points to one action:
 
@@ -167,7 +199,7 @@ Exact columns: [data-dictionary.md](data-dictionary.md). Built so far: `account`
 | `menu_option` | One menu choice: key, name, action, message, web address (one level for now; sub-menus later) |
 | `voicemail` | Caller, time, length, audio file, listened yes/no |
 | `call_log` | Time, line, answered/missed/voicemail, length |
-| `promo_code` | Code, valid from/to, max uses, times used, revoked yes/no. A valid code makes a line free forever. Created and revoked by Ken on an admin page. |
+| `promo_code` | Code, plan it gives (Basic or Premium), valid from/to, max uses, times used, revoked yes/no. A valid code makes a line free forever. Created and revoked by Ken on an admin page, where he also switches any account between Basic and Premium (`account.plan`). |
 | `session` | A login (cookie token, expiry) |
 | *later:* `sip_login` | Username and password for a desk phone or SIP app (step 2) |
 | *later:* `phone_number` | A real number from the SIP provider, pointing to a line (step 3) |

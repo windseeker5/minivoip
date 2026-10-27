@@ -46,10 +46,15 @@ func (s *Server) renderPromo(w http.ResponseWriter, r *http.Request, u store.Use
 		serverError(w, r, err)
 		return
 	}
+	accounts, err := s.Store.Accounts()
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
 	if f.Error != "" {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	}
-	render(w, r, pages.PromoPage(u.Email, list, f, saved))
+	render(w, r, pages.PromoPage(u.Email, list, accounts, f, saved))
 }
 
 func (s *Server) createPromo(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -58,6 +63,7 @@ func (s *Server) createPromo(w http.ResponseWriter, r *http.Request, u store.Use
 		MaxUses:   strings.TrimSpace(r.FormValue("max_uses")),
 		ValidFrom: strings.TrimSpace(r.FormValue("valid_from")),
 		ValidTo:   strings.TrimSpace(r.FormValue("valid_to")),
+		Plan:      r.FormValue("plan"),
 	}
 	max := 0
 	if f.MaxUses != "" {
@@ -75,13 +81,16 @@ func (s *Server) createPromo(w http.ResponseWriter, r *http.Request, u store.Use
 	if f.Error == "" && f.ValidFrom != "" && f.ValidTo != "" && f.ValidTo < f.ValidFrom {
 		f.Error = "\"Usable until\" is before \"Usable from\"."
 	}
+	if f.Error == "" && !store.Plan(f.Plan).Valid() {
+		f.Error = "Pick the plan the code gives: Basic or Premium."
+	}
 	if f.Error == "" {
 		if err := store.CheckPromoCode(f.Code); err != nil {
 			f.Error = err.Error()
 		}
 	}
 	if f.Error == "" {
-		err := s.Store.CreatePromoCode(f.Code, max, f.ValidFrom, f.ValidTo)
+		err := s.Store.CreatePromoCode(f.Code, store.Plan(f.Plan), max, f.ValidFrom, f.ValidTo)
 		switch {
 		case errors.Is(err, store.ErrPromoExists):
 			f.Error = "The code " + f.Code + " already exists."
@@ -89,7 +98,7 @@ func (s *Server) createPromo(w http.ResponseWriter, r *http.Request, u store.Use
 			serverError(w, r, err)
 			return
 		default:
-			http.Redirect(w, r, "/admin/promo?saved="+url.QueryEscape(f.Code+" is ready. Share it with the people you choose."), http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/promo?saved="+url.QueryEscape(f.Code+" is ready: it gives "+store.Plan(f.Plan).Name()+". Share it with the people you choose."), http.StatusSeeOther)
 			return
 		}
 	}
@@ -115,14 +124,39 @@ func (s *Server) revokePromo(w http.ResponseWriter, r *http.Request, u store.Use
 	http.Redirect(w, r, "/admin/promo?saved="+url.QueryEscape(msg), http.StatusSeeOther)
 }
 
-// planText says what an account pays, for the dashboard.
-func (s *Server) planText(accountID int64) string {
-	code, revoked, err := s.Store.Plan(accountID)
-	switch {
-	case err != nil || code == "":
-		return "Plan: free while in beta."
-	case revoked:
-		return "Plan: free while in beta (the code " + code + " was revoked)."
+// setPlan moves an account to Basic or Premium (the admin page's Accounts).
+func (s *Server) setPlan(w http.ResponseWriter, r *http.Request, u store.User) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	plan := store.Plan(r.FormValue("plan"))
+	if err != nil || !plan.Valid() {
+		http.Error(w, "Pick Basic or Premium.", http.StatusBadRequest)
+		return
 	}
-	return "Plan: free forever, with the code " + code + "."
+	err = s.Store.SetPlan(id, plan)
+	if errors.Is(err, store.ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	msg := r.FormValue("who") + " is on " + plan.Name() + " now."
+	http.Redirect(w, r, "/admin/promo?saved="+url.QueryEscape(strings.TrimSpace(msg)), http.StatusSeeOther)
+}
+
+// planText says what an account gets and pays, for the dashboard.
+func (s *Server) planText(accountID int64) string {
+	b, err := s.Store.Billing(accountID)
+	if err != nil {
+		return ""
+	}
+	plan := "Plan: " + b.Plan.Name()
+	switch {
+	case b.Code == "":
+		return plan + ", free while in beta."
+	case b.Revoked:
+		return plan + ", free while in beta (the code " + b.Code + " was revoked)."
+	}
+	return plan + ", free forever with the code " + b.Code + "."
 }

@@ -88,6 +88,26 @@ templ Signup(f AccountForm) {
 	}
 }
 
+// SignupLoggedIn is the sign up page for someone already logged in: one
+// account per login, so they log out first to make another.
+templ SignupLoggedIn(email string) {
+	@accountShell("Get your free line") {
+		<h1 class="text-2xl font-bold tracking-tight">You're already logged in</h1>
+		<p class="mt-2 text-sm text-muted-foreground" data-signed-in>You're logged in as <b class="font-medium text-foreground">{ email }</b>. To create another account, log out first.</p>
+		<div class="mt-6 flex flex-col gap-3">
+			@button.Button(button.Props{Href: "/dashboard", Size: button.SizeLg, Class: "h-10 w-full"}) {
+				Go to my dashboard
+			}
+			<form method="post" action="/logout">
+				<input type="hidden" name="next" value="/signup"/>
+				@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-10 w-full"}) {
+					Log out and create another account
+				}
+			</form>
+		</div>
+	}
+}
+
 templ Login(f AccountForm) {
 	@accountShell("Log in") {
 		<h1 class="text-2xl font-bold tracking-tight">Log in</h1>

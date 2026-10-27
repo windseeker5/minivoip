@@ -39,6 +39,8 @@ type Server struct {
 	CallLine string
 	// Relay is the built-in TURN relay; empty when it isn't running.
 	Relay RelayInfo
+	// Rooms are the lines' meeting rooms (/room/<line>).
+	Rooms *calls.Rooms
 }
 
 // RelayInfo tells browsers how to reach the relay.
@@ -55,6 +57,11 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	s.Hub.CanAnswer = s.canAnswer
 	s.Hub.Available = s.Store.Available
 	s.Hub.OnEnd = s.logCall
+	s.Rooms.IsOwner = s.canAnswer
+	// The owner's open apps show who waits in the meeting room.
+	s.Rooms.OnWaiting = func(line string, names []string) {
+		s.Hub.NotifyOwners(line, calls.Message{Type: "room", Names: names})
+	}
 
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("GET /signup", s.signupPage)
@@ -72,6 +79,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /app/calls", s.auth(s.callsFragment))
 	mux.Handle("POST /app/available", s.auth(s.setAvailable))
 	mux.Handle("POST /dashboard/prompt", s.auth(s.uploadPrompt))
+	mux.Handle("POST /dashboard/logo", s.auth(s.uploadLogo))
+	mux.Handle("POST /dashboard/logo/remove", s.auth(s.removeLogo))
 	mux.Handle("POST /app/push/subscribe", s.auth(s.pushSubscribe))
 	mux.Handle("POST /app/push/unsubscribe", s.auth(s.pushUnsubscribe))
 	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
@@ -83,7 +92,9 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/promo", s.admin(s.promoPage))
 	mux.Handle("POST /admin/promo", s.admin(s.createPromo))
 	mux.Handle("POST /admin/promo/{code}/revoke", s.admin(s.revokePromo))
+	mux.Handle("POST /admin/accounts/{id}/plan", s.admin(s.setPlan))
 	mux.HandleFunc("GET /prompt/{name}", s.prompt)
+	mux.HandleFunc("GET /logo/{name}", s.logo)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))
 	mux.Handle("GET /voicemail/{id}/audio", s.auth(s.voicemailAudio))
@@ -92,6 +103,9 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/voicemail", s.uploadVoicemail)
 
 	mux.HandleFunc("GET /call/{line}", s.callPage)
+	mux.HandleFunc("GET /api/status/{line}", s.status)
+	mux.HandleFunc("GET /room/{line}", s.roomPage)
+	mux.Handle("GET /ws/room", s.Rooms)
 	mux.HandleFunc("GET /api/ice", s.iceServers)
 	mux.Handle("GET /ws", s.Hub)
 }
@@ -210,8 +224,9 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 // ------------------------------------------------------------- sign up, log in
 
 func (s *Server) signupPage(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.user(r); ok {
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	// Already logged in: say so, instead of a silent jump to the dashboard.
+	if u, ok := s.user(r); ok {
+		render(w, r, pages.SignupLoggedIn(u.Email))
 		return
 	}
 	render(w, r, pages.Signup(pages.AccountForm{}))
@@ -299,8 +314,12 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", Expires: time.Unix(0, 0), MaxAge: -1})
 	// The phone app logs out to its own login screen.
-	if r.FormValue("next") == "/app" {
+	switch r.FormValue("next") {
+	case "/app":
 		http.Redirect(w, r, "/login?next=/app", http.StatusSeeOther)
+		return
+	case "/signup": // "Log out and sign up" on the sign up page
+		http.Redirect(w, r, "/signup", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)

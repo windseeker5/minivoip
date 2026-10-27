@@ -62,6 +62,22 @@ type Line struct {
 	// AwayUntil is when the owner's Available switch turns back on (UTC
 	// "YYYY-MM-DD HH:MM:SS"); "" means available.
 	AwayUntil string
+	// Logo is the business's logo (a logo file name), shown to callers
+	// instead of its initials; "" means none yet.
+	Logo string
+	// Premium: the owner's account is on Premium, so calls offer video,
+	// screen sharing and the whiteboard, and the line has a meeting room.
+	Premium bool
+}
+
+// Rings says whether a choice of the menu rings the owner's phones.
+func (l Line) Rings() bool {
+	for _, o := range l.Options {
+		if o.Action == Ring {
+			return true
+		}
+	}
+	return false
 }
 
 // Menu is the spoken menu: "Press 1 for bookings, press 2 ...".

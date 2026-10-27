@@ -9,7 +9,7 @@
   if (!root) return;
   var $ = function (sel) { return root.querySelector(sel); };
 
-  var ws, pc, mic, ac, ringStop, timerIv, ringIv;
+  var ws, pc, mic, ac, ringStop, timerIv, ringIv, meet, link;
   var ringingId = null, liveId = null, wsDelay = 1000, offlineTimer = null;
   var wide = matchMedia("(min-width: 900px)");
   var android = window.MinivoipAndroid || null;
@@ -64,6 +64,7 @@
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
       else if (m.type === "hangup" && m.id === liveId) endCall();
       else if (m.type === "voicemail") { refreshVoicemail(); refreshCalls(); }
+      else if (m.type === "room") roomWaiting(m.names || []);
     };
   }
 
@@ -153,7 +154,7 @@
 
   // ----------------------------------------------------------- tabs
 
-  var tabs = ["calls", "voicemail", "menu", "me"];
+  var tabs = ["calls", "voicemail", "menu", "room", "me"];
   function openTab(name) {
     if (tabs.indexOf(name) === -1) name = "calls";
     root.querySelectorAll("[data-tab]").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === name)); });
@@ -335,12 +336,13 @@
         liveId = id;
         show("connecting");
         pc = new RTCPeerConnection(cfg);
-        mic.getTracks().forEach(function (t) { pc.addTrack(t, mic); });
-        pc.ontrack = function (e) {
+        // The voice, plus cameras, screens and the whiteboard (meet.js).
+        meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials, logo: root.dataset.meLogo }, mic: mic, onChange: meetChanged });
+        link = meet.link(id, pc, { name: "Caller", onAudio: function (stream) {
           var el = $("[data-remote]");
-          el.srcObject = e.streams[0];
+          el.srcObject = stream;
           el.play().catch(function () {});
-        };
+        } });
         pc.onicecandidate = function (e) {
           if (e.candidate) send({ type: "ice", id: liveId, candidate: e.candidate.toJSON() });
         };
@@ -356,11 +358,26 @@
   }
 
   function answer(m) {
-    if (!pc || m.id !== liveId) return;
-    pc.setRemoteDescription({ type: "offer", sdp: m.sdp })
-      .then(function () { return pc.createAnswer(); })
-      .then(function (a) { return pc.setLocalDescription(a); })
-      .then(function () { send({ type: "answer", id: liveId, sdp: pc.localDescription.sdp }); });
+    if (!pc || !link || m.id !== liveId) return;
+    link.answer(m.sdp).then(function (sdp) { send({ type: "answer", id: liveId, sdp: sdp }); });
+  }
+
+  // meetChanged follows the stage: the call screen makes room for it while a
+  // camera, a screen or the whiteboard is on, and the buttons say what's on.
+  function meetChanged(m) {
+    $("[data-call-screen]").dataset.stageOn = m.active() ? "on" : "";
+    pressed("camera", !!m.cam);
+    pressed("screen", !!m.scr);
+    pressed("board", m.boardOpen);
+  }
+  function pressed(action, on) {
+    var b = $('[data-action="' + action + '"]');
+    if (b) b.setAttribute("aria-pressed", String(on));
+  }
+  function meetNote(t) {
+    var n = $("[data-meet-note]");
+    n.textContent = t || "";
+    n.hidden = !t;
   }
 
   function talking() {
@@ -379,6 +396,8 @@
     clearInterval(timerIv);
     $("[data-timer]").textContent = "";
     $('[data-action="mute"]').setAttribute("aria-pressed", "false");
+    if (meet) { meet.end(); meet = null; link = null; }
+    meetNote("");
     if (pc) { pc.close(); pc = null; }
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     liveId = null;
@@ -391,13 +410,14 @@
   window.minivoipCallStats = function () {
     if (!pc) return Promise.resolve(null);
     return pc.getStats().then(function (st) {
-      var out = { route: null, bytesIn: 0 };
+      var out = { route: null, bytesIn: 0, videoIn: 0 };
       st.forEach(function (x) {
         if (x.type === "candidate-pair" && x.nominated && x.state === "succeeded") {
           var l = st.get(x.localCandidateId), r = st.get(x.remoteCandidateId);
           out.route = (l && l.candidateType) + ">" + (r && r.candidateType);
         }
         if (x.type === "inbound-rtp" && x.kind === "audio") out.bytesIn = x.bytesReceived;
+        if (x.type === "inbound-rtp" && x.kind === "video") out.videoIn += x.bytesReceived;
       });
       return out;
     });
@@ -421,6 +441,7 @@
       return playPause(a.previousElementSibling, a);
     }
     if (t.closest("[data-copy]")) return copyLink(t.closest("[data-copy]"));
+    if (t.closest("[data-copy-room]")) return copyRoom(t.closest("[data-copy-room]"));
     if (t.closest("[data-install-btn]")) return install();
     var b = t.closest("[data-action]");
     if (!b) return;
@@ -437,9 +458,21 @@
     } else if (b.dataset.action === "mute") {
       var on = b.getAttribute("aria-pressed") !== "true";
       b.setAttribute("aria-pressed", String(on));
-      if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
+      if (meet) meet.mute(on);
+      else if (mic) mic.getTracks().forEach(function (t) { t.enabled = !on; });
+    } else if (b.dataset.action === "camera" && meet) {
+      meetNote("");
+      meet.camera().catch(function (e) { meetNote(MinivoipMeet.cameraError(e, "The camera is blocked. Allow it for this app, then try again.")); });
+    } else if (b.dataset.action === "screen" && meet) {
+      meetNote("");
+      meet.screen().catch(function (e) { if (e && e.name !== "NotAllowedError") meetNote("Your screen couldn't be shown. Try again."); });
+    } else if (b.dataset.action === "board" && meet) {
+      meet.board();
     }
   });
+  // Showing a screen needs a computer (and a Premium line: Basic has no button).
+  var shareBtn = $("[data-share-btn]");
+  if (shareBtn && window.MinivoipMeet && MinivoipMeet.canShare) shareBtn.hidden = false;
 
   // ----------------------------------------------------------- push
   // Push notifications wake the phone when this page is closed or asleep.
@@ -537,6 +570,28 @@
     }
   });
 
+  // ----------------------------------------------------------- meeting room
+
+  // roomWaiting shows who waits in the meeting room (calls/room.go), with a
+  // Join link; pages/app.templ waitingText says the same.
+  function roomWaiting(names) {
+    var alert = $("[data-room-alert]"), t = "";
+    if (!alert) return; // Basic: no meeting room
+    if (names.length === 1) t = names[0] + " is waiting in your meeting room";
+    else if (names.length === 2) t = names[0] + " and " + names[1] + " are waiting in your meeting room";
+    else if (names.length > 2) t = names[0] + " and " + (names.length - 1) + " others are waiting in your meeting room";
+    $("[data-room-who]").textContent = t;
+    alert.hidden = !names.length;
+  }
+
+  function copyRoom(btn) {
+    var done = function () {
+      btn.textContent = "Copied";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText($("[data-room-url]").textContent.trim()).then(done, function () {});
+  }
+
   // ----------------------------------------------------------- call link
 
   function copyLink(btn) {
@@ -561,12 +616,28 @@
     var androidWeb = !android && /Android/.test(navigator.userAgent);
     $("[data-android-get]").hidden = !androidWeb;
     btn.hidden = !installEvt || androidWeb;
-    if (android) text.textContent = "Installed. You're using the minivoip Android app.";
+    if (android) $("[data-install-title]").textContent = "This app";
+    var update = $("[data-android-update]"), latest = root.dataset.androidLatest || "";
+    var mine = android && android.version ? android.version() : "";
+    update.hidden = !android || !latest || !newer(latest, mine);
+    if (android && !update.hidden) {
+      text.textContent = "You have minivoip for Android " + (mine || "0.2 or older") + ". Version " + latest + " is ready: download it and install it over this one.";
+      update.textContent = "Update to " + latest;
+    } else if (android) text.textContent = "Installed: minivoip for Android " + (mine || "0.2 or older") + (latest && mine ? ", the latest version." : ".");
     else if (androidWeb) text.textContent = "Get the minivoip Android app: it rings like a phone call, even when your phone is locked.";
     else if (standalone) text.textContent = "Installed. You're using the minivoip app.";
     else if (installEvt) text.textContent = "Install the app to open it from your home screen or dock, in its own window.";
     else if (ios) text.textContent = "In Safari, tap Share, then “Add to Home Screen”.";
     else text.textContent = "In Chrome, open the browser menu and pick “Install minivoip” (or “Add to Home screen”).";
+  }
+  // newer says whether version a ("0.10") is after b ("0.9"); "" is oldest.
+  function newer(a, b) {
+    var x = a.split("."), y = b ? b.split(".") : [];
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var d = (+x[i] || 0) - (+y[i] || 0);
+      if (d) return d > 0;
+    }
+    return false;
   }
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();

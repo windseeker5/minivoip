@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -18,6 +19,8 @@ type callData struct {
 	Menu          string       `json:"menu"`
 	Options       []callOption `json:"options"`
 	RingSeconds   int          `json:"ringSeconds"` // the owner's phones ring this long, then voicemail
+	OwnerInitials string       `json:"ownerInitials"` // the owner's face on the stage until their camera is on
+	Logo          string       `json:"logo,omitempty"`  // the business's logo, their face instead of the initials
 }
 
 type callOption struct {
@@ -38,7 +41,7 @@ func promptURL(name string) string {
 
 func newCallData(l lines.Line, ringSeconds int) callData {
 	d := callData{Line: l.Name, Business: l.Business, Owner: ownerName(l), Greeting: l.Greeting,
-		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds}
+		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l)), Logo: logoURL(l)}
 	for _, o := range l.Options {
 		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, SayAudio: promptURL(o.SayAudio), URL: o.URL})
 	}
@@ -51,6 +54,29 @@ func ownerName(l lines.Line) string {
 		return l.Owner
 	}
 	return l.Business
+}
+
+// Presence is whether a line's owner can talk now, for the Call button on
+// a business's website (w.js, /api/status/<line>) and the call page.
+type Presence struct {
+	Here     bool   `json:"here"`
+	Business string `json:"business"`
+	Owner    string `json:"owner"`
+	Initials string `json:"initials"`
+	Logo     string `json:"logo,omitempty"` // a path on this site
+	Call     string `json:"call"`           // the call page's path
+}
+
+func NewPresence(l lines.Line, here bool) Presence {
+	return Presence{Here: here, Business: l.Business, Owner: ownerName(l), Initials: initials(l.Business), Logo: logoURL(l), Call: "/call/" + l.Name}
+}
+
+// logoURL is where a line's logo is served, "" without one.
+func logoURL(l lines.Line) string {
+	if l.Logo == "" {
+		return ""
+	}
+	return "/logo/" + l.Logo
 }
 
 // initials are the business's face until it has a logo: the first letters
@@ -91,15 +117,6 @@ func choiceHint(o lines.Option) string {
 	return ""
 }
 
-// ringsOwner reports whether a choice of the line rings the owner.
-func ringsOwner(l lines.Line) bool {
-	for _, o := range l.Options {
-		if o.Action == lines.Ring {
-			return true
-		}
-	}
-	return false
-}
 
 templ iconPhone() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.7 4.2-2.1 1.3a11 11 0 0 0 5.4 5.4l1.3-2.1L19 14.5V18a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2Z"></path></svg>
@@ -113,14 +130,35 @@ templ iconMic() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M19 11a7 7 0 0 1-14 0M12 18v3"></path></svg>
 }
 
+templ iconCamera() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"></rect><path d="m15.5 10.5 6-3.5v10l-6-3.5"></path></svg>
+}
+
+templ iconScreen() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2.5"></rect><path d="M8 21h8M12 17v4M9 10.5l3-3 3 3M12 7.5v6"></path></svg>
+}
+
+templ iconBoard() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19.2 8.8a2.8 2.8 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>
+}
+
 templ iconBack() {
 	<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+}
+
+// faceBadge is the business's face: its logo, else the initials of name.
+templ faceBadge(l lines.Line, name, class string) {
+	if l.Logo != "" {
+		<span class={ class, "has-logo" } aria-hidden="true"><img src={ logoURL(l) } alt=""/></span>
+	} else {
+		<span class={ class } aria-hidden="true">{ initials(name) }</span>
+	}
 }
 
 // callHead is the top of the window while a call is on.
 templ callHead(l lines.Line, status string, attrs templ.Attributes) {
 	<header class="cw-head">
-		<span class="cw-badge" aria-hidden="true">{ initials(l.Business) }</span>
+		@faceBadge(l, l.Business, "cw-badge")
 		<div>
 			<p class="cw-head-name" tabindex="-1" data-focus>{ l.Business }</p>
 			<p class="cw-head-status" { attrs... }>{ status }</p>
@@ -135,13 +173,17 @@ templ callFoot() {
 // Call is the visitor's call window: /call/<line>, look A (DESIGN.md "Call
 // window"). One view per call state; call.js shows the view whose data-show
 // lists the state, writes out what the voice says, and runs the call.
-templ Call(l lines.Line, ringSeconds int) {
+// here: the owner can talk now (web/status.go); the page then says so, else
+// "Away right now" and "Hear our menu" (the menu still answers, a ringing
+// choice goes to voicemail). call.js keeps it up to date.
+templ Call(l lines.Line, ringSeconds int, here bool) {
 	{{ owner := ownerName(l) }}
 	@layouts.Plain("Call " + l.Business) {
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
 		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
+		<link rel="stylesheet" href="/assets/css/stage.css"/>
 		<main class="cw">
-			<div class="cw-screen" data-call data-state="idle">
+			<div class="cw-screen" data-call data-state="idle" data-here={ strconv.FormatBool(here) }>
 				<p class="cw-sr" data-status role="status" aria-live="polite"></p>
 				<section class="cw-view" data-show="idle" aria-label={ "Call " + l.Business }>
 					<div class="cw-top">
@@ -150,19 +192,28 @@ templ Call(l lines.Line, ringSeconds int) {
 						</a>
 					</div>
 					<div class="cw-center">
-						<span class="cw-badge is-xl" aria-hidden="true">{ initials(l.Business) }</span>
+						@faceBadge(l, l.Business, "cw-badge is-xl")
 						<h1 class="cw-title" tabindex="-1" data-focus>{ l.Business }</h1>
+						if l.Rings() {
+							<p class="cw-presence" data-presence>
+								<i aria-hidden="true"></i>
+								<span class="cw-if-here">{ owner } is here</span>
+								<span class="cw-if-away">Away right now</span>
+							</p>
+						}
 					</div>
 					<button type="button" class="cw-dial" data-action="call">
 						<span class="cw-dial-btn">
 							@iconPhone()
 						</span>
-						<span class="cw-dial-label">Call us</span>
+						<span class="cw-dial-label cw-if-here">Call us</span>
+						<span class="cw-dial-label cw-if-away">Hear our menu</span>
 					</button>
 					<p class="cw-note">
 						Free call from your browser.
-						if ringsOwner(l) {
-							Before you talk to { owner }, your browser will ask to use your microphone.
+						if l.Rings() {
+							<span class="cw-if-here">Before you talk to { owner }, your browser will ask to use your microphone.</span>
+							<span class="cw-if-away">The menu answers, and you can leave a message.</span>
 						}
 					</p>
 					@callFoot()
@@ -183,7 +234,9 @@ templ Call(l lines.Line, ringSeconds int) {
 								<button type="button" class="cw-choice" data-key={ o.Key }>
 									<b>{ o.Key }</b>
 									<span>{ o.Label }</span>
-									if h := choiceHint(o); h != "" {
+									if o.Action == lines.Ring {
+										<small><span class="cw-if-here">Live call</span><span class="cw-if-away">Away now: leave a message</span></small>
+									} else if h := choiceHint(o); h != "" {
 										<small>{ h }</small>
 									}
 								</button>
@@ -203,7 +256,7 @@ templ Call(l lines.Line, ringSeconds int) {
 				<section class="cw-view" data-show="ringing connecting" hidden aria-label="Ringing">
 					<div class="cw-center">
 						<div class="cw-rings">
-							<span class="cw-badge is-round" aria-hidden="true">{ initials(owner) }</span>
+							@faceBadge(l, owner, "cw-badge is-round")
 						</div>
 						<h2 class="cw-title" tabindex="-1" data-focus data-ring-title>Ringing { owner }…</h2>
 						<p class="cw-muted" data-ring-choice></p>
@@ -222,8 +275,15 @@ templ Call(l lines.Line, ringSeconds int) {
 					</div>
 				</section>
 				<section class="cw-view" data-show="talking" hidden aria-label="On the call">
+					<header class="cw-head cw-talk-head">
+						@faceBadge(l, owner, "cw-badge")
+						<div>
+							<p class="cw-head-name">On the line with { owner }</p>
+							<p class="cw-head-status" data-timer aria-hidden="true">0:00</p>
+						</div>
+					</header>
 					<div class="cw-center">
-						<span class="cw-badge is-round" aria-hidden="true">{ initials(owner) }</span>
+						@faceBadge(l, owner, "cw-badge is-round")
 						<h2 class="cw-title" tabindex="-1" data-focus>On the line with { owner }</h2>
 						<p class="cw-timer" data-timer aria-hidden="true">0:00</p>
 						<div class="cw-live" data-live aria-hidden="true">
@@ -232,13 +292,35 @@ templ Call(l lines.Line, ringSeconds int) {
 							}
 						</div>
 					</div>
-					<div class="cw-round-row">
+					<div class="cw-stage" data-stage></div>
+					<p class="cw-meet-note" data-meet-note role="status" hidden></p>
+					<div class={ "cw-round-row", templ.KV("is-meet", l.Premium) }>
 						<button type="button" class="cw-round" data-action="mute" aria-pressed="false">
 							<span>
 								@iconMic()
 							</span>
 							<span>Mute</span>
 						</button>
+						if l.Premium {
+							<button type="button" class="cw-round" data-action="camera" aria-pressed="false">
+								<span>
+									@iconCamera()
+								</span>
+								<span>Camera</span>
+							</button>
+							<button type="button" class="cw-round" data-action="screen" aria-pressed="false" data-share-btn hidden>
+								<span>
+									@iconScreen()
+								</span>
+								<span>Screen</span>
+							</button>
+							<button type="button" class="cw-round" data-action="board" aria-pressed="false">
+								<span>
+									@iconBoard()
+								</span>
+								<span>Whiteboard</span>
+							</button>
+						}
 						<button type="button" class="cw-round is-end" data-action="hangup">
 							<span>
 								@iconHangup()
@@ -294,6 +376,7 @@ templ Call(l lines.Line, ringSeconds int) {
 			</div>
 		</main>
 		@templ.JSONScript("line", newCallData(l, ringSeconds))
+		<script src="/assets/js/meet.js" defer></script>
 		<script src="/assets/js/call.js" defer></script>
 	}
 }

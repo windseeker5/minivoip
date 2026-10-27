@@ -63,8 +63,9 @@ voice in the middle, B answers first, C like a text conversation).
   #f4f4f5, ink buttons, red #d33a2c only for hang up and recording. The voice wave lights up in the logo's
   colours; the word being said is on peach #ffe4d6, words still to come grey #76767c. Always light. The page has
   its own bare layout (`layouts.Plain`): no site CSS, htmx or component scripts.
-- **The business's face:** its initials on an ink square (`initials`), its logo later. No business colour yet: the
-  mocks' green was only an example of one.
+- **The business's face:** its logo (`line.logo`, on white with a hairline ring, never cropped), else its initials on an
+  ink square (`initials`); the same in the meeting room and as the owner's face on the stage (`faceBadge`). Asked
+  when the line is made, changed on the dashboard (Ken, 2026-10-27). No business colour or background yet (parked).
 - **Phone:** the whole screen. **Computer:** one 400px white panel on the grey ground, the size of the corner panel it
   will become on a business's website.
 - **Steps, one view each:** Start (name, big ink "Call us" button, a line that the browser will ask for the
@@ -76,7 +77,30 @@ voice in the middle, B answers first, C like a text conversation).
   over) → the end (a check for "Message sent", an "Open the page" button for a link choice, "Try sending again"
   when the upload fails, "Back to the website" when a page sent the visitor here, "Call again").
 - **Microphone blocked:** a red-tinted note under the choices says how to allow it, with Try again.
+- **Video, screen and whiteboard (2026-10-25):** on the line, five round buttons: Mute, Camera, Screen (computers
+  only), Whiteboard, Hang up. While a camera, a screen or the whiteboard is on, the stage (below) takes the place of
+  the voice wave, the owner's name and the timer move to a small header, and on a computer the window grows to
+  almost the whole screen.
 - **Keys:** the number keys pick a choice (not with Ctrl, Alt or Cmd); Escape hangs up.
+
+## Call button on a business's website (chosen 2026-10-27)
+
+`w.js` (`assets/js/w.js`), pasted by the business into its own site; Ken picked it from the mock
+https://claude.ai/artifact/GUgtWk5t9fAzWQMFrn9aUK. A pill in the bottom-right corner, in a shadow root so the site's
+styles and ours never mix; system fonts (the site's page doesn't load ours).
+
+- **Here** (Available switch on, a choice that rings, and a phone that can ring: an open app or one with push): ink
+  pill, the business's logo (else initials) on a white circle with a green dot that pulses, a phone icon, "Talk to us
+  now". A small white note above: "<Owner> is here. Talk to us now."
+- **Away:** white pill with a hairline ring, the logo greyed with a grey dot, a message icon, "Leave us a message";
+  the note says "We're away. Our menu answers, or leave a message." The menu still plays (hours, links, answers):
+  a ringing choice says "Away now: leave a message" and goes to voicemail.
+- The note has an ×, remembered for the visit; it's hidden on phones. The status is read again every minute.
+- **Click:** on a computer, the call page opens in a 400px panel above the button (it grows to almost the whole
+  window while a camera, a screen or the whiteboard is on; × or the call page's Back closes it and ends the call);
+  on a phone, the call page takes the whole screen.
+- **The call page** says it too: under the name a green "<Owner> is here" or a grey "Away right now", and the big
+  button reads "Hear our menu" (white, ink ring) when away.
 
 ## Owner app (chosen 2026-10-24: look C)
 
@@ -97,6 +121,37 @@ https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app
   "Incoming call, click to answer" alert that brings it to the front, and flashes the tab title.
 - **Available switch:** Available / Pause for 1 hour / Off. Green, amber, grey dot. While away, calls go straight
   to voicemail.
+
+## The stage: cameras, screens, whiteboard (2026-10-25)
+
+One look for the call window, the owner's app and the meeting room (`assets/css/stage.css`, `assets/js/meet.js`):
+dark tiles (#18181b, 18px radius) on whatever page holds them; a person without a camera is their initials on a
+grey circle; names in a small dark pill at the bottom left, with a red crossed mic when muted. Two people: the other
+fills the stage, me in a small corner tile (only with my camera on, mirrored). Three or more: a grid. A screen or the
+whiteboard fills the stage (the newest one), with the others small and, under it, only the people whose camera is on
+(Ken, 2026-10-27: empty tiles were noise); a click on a
+small screen or the whiteboard makes it fill the stage. My own screen shows small as "Your screen" with a red
+"Stop sharing" on it, never big unless I click it (a full-size copy of my screen repeats itself); Ken asked for this
+after his first test, 2026-10-26. The whiteboard is white paper with a faint dot grid (16:10, it
+fits the space like a slide) on a light grey board, five pens (ink, orange, blue, green, red), Undo, Clear and a
+close button. Opening or closing it does so for everyone. The whiteboard stays open on my side while I show my screen.
+
+## Meeting room (2026-10-25)
+
+`/room/<line>` (`pages/room.templ`, `assets/css/room.css`, `assets/js/room.js`). The call window's world (look A:
+white, Funnel, ink, red only for Leave), not a new look.
+
+- **Get ready:** the camera preview (dark, 16:10 on a computer, 4:3 on a phone) with Mic and Camera buttons on it,
+  beside the business's initials, "Meeting room", its name, "Your name" and a big ink Join (the owner: "Open the
+  room", no name). On a computer, one white card on the grey ground; on a phone, stacked.
+- **Waiting:** an orange pulsing dot and "Waiting for <owner> to open the room…", with Leave.
+- **In the room:** a bar (initials, name, "Meeting room · 3 people", Copy link), "Nobody else is here yet" with the
+  link while alone, the stage, then Mute, Camera, Screen, Whiteboard and a red Leave.
+- **The owner's app:** a Room tab (the link, Copy, "Open the room", three steps) and, when a guest waits, a dark pill
+  on top of every tab, "Ana is waiting in your meeting room · Join".
+- **Basic accounts** (2026-10-25): no room and no Camera, Screen or Whiteboard in calls, on either side (the visitor
+  never sees an upsell). The owner's Room tab and the dashboard's Meeting room panel show a small ink "Premium" tag
+  and one line on what it adds, "You're on Basic. Premium opens after the beta."
 
 ## Motion
 

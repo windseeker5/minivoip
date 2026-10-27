@@ -20,6 +20,9 @@ type AppData struct {
 	Devices    int    // devices with notifications on
 	// RingSeconds is how long a call rings before the caller is offered voicemail.
 	RingSeconds int
+	RoomURL     string   // the meeting room's full link
+	RoomWaiting []string // guests waiting in the meeting room now
+	Android     string   // the Android app's latest version ("0.3"), or ""
 }
 
 // localTime reads a stored UTC time in the server's time zone.
@@ -174,6 +177,20 @@ func optionAction(o lines.Option) string {
 
 func idStr(id int64) string { return strconv.FormatInt(id, 10) }
 
+// waitingText says who waits in the meeting room: "Ana is waiting in your
+// meeting room", "Ana and Bo are waiting…".
+func waitingText(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0] + " is waiting in your meeting room"
+	case 2:
+		return names[0] + " and " + names[1] + " are waiting in your meeting room"
+	}
+	return names[0] + " and " + strconv.Itoa(len(names)-1) + " others are waiting in your meeting room"
+}
+
 func plural(n int, one, many string) string {
 	if n == 1 {
 		return "1 " + one
@@ -206,6 +223,18 @@ templ icUser() {
 templ icPlay() {
 	<svg class="ap-ic-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>
 	<svg class="ap-ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4.5" width="4" height="15" rx="1"></rect><rect x="14" y="4.5" width="4" height="15" rx="1"></rect></svg>
+}
+
+templ icCamera() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"></rect><path d="m15.5 10.5 6-3.5v10l-6-3.5"></path></svg>
+}
+
+templ icScreen() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2.5"></rect><path d="M8 21h8M12 17v4M9 10.5l3-3 3 3M12 7.5v6"></path></svg>
+}
+
+templ icBoard() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19.2 8.8a2.8 2.8 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>
 }
 
 templ icChevron() {
@@ -370,6 +399,8 @@ templ tab(name, label string) {
 					@icVoicemail()
 				case "menu":
 					@icMic()
+				case "room":
+					@icCamera()
 				default:
 					@icUser()
 			}
@@ -390,8 +421,16 @@ templ tab(name, label string) {
 templ Phone(d AppData) {
 	@layouts.Base("minivoip", "") {
 		<link rel="stylesheet" href="/assets/css/app.css"/>
-		<div class="ap" data-phone data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) }>
+		<link rel="stylesheet" href="/assets/css/stage.css"/>
+		<div class="ap" data-phone data-android-latest={ d.Android } data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) } data-me-logo={ logoURL(d.Line) }>
 			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
+			if d.Line.Premium {
+				<a class="ap-room-alert" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-alert hidden={ len(d.RoomWaiting) == 0 } role="status">
+					<i class="ap-dot" aria-hidden="true"></i>
+					<span data-room-who>{ waitingText(d.RoomWaiting) }</span>
+					<b>Join</b>
+				</a>
+			}
 			<img class="ap-logo" src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="110" height="20"/>
 			<div class="ap-avail">
 				<button type="button" class="ap-avail-btn" data-avail-btn aria-haspopup="true" aria-expanded="false" aria-label="Change whether calls ring">
@@ -408,6 +447,7 @@ templ Phone(d AppData) {
 				@tab("calls", "Calls")
 				@tab("voicemail", "Voicemail")
 				@tab("menu", "Menu")
+				@tab("room", "Room")
 				@tab("me", "Me")
 			</nav>
 			<main class="ap-main">
@@ -463,6 +503,37 @@ templ Phone(d AppData) {
 					</ul>
 					<p class="ap-note">To change your greeting and choices, open the dashboard on a computer.</p>
 				</section>
+				<section class="ap-panel" id="panel-room" role="tabpanel" data-panel="room" hidden>
+					<header class="ap-head">
+						<h1>Meeting room</h1>
+						<p>Video meetings with your customers, in the browser.</p>
+					</header>
+					if d.Line.Premium {
+						<h2 class="ap-day">Your room link</h2>
+						<div class="ap-card ap-link">
+							<span class="ap-link-url" data-room-url>{ d.RoomURL }</span>
+							<button type="button" class="ap-btn" data-copy-room>Copy</button>
+						</div>
+						<div class="ap-actions ap-room-open">
+							<a class="ap-btn is-ink" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-open>
+								@icCamera()
+								Open the room
+							</a>
+						</div>
+						<h2 class="ap-day">How it works</h2>
+						<ul class="ap-group ap-steps">
+							<li class="ap-row"><span class="ap-key">1</span><span class="ap-row-main"><span class="ap-row-title">Send the link</span><span class="ap-row-sub ap-wrap">By email or text. People join from their browser, nothing to install.</span></span></li>
+							<li class="ap-row"><span class="ap-key">2</span><span class="ap-row-main"><span class="ap-row-title">They wait for you</span><span class="ap-row-sub ap-wrap">This app tells you when someone is waiting.</span></span></li>
+							<li class="ap-row"><span class="ap-key">3</span><span class="ap-row-main"><span class="ap-row-title">Open the room</span><span class="ap-row-sub ap-wrap">Talk, turn cameras on, show your screen, draw on the whiteboard. Up to 4 people.</span></span></li>
+						</ul>
+					} else {
+						<div class="ap-card ap-locked" data-room-locked>
+							<p class="ap-locked-tag">Premium</p>
+							<p class="ap-locked-text">Your own room for video meetings, plus a camera, screen sharing and a whiteboard in your calls. Up to 4 people, nothing to install.</p>
+							<p class="ap-locked-sub">You're on Basic. Premium opens after the beta.</p>
+						</div>
+					}
+				</section>
 				<section class="ap-panel" id="panel-me" role="tabpanel" data-panel="me" hidden>
 					<header class="ap-head">
 						<h1>Me</h1>
@@ -482,11 +553,12 @@ templ Phone(d AppData) {
 					</div>
 					<h2 class="ap-day">Install</h2>
 					<div class="ap-card ap-setting" data-install>
-						<p class="ap-setting-title">Put minivoip on this device</p>
+						<p class="ap-setting-title" data-install-title>Put minivoip on this device</p>
 						<p class="ap-muted" data-install-text>Install the app to open it from your home screen or dock, in its own window.</p>
 						<div class="ap-actions">
 							<button type="button" class="ap-btn is-ink" data-install-btn hidden>Install minivoip</button>
 							<a class="ap-btn is-ink" href="/download/minivoip.apk" data-android-get hidden>Get the Android app</a>
+							<a class="ap-btn is-ink" href="/download/minivoip.apk" data-android-update hidden>Update the app</a>
 						</div>
 					</div>
 					<form method="post" action="/logout" class="ap-logout">
@@ -542,11 +614,27 @@ templ Phone(d AppData) {
 						<button type="button" class="ap-decline" data-action="decline">Decline</button>
 						<p class="ap-call-note">Declined callers can leave a voicemail.</p>
 					</div>
+					<div class="ap-stage" data-stage></div>
+					<p class="ap-meet-note" data-meet-note role="status" hidden></p>
 					<div class="ap-call-bar is-live" data-show="connecting talking" hidden>
-						<button type="button" class="ap-btn ap-mute" data-action="mute" aria-pressed="false">
+						<button type="button" class="ap-btn ap-tool" data-action="mute" aria-pressed="false">
 							@icMic()
 							<span>Mute</span>
 						</button>
+						if d.Line.Premium {
+							<button type="button" class="ap-btn ap-tool" data-action="camera" aria-pressed="false">
+								@icCamera()
+								<span>Camera</span>
+							</button>
+							<button type="button" class="ap-btn ap-tool" data-action="screen" aria-pressed="false" data-share-btn hidden>
+								@icScreen()
+								<span>Screen</span>
+							</button>
+							<button type="button" class="ap-btn ap-tool" data-action="board" aria-pressed="false">
+								@icBoard()
+								<span>Whiteboard</span>
+							</button>
+						}
 						<button type="button" class="ap-hangup" data-action="hangup">
 							@icHangup()
 							<span>Hang up</span>
@@ -557,6 +645,7 @@ templ Phone(d AppData) {
 			<audio data-remote autoplay playsinline></audio>
 		</div>
 		<script src="/assets/js/voicemail.js" defer></script>
+		<script src="/assets/js/meet.js" defer></script>
 		<script src="/assets/js/phone.js" defer></script>
 	}
 }

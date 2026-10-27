@@ -41,7 +41,7 @@ const server = createServer((req, res) => {
   req.on("end", () => {
     const send = (code, type, data) => { res.writeHead(code, { "Content-Type": type }); res.end(data); };
     const pre = (f) => send(200, "text/html", readFileSync(join(PRE, f)));
-    if (u.pathname === "/app") return pre(u.searchParams.has("empty") ? "app-empty.html" : "app.html");
+    if (u.pathname === "/app") return pre(u.searchParams.has("empty") ? "app-empty.html" : u.searchParams.has("basic") ? "app-basic.html" : "app.html");
     if (u.pathname === "/app/calls") return pre("calls.html");
     if (u.pathname === "/login") return pre("login.html");
     if (u.pathname === "/app/voicemails") return pre("voicemails.html");
@@ -107,12 +107,25 @@ const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - 
   check(await page.locator('[data-voicemail="3"] [data-new]').count() === 0 && await page.isHidden("[data-vm-dot]"), "phone: New badge and tab dot clear");
   await page.click('[data-panel="calls"] [data-voicemail="3"] [data-play]');
 
-  for (const tab of ["voicemail", "menu", "me"]) {
+  for (const tab of ["voicemail", "menu", "room", "me"]) {
     await page.click(`[data-tab="${tab}"]`);
     check(await page.isVisible(`[data-panel="${tab}"]`) && (await page.evaluate(() => location.hash)) === "#" + tab, `phone: ${tab} tab opens`);
     await page.screenshot({ path: `${SHOTS}/app-phone-${tab}.png`, fullPage: true });
   }
   check(await page.isVisible("text=Log out"), "phone: Me has Log out");
+  check(await page.getAttribute('[data-panel="room"] [data-room-open]', "href") === "https://voip.example.com/room/joesbnb", "phone: the Room tab opens the meeting room");
+
+  // Someone waits in the meeting room: an alert with Join, on every tab.
+  check(await page.isHidden("[data-room-alert]"), "phone: no meeting room alert while nobody waits");
+  sock.ws.send(JSON.stringify({ type: "room", names: ["Ana Roy"] }));
+  await page.waitForSelector("[data-room-alert]:visible");
+  check(/Ana Roy is waiting in your meeting room/.test(await page.textContent("[data-room-alert]")), "phone: the app says who waits in the meeting room");
+  check(await overflow(page) <= 0, "phone: the meeting room alert fits");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${SHOTS}/app-phone-room-waiting.png` });
+  sock.ws.send(JSON.stringify({ type: "room" }));
+  await page.waitForSelector("[data-room-alert]", { state: "hidden" });
+  check(true, "phone: the alert goes away when nobody waits");
   check(!/Checking/.test(await page.textContent("[data-push-state]")), "phone: notification state is shown");
   await page.reload();
   await page.waitForFunction(() => document.querySelector("[data-phone]").dataset.online === "true");
@@ -227,6 +240,35 @@ for (const [w, h, name] of [[390, 844, "phone"], [1280, 800, "desk"]]) {
 }
 
 for (const e of errors) failures.push("browser error: " + e);
+// --- The Android app: its version, and Update when a newer one is ready ---
+for (const [mine, want, update] of [["0.3", "minivoip for Android 0.3, the latest version", false], ["", "Version 0.3 is ready", true]]) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript((v) => {
+    window.MinivoipAndroid = { start() {}, settings() {}, clearRing() {} };
+    if (v) window.MinivoipAndroid.version = () => v;
+  }, mine);
+  await ctx.routeWebSocket(/\/ws/, () => {});
+  const page = await ctx.newPage();
+  await page.goto(BASE + "/app#me");
+  const text = await page.textContent("[data-install-text]");
+  check(text.includes(want) && (await page.isVisible("[data-android-update]")) === update,
+    `android ${mine || "0.2"}: the Me tab says “${text.trim()}”${update ? " with Update to 0.3" : ""}`);
+  if (update) await page.screenshot({ path: `${SHOTS}/app-phone-update.png` });
+  await ctx.close();
+}
+
+// --- Basic plan: no video tools, the Room tab says what Premium adds ------
+{
+  const { page } = await open(390, 844, "/app?basic");
+  await page.click('[data-tab="room"]');
+  check(await page.isVisible("[data-room-locked]") && await page.locator("[data-room-open]").count() === 0, "basic: the Room tab says the meeting room comes with Premium");
+  check(await page.locator('[data-call-screen] [data-action="camera"], [data-call-screen] [data-action="board"]').count() === 0, "basic: calls have no Camera or Whiteboard");
+  check(await overflow(page) <= 0, "basic: no sideways scroll");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${SHOTS}/app-phone-room-basic.png` });
+  await page.context().close();
+}
+
 console.log(failures.length ? `\n${failures.length} problem(s):\n- ${failures.join("\n- ")}` : "\nAll good.");
 await browser.close();
 server.close();

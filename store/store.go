@@ -147,6 +147,18 @@ var migrations = []string{
 	ALTER TABLE voicemail ADD COLUMN call_id TEXT NOT NULL DEFAULT '';
 	ALTER TABLE line ADD COLUMN away_until TEXT NOT NULL DEFAULT '';
 	`,
+	// 8: plans. An account is Basic or Premium; a promo code gives one of
+	// them. Admins' accounts start on Premium.
+	`
+	ALTER TABLE account ADD COLUMN plan TEXT NOT NULL DEFAULT 'basic' CHECK (plan IN ('basic', 'premium'));
+	ALTER TABLE promo_code ADD COLUMN plan TEXT NOT NULL DEFAULT 'basic' CHECK (plan IN ('basic', 'premium'));
+	UPDATE account SET plan = 'premium' WHERE id IN (SELECT account_id FROM user WHERE is_admin = 1);
+	`,
+	// 9: the business's logo (a file name under logos/), shown to callers
+	// instead of its initials.
+	`
+	ALTER TABLE line ADD COLUMN logo TEXT NOT NULL DEFAULT '';
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

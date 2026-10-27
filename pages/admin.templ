@@ -17,7 +17,28 @@ type PromoForm struct {
 	MaxUses   string
 	ValidFrom string
 	ValidTo   string
+	Plan      string
 	Error     string
+}
+
+// otherPlan is the plan an account's switch button moves it to.
+func otherPlan(p store.Plan) store.Plan {
+	if p == store.Premium {
+		return store.Basic
+	}
+	return store.Premium
+}
+
+templ planBadge(p store.Plan) {
+	if p == store.Premium {
+		@badge.Badge(badge.Props{Attributes: templ.Attributes{"data-plan-badge": string(p)}}) {
+			Premium
+		}
+	} else {
+		@badge.Badge(badge.Props{Variant: badge.VariantOutline, Attributes: templ.Attributes{"data-plan-badge": string(p)}}) {
+			Basic
+		}
+	}
 }
 
 func uses(p store.PromoCode) string {
@@ -69,10 +90,11 @@ templ promoStatus(p store.PromoCode) {
 }
 
 // PromoPage is the admin page: make codes, see who used them, revoke them.
-templ PromoPage(email string, list []store.PromoCode, f PromoForm, saved string) {
-	@dashShell("Promo codes", email, "/admin/promo") {
-		<h1 class="text-3xl font-bold tracking-tight">Promo codes</h1>
-		<p class="mt-2 text-muted-foreground">A code makes a line free forever. Give it to family and friends; revoke it whenever you want.</p>
+// The Accounts list shows every account's plan and switches it.
+templ PromoPage(email string, list []store.PromoCode, accounts []store.Account, f PromoForm, saved string) {
+	@dashShell("Admin", email, "/admin/promo") {
+		<h1 class="text-3xl font-bold tracking-tight">Promo codes and plans</h1>
+		<p class="mt-2 text-muted-foreground">A code makes a line free forever, on the plan you pick. Give it to family and friends; revoke it whenever you want. Basic has calls, the voice menu and voicemail; Premium adds video, screen sharing, the whiteboard and the meeting room.</p>
 		<div class="mt-8 flex flex-col gap-6">
 			@panel() {
 				<h2 class="font-semibold">New code</h2>
@@ -81,9 +103,15 @@ templ PromoPage(email string, list []store.PromoCode, f PromoForm, saved string)
 					if saved != "" {
 						<p class="rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400" role="status">{ saved }</p>
 					}
-					<div class="grid gap-4 sm:grid-cols-4">
+					<div class="grid gap-4 sm:grid-cols-5">
 						@formField("code", "Code") {
 							@input.Input(input.Props{ID: "code", Name: "code", Value: f.Code, Required: true, Placeholder: "FAMILY", Class: "uppercase", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "characters"}})
+						}
+						@formField("plan", "Plan it gives") {
+							<select id="plan" name="plan" class={ selectClass }>
+								<option value="basic" selected?={ f.Plan != "premium" }>Basic</option>
+								<option value="premium" selected?={ f.Plan == "premium" }>Premium</option>
+							</select>
 						}
 						@formField("max_uses", "How many sign ups") {
 							@input.Input(input.Props{ID: "max_uses", Name: "max_uses", Type: "number", Value: f.MaxUses, Placeholder: "No limit", Attributes: templ.Attributes{"min": "0", "inputmode": "numeric"}})
@@ -109,10 +137,11 @@ templ PromoPage(email string, list []store.PromoCode, f PromoForm, saved string)
 					<p class="mt-3 text-sm text-muted-foreground">No codes yet.</p>
 				} else {
 					<div class="relative mt-4 overflow-x-auto">
-						<table class="w-full min-w-[40rem] text-left text-sm">
+						<table class="w-full min-w-[46rem] text-left text-sm">
 							<thead class="border-b text-xs text-muted-foreground">
 								<tr>
 									<th class="py-2 pr-4 font-medium">Code</th>
+									<th class="py-2 pr-4 font-medium">Plan</th>
 									<th class="py-2 pr-4 font-medium">Status</th>
 									<th class="py-2 pr-4 font-medium">Uses</th>
 									<th class="py-2 pr-4 font-medium">When</th>
@@ -124,6 +153,9 @@ templ PromoPage(email string, list []store.PromoCode, f PromoForm, saved string)
 								for _, p := range list {
 									<tr data-promo={ p.Code }>
 										<td class="py-3 pr-4 font-mono font-semibold">{ p.Code }</td>
+										<td class="py-3 pr-4">
+											@planBadge(p.Plan)
+										</td>
 										<td class="py-3 pr-4">
 											@promoStatus(p)
 										</td>
@@ -158,6 +190,58 @@ templ PromoPage(email string, list []store.PromoCode, f PromoForm, saved string)
 					</div>
 				}
 			}
+			<section id="accounts" class="rounded-2xl border bg-background p-6 sm:p-8">
+				<h2 class="font-semibold">Accounts</h2>
+				<p class="mt-1 text-sm text-muted-foreground">Everyone who signed up, newest first. Switch an account's plan any time; it takes effect on their next call.</p>
+				<div class="relative mt-4 overflow-x-auto">
+					<table class="w-full min-w-[40rem] text-left text-sm">
+						<thead class="border-b text-xs text-muted-foreground">
+							<tr>
+								<th class="py-2 pr-4 font-medium">Account</th>
+								<th class="py-2 pr-4 font-medium">Line</th>
+								<th class="py-2 pr-4 font-medium">Plan</th>
+								<th class="py-2 pr-4 font-medium">Promo code</th>
+								<th class="py-2 font-medium"><span class="sr-only">Actions</span></th>
+							</tr>
+						</thead>
+						<tbody class="divide-y">
+							for _, a := range accounts {
+								<tr data-account={ strings.Join(a.Emails, " ") }>
+									<td class="py-3 pr-4">{ strings.Join(a.Emails, ", ") }</td>
+									<td class="py-3 pr-4 font-mono">
+										if a.Line == "" {
+											<span class="font-sans text-muted-foreground">No line yet</span>
+										} else {
+											{ a.Line }
+										}
+									</td>
+									<td class="py-3 pr-4">
+										@planBadge(a.Plan)
+									</td>
+									<td class="py-3 pr-4 text-muted-foreground">
+										if a.Code == "" {
+											None
+										} else if a.Revoked {
+											{ a.Code } (revoked)
+										} else {
+											{ a.Code }
+										}
+									</td>
+									<td class="py-3 text-right">
+										<form method="post" action={ templ.SafeURL("/admin/accounts/" + strconv.FormatInt(a.ID, 10) + "/plan") }>
+											<input type="hidden" name="plan" value={ string(otherPlan(a.Plan)) }/>
+											<input type="hidden" name="who" value={ strings.Join(a.Emails, ", ") }/>
+											@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeSm}) {
+												Move to { otherPlan(a.Plan).Name() }
+											}
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
 		</div>
 	}
 }

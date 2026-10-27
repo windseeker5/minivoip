@@ -6,7 +6,11 @@
 //    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
 //    then voicemail (unanswered call and a voicemail choice), listen, delete.
-// 4. Promo codes: admins only; create, sign up with it, used up, revoke.
+//    A new account is Basic (voice only, no meeting room); then Premium:
+//    video through the relay. The meeting room: a guest waits, the app says so,
+//    the owner opens it, a third person, the whiteboard, leaving.
+// 4. Promo codes and plans: admins only; a Premium code, sign up with it, used
+//    up, revoke, switch an account between Basic and Premium.
 // 5. A stranger can't open the phone app; log out works.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
 //
@@ -92,8 +96,11 @@ const browser = await chromium.launch({
   args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"],
 });
 
+// until retries fn until it gives something truthy, or ms run out.
+const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v; while (Date.now() < end) { v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 200)); } return v; };
+
 async function newPage(width = 1280, height = 900) {
-  const ctx = await browser.newContext({ viewport: { width, height }, permissions: ["microphone"] });
+  const ctx = await browser.newContext({ viewport: { width, height }, permissions: ["microphone", "camera"] });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
   page.on("console", (m) => {
@@ -199,6 +206,29 @@ try {
   await owner.fill("#name", LINE);
   check(await owner.textContent("[data-link-preview]") === LINE, "'Change it' edits the call link");
   await owner.fill("#business", "E2E Shop");
+  // The logo, asked here too. A file that isn't a picture: the page refuses it, and so does the server.
+  await owner.setInputFiles("#logo", { name: "logo.txt", mimeType: "text/plain", buffer: Buffer.from("not a picture") });
+  check(await owner.isVisible("[data-logo-error]") && (await owner.textContent("[data-logo-error]")).includes("isn't a picture") && await owner.inputValue("#logo") === "",
+    "a file that isn't a picture is refused right away");
+  const sent = await owner.request.post(BASE + "/dashboard/line", { multipart: { business: "E2E Shop", name: LINE, logo: { name: "logo.png", mimeType: "image/png", buffer: Buffer.from("not a picture") } } });
+  check(sent.status() === 422 && (await sent.text()).includes("PNG, JPG or WebP"), "the server refuses it too, without making the line");
+  // A big photo (about 10 MB): framed in the crop window, sent as a small square.
+  const big = Buffer.from(await owner.evaluate(() => {
+    const c = Object.assign(document.createElement("canvas"), { width: 2400, height: 1500 }), g = c.getContext("2d"), d = g.createImageData(2400, 1500);
+    for (let i = 0; i < d.data.length; i++) d.data[i] = i % 4 === 3 ? 255 : Math.random() * 255;
+    g.putImageData(d, 0, 0);
+    g.fillStyle = "#f46422"; g.fillRect(700, 400, 1000, 700);
+    return c.toDataURL("image/png").split(",")[1];
+  }), "base64");
+  await owner.setInputFiles("#logo", { name: "photo.png", mimeType: "image/png", buffer: big });
+  await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
+  await owner.click('[data-crop="in"]');
+  await owner.screenshot({ path: `${SHOTS}/logo-crop.png` });
+  await owner.click('[data-crop="use"]');
+  await owner.waitForSelector("[data-logo-preview]:visible");
+  const framed = await owner.evaluate(() => { const f = document.querySelector("#logo").files[0]; return f && { size: f.size, type: f.type }; });
+  check(framed && framed.size < 600000 && /image\/(webp|png)/.test(framed.type) && !(await owner.locator("[data-logo-crop]").evaluate((d) => d.open)),
+    `a ${(big.length / 1e6).toFixed(1)} MB photo goes up framed and small (${framed && framed.type}, ${framed && Math.round(framed.size / 1000)} KB)`);
   await owner.click("form[data-new-line] button[type=submit]");
   await owner.waitForSelector("[data-add-choice]");
   check(true, "creating the line opens the menu editor");
@@ -274,6 +304,12 @@ try {
   step = "dashboard";
   await owner.goto(BASE + "/dashboard");
   await owner.screenshot({ path: `${SHOTS}/dashboard.png`, fullPage: true });
+  // A new account without a promo code is Basic: no meeting room.
+  check((await owner.textContent("[data-plan]")).includes("Plan: Basic"), "a new account is on Basic");
+  const loaded = (p, sel) => p.evaluate((s) => [...document.querySelectorAll(s)].filter((i) => i.complete && i.naturalWidth > 0).length, sel);
+  check(await loaded(owner, "[data-logo-badge] img") === 2, "the dashboard shows the logo given at sign up");
+  check(await owner.isVisible("[data-room-locked]") && (await owner.locator("#room-link").count()) === 0, "a Basic dashboard says the meeting room comes with Premium");
+  check((await owner.request.get(BASE + `/room/${LINE}`)).status() === 404, "a Basic line has no meeting room page");
   const phoneSize = await newPage(390, 844);
   await phoneSize.context().addCookies(await owner.context().cookies());
   for (const p of ["/", "/dashboard", "/dashboard/menu", "/app", `/call/${LINE}`]) {
@@ -331,6 +367,9 @@ try {
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   const caller = await newPage(390, 760);
   await caller.goto(BASE + `/call/${LINE}`);
+  await caller.waitForLoadState("load");
+  check(await loaded(caller, '[data-show="idle"] .cw-badge.has-logo img') === 1, "the caller sees the business's logo, not its initials");
+  await caller.screenshot({ path: `${SHOTS}/call-logo.png` });
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="3"]:visible');
   const ringStart = pushes.length;
@@ -350,6 +389,8 @@ try {
   const direct = await caller.evaluate(() => window.minivoipCallStats());
   check(direct && direct.bytesIn > 1000, `the call connects and the caller hears the phone (${direct && direct.route}, ${direct && direct.bytesIn} bytes)`);
   await caller.screenshot({ path: `${SHOTS}/call.png` });
+  check((await caller.locator('[data-action="camera"], [data-action="board"]').count()) === 0 && (await owner.locator('[data-call-screen] [data-action="camera"]').count()) === 0,
+    "a Basic line's call is voice only: no Camera or Whiteboard on either side");
   await owner.setViewportSize({ width: 390, height: 844 });
   await owner.screenshot({ path: `${SHOTS}/phone-talking.png` });
   await owner.setViewportSize({ width: 1280, height: 900 });
@@ -363,6 +404,17 @@ try {
   check(true, "hanging up reaches the phone");
   await owner.waitForSelector('[data-panel="calls"] .ap-row[data-kind="answered"]', { timeout: 5000 });
   check(/Talk to us/.test(await owner.textContent('[data-panel="calls"] .ap-row[data-kind="answered"]')), "the answered call shows in the call list, with the caller's choice");
+
+  step = "basic room tab";
+  await owner.click('[data-tab="room"]');
+  check(await owner.isVisible("[data-room-locked]") && (await owner.locator("[data-room-open]").count()) === 0, "a Basic app's Room tab says what Premium adds");
+  await owner.click('[data-tab="calls"]');
+
+  // From here the account is Premium (what the admin's "Move to Premium"
+  // does; the admin part below clicks that button for another account).
+  const planDB = new DatabaseSync(DB);
+  planDB.prepare("UPDATE account SET plan = 'premium' WHERE name = ?").run(EMAIL);
+  planDB.close();
 
   step = "relay call";
   // Both sides forced through the relay (TURN) at the public address: the
@@ -383,6 +435,13 @@ try {
     const o = await owner.evaluate(() => window.minivoipCallStats());
     check(c && c.route === "relay>relay" && c.bytesIn > 1000 && o && o.bytesIn > 1000,
       `voice flows both ways through the relay (caller ${c && c.route}, ${c && c.bytesIn} bytes in; phone ${o && o.bytesIn} bytes in)`);
+    // Video through the relay too: the owner turns the camera on.
+    await owner.click('[data-action="camera"]');
+    await caller.waitForTimeout(3000);
+    const v = await caller.evaluate(() => window.minivoipCallStats());
+    check(v && v.videoIn > 20000 && await caller.isVisible('.mv-tile[data-tile="p:owner"].has-video'),
+      `the owner's camera reaches the caller through the relay (${v && v.videoIn} video bytes)`);
+    await caller.screenshot({ path: `${SHOTS}/call-video.png` });
     await caller.click('[data-action="hangup"]:visible');
     await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   }
@@ -476,6 +535,156 @@ try {
   await owner.waitForSelector('[data-avail-state][data-mode="on"]');
   check(true, "the Available switch turns back on");
 
+  // The Call button on a business's own website (w.js), pasted from the dashboard ----
+  step = "website button";
+  const dashHTML = await (await owner.request.get(BASE + "/dashboard")).text();
+  const pasted = (dashHTML.match(/id="button-code"[^>]*value="([^"]*)"/) || dashHTML.match(/value="([^"]*w\.js[^"]*)"/) || [])[1] || "";
+  const snippet = pasted.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#34;|&quot;/g, '"').replace(/&amp;/g, "&");
+  check(snippet.includes(`/w.js" data-line="${LINE}"`), `the dashboard gives the line to paste (${snippet})`);
+  const bizSite = createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>E2E Shop</title>
+      <style>body{margin:0;font:16px Georgia,serif;background:#f7f4ee;color:#23302a}h1{font-size:56px;margin:120px 72px 0}button{all:unset}</style></head>
+      <body><h1>E2E Shop, a business website</h1><p style="margin:16px 72px">Its own styles must not touch the button.</p>${snippet}</body></html>`);
+  });
+  await new Promise((r) => bizSite.listen(0, "127.0.0.1", r));
+  const BIZ = `http://127.0.0.1:${bizSite.address().port}/`;
+  const biz = await newPage(1280, 860);
+  const btnState = (p) => p.evaluate(() => { const m = document.querySelector("[data-minivoip]")?.shadowRoot?.querySelector(".mv"); return m && !m.hidden ? m.dataset.here : null; });
+  await biz.goto(BIZ);
+  check(await until(async () => (await btnState(biz)) === "true") && (await biz.locator(".btn").textContent()).includes("Talk to us now"),
+    'the button on the website says "Talk to us now" while the owner is available');
+  await biz.screenshot({ path: `${SHOTS}/button-here.png` });
+  await owner.click("[data-avail-btn]");
+  await owner.click('[data-avail-menu] [data-mode="off"]');
+  await owner.waitForSelector('[data-avail-state][data-mode="off"]');
+  await biz.reload();
+  check(await until(async () => (await btnState(biz)) === "false") && (await biz.locator(".btn").textContent()).includes("Leave us a message"),
+    'the button says "Leave us a message" while the owner is off');
+  await biz.screenshot({ path: `${SHOTS}/button-away.png` });
+  const awayPage = await newPage(390, 760);
+  await awayPage.goto(BASE + `/call/${LINE}`);
+  check(await awayPage.isVisible("text=Away right now") && await awayPage.isVisible("text=Hear our menu"), "the call page says the owner is away, and the menu still answers");
+  await awayPage.screenshot({ path: `${SHOTS}/call-away.png` });
+  await owner.click("[data-avail-btn]");
+  await owner.click('[data-avail-menu] [data-mode="on"]');
+  await owner.waitForSelector('[data-avail-state][data-mode="on"]');
+  check(await until(async () => (await awayPage.evaluate(() => document.querySelector("[data-call]").dataset.here)) === "true", 40000),
+    "an open call page sees the owner come back, without a reload");
+  await awayPage.context().close();
+  // A computer: the call opens in a panel in the corner, and a real call works in it.
+  await biz.reload();
+  await until(async () => (await btnState(biz)) === "true");
+  await biz.click(".btn");
+  const panelFrame = await until(async () => biz.frames().find((f) => f.url().includes(`/call/${LINE}`)), 10000);
+  check(!!panelFrame, "a click opens the call page in a panel on the website");
+  await panelFrame.waitForSelector('[data-action="call"]:visible');
+  await panelFrame.click('[data-action="call"]:visible');
+  await panelFrame.waitForSelector('[data-key="1"]:visible');
+  await panelFrame.click('[data-key="1"]');
+  await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  await owner.click('[data-action="accept"]');
+  check(await until(async () => (await panelFrame.evaluate(() => document.querySelector("[data-call]").dataset.state)) === "talking", 15000),
+    "a call from the website's panel connects (microphone allowed in the panel)");
+  await biz.screenshot({ path: `${SHOTS}/button-panel.png` });
+  await panelFrame.click('[data-action="hangup"]:visible');
+  await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
+  await biz.click(".close");
+  check(await until(async () => biz.frames().length === 1), "Close takes the panel away");
+  await biz.context().close();
+  // A phone: the call page takes the whole screen.
+  const bizPhone = await newPage(390, 844);
+  await bizPhone.goto(BIZ);
+  await until(async () => (await btnState(bizPhone)) === "true");
+  await bizPhone.screenshot({ path: `${SHOTS}/button-phone.png` });
+  await bizPhone.click(".btn");
+  await bizPhone.waitForURL(new RegExp(`/call/${LINE}`));
+  check(true, "on a phone, the button opens the call page full screen");
+  await bizPhone.context().close();
+  bizSite.close();
+
+  // Meeting room ----------------------------------------------------------
+  step = "meeting room links";
+  await owner.goto(BASE + "/dashboard");
+  check((await owner.textContent("[data-plan]")).includes("Plan: Premium"), "the dashboard says the account is on Premium");
+  check((await owner.inputValue("#room-link")).endsWith(`/room/${LINE}`), "the dashboard shows the meeting room link");
+  await owner.goto(BASE + "/app");
+  await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
+  await owner.click('[data-tab="room"]');
+  check((await owner.textContent("[data-room-url]")).trim().endsWith(`/room/${LINE}`) && await owner.isVisible("[data-room-open]"), "the app's Room tab has the link and Open the room");
+
+  step = "guest waits";
+  const roomPushes = pushes.length;
+  const guest = await newPage(390, 844);
+  await guest.goto(BASE + `/room/${LINE}`);
+  check(!(await guest.isVisible("text=You're the host")), "a guest isn't the host");
+  await guest.fill("[data-name]", "Ana Roy");
+  await guest.click('[data-action="join"]');
+  await guest.waitForSelector("text=Waiting for", { timeout: 10000 });
+  await guest.screenshot({ path: `${SHOTS}/room-waiting.png` });
+  await owner.waitForSelector("[data-room-alert]:visible", { timeout: 5000 });
+  check(/Ana Roy is waiting/.test(await owner.textContent("[data-room-alert]")), "the app says who is waiting in the meeting room");
+  await owner.waitForTimeout(800);
+  check(pushesSince(roomPushes).some((p) => p.kind === "room" && p.url === `/room/${LINE}`), "a sleeping phone gets “Someone is waiting in your meeting room”");
+
+  step = "owner opens the room";
+  const [host] = await Promise.all([owner.context().waitForEvent("page"), owner.click("[data-room-alert]")]);
+  host.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
+  await host.waitForSelector('[data-action="join"]:visible');
+  check(await host.isVisible("text=You're the host"), "the owner's room page says they're the host");
+  await host.click('.rm-toggle[data-action="pre-camera"]');
+  await host.waitForSelector("[data-preview].has-video");
+  await host.waitForFunction(() => document.querySelector("[data-preview-video]").videoWidth > 0);
+  check(await host.isHidden("text=This room is full") && await host.isHidden("text=You left the room") && await host.isHidden("text=Waiting for"),
+    "getting ready shows only its own step");
+  await host.waitForTimeout(300);
+  await host.screenshot({ path: `${SHOTS}/room-ready.png` });
+  await host.click('[data-action="join"]');
+  await guest.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  await host.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  check(true, "opening the room lets the waiting guest in");
+  await owner.waitForSelector("[data-room-alert]", { state: "hidden", timeout: 5000 });
+  check(true, "the app's waiting alert goes away");
+  await guest.waitForTimeout(3000);
+  const gs = await guest.evaluate(() => window.minivoipRoomStats());
+  check(gs.length === 1 && gs[0].bytesIn > 1000 && gs[0].videoIn > 5000, `the guest hears and sees the owner (${JSON.stringify(gs)})`);
+
+  step = "third person";
+  const bo = await newPage(1280, 900);
+  await bo.goto(BASE + `/room/${LINE}`);
+  await bo.fill("[data-name]", "Bo");
+  await bo.click('[data-action="join"]');
+  await bo.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  await bo.waitForFunction(() => /3 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 10000 });
+  check(/3 people/.test(await host.textContent("[data-people]")), "a third person comes straight in while the owner is there");
+  await bo.waitForTimeout(3000);
+  const bs = await bo.evaluate(() => window.minivoipRoomStats());
+  check(bs.length === 2 && bs.every((x) => x.bytesIn > 1000), `everyone hears everyone (${bs.map((x) => x.bytesIn).join(", ")} bytes)`);
+  check(await bo.isVisible('.mv-stage[data-layout="grid"]'), "three people show as a grid");
+  await bo.click('.rm-controls [data-action="board"]');
+  await host.waitForSelector(".mv-board", { timeout: 5000 });
+  await guest.waitForSelector(".mv-board", { timeout: 5000 });
+  const paper = await bo.locator(".mv-paper canvas").boundingBox();
+  await bo.mouse.move(paper.x + 100, paper.y + 100);
+  await bo.mouse.down();
+  await bo.mouse.move(paper.x + 300, paper.y + 220, { steps: 10 });
+  await bo.mouse.up();
+  await host.waitForFunction(() => document.querySelector(".mv-stage").meet.wb.strokes.length === 1, null, { timeout: 5000 });
+  await guest.waitForFunction(() => document.querySelector(".mv-stage").meet.wb.strokes.length === 1, null, { timeout: 5000 });
+  check(true, "the whiteboard opens for everyone, and a drawing shows for everyone");
+  await bo.screenshot({ path: `${SHOTS}/room-board.png` });
+  await guest.screenshot({ path: `${SHOTS}/room-phone-board.png` });
+  await bo.click('[data-board="close"]');
+  await bo.waitForTimeout(500);
+  await bo.screenshot({ path: `${SHOTS}/room.png` });
+  await bo.click('.rm-controls [data-action="leave"]');
+  await host.waitForFunction(() => /2 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+  check(await bo.isVisible("text=You left the room"), "Leave leaves; the others see one less");
+  await guest.click('.rm-controls [data-action="leave"]');
+  await host.waitForFunction(() => /just you/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+  await host.click('.rm-controls [data-action="leave"]');
+  await host.close();
+
   // Promo codes (admin) -----------------------------------------------------
   step = "admin only";
   await owner.goto(BASE + "/dashboard");
@@ -492,10 +701,12 @@ try {
   step = "create code";
   const CODE = `E2E-${stamp.toUpperCase()}`;
   await owner.fill("#code", CODE.toLowerCase());
+  await owner.selectOption("#plan", "premium");
   await owner.fill("#max_uses", "1");
   await owner.click("main button[type=submit]");
   await owner.waitForSelector(`text=${CODE} is ready`);
   check(await owner.isVisible(`[data-promo="${CODE}"] >> text=0 of 1 used`), "the new code is listed, unused");
+  check(await owner.isVisible(`[data-promo="${CODE}"] [data-plan-badge="premium"]`), "the code says it gives Premium");
   await owner.fill("#code", CODE);
   await owner.click("main button[type=submit]");
   check(await owner.isVisible("text=already exists"), "the same code can't be made twice");
@@ -513,7 +724,8 @@ try {
   await friend.click("form[data-new-line] button[type=submit]");
   await friend.waitForSelector("[data-add-choice]");
   await friend.goto(BASE + "/dashboard");
-  check((await friend.textContent("[data-plan]")).includes(`free forever, with the code ${CODE}`), "a friend who used the code is free forever");
+  check((await friend.textContent("[data-plan]")).includes(`Plan: Premium, free forever with the code ${CODE}`), "a friend who used the code gets its plan, Premium, free forever");
+  check(await friend.isVisible("#room-link"), "the friend's Premium dashboard has a meeting room");
 
   step = "code used up";
   const late = await newPage();
@@ -538,6 +750,18 @@ try {
   await friend.reload();
   check((await friend.textContent("[data-plan]")).includes("was revoked"), "revoking a code shows on the friend's dashboard");
 
+  step = "switch plan";
+  const row = `[data-account="${FRIEND}"]`;
+  check(await owner.isVisible(`${row} [data-plan-badge="premium"]`) && await owner.isVisible(`${row} >> text=${CODE} (revoked)`), "the Accounts list shows the friend on Premium, with their code");
+  await owner.click(`${row} button[type=submit]`);
+  await owner.waitForSelector(`text=${FRIEND} is on Basic now.`);
+  check(await owner.isVisible(`${row} [data-plan-badge="basic"]`), "Move to Basic switches the friend's plan");
+  await friend.reload();
+  check((await friend.textContent("[data-plan]")).includes("Plan: Basic") && await friend.isVisible("[data-room-locked]"), "the friend's dashboard is Basic now: no meeting room");
+  await owner.click(`${row} button[type=submit]`);
+  await owner.waitForSelector(`text=${FRIEND} is on Premium now.`);
+  check(await owner.isVisible(`${row} [data-plan-badge="premium"]`), "and Move to Premium switches it back");
+
   // 4. Strangers and log out ----------------------------------------------
   step = "stranger";
   const stranger = await newPage(390, 844);
@@ -558,6 +782,40 @@ try {
   await phoneOnly.click("text=Log out");
   await phoneOnly.waitForSelector("[data-app-login]");
   check(true, "logging out of the phone app returns to the app's log in");
+  step = "logo";
+  await owner.goto(BASE + "/dashboard");
+  await owner.click('form[action="/dashboard/logo/remove"] button');
+  await owner.waitForSelector("text=Callers see your initials instead");
+  check((await owner.locator("[data-logo-badge]").count()) === 0, "Remove the logo goes back to the initials");
+  await owner.click('form[data-logo-form] button[type=submit]');
+  check(await owner.evaluate(() => !document.querySelector("#logo-file").validity.valid), "Add my logo asks for a file first");
+  // Cancel in the crop window: nothing is sent.
+  await owner.setInputFiles("#logo-file", "assets/brand/apple-touch-icon.png");
+  await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
+  await owner.click('[data-crop="cancel"]');
+  const afterCancel = [await owner.inputValue("#logo-file"), await owner.locator("[data-logo-badge]").count(), owner.url()];
+  check(afterCancel[0] === "" && afterCancel[1] === 0, `Cancel in the crop window leaves the logo as it was (${JSON.stringify(afterCancel)})`);
+  // Pick, frame, Use this logo: it goes up right away.
+  await owner.setInputFiles("#logo-file", "assets/brand/apple-touch-icon.png");
+  await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
+  await owner.click('[data-crop="fit"]');
+  await owner.click('[data-crop="use"]');
+  await owner.waitForSelector("text=Callers see your new logo right away");
+  check(await loaded(owner, "[data-logo-badge] img") === 2, "Add my logo puts a new one on the dashboard");
+  await owner.screenshot({ path: `${SHOTS}/dashboard-logo.png` });
+  await owner.click('form[action="/dashboard/logo/remove"] button');
+  await owner.waitForSelector("text=Callers see your initials instead");
+  step = "sign up while logged in";
+  await owner.goto(BASE + "/signup");
+  check((await owner.textContent("[data-signed-in]")).includes(EMAIL), "the sign up page says who is logged in, instead of jumping to the dashboard");
+  await owner.click("text=Log out and create another account");
+  await owner.waitForSelector("form[action='/signup'] #email");
+  check(new URL(owner.url()).pathname === "/signup", "Log out and create another account opens a fresh sign up");
+  await owner.goto(BASE + "/login");
+  await owner.fill("#email", EMAIL);
+  await owner.fill("#password", "e2e-password");
+  await owner.click("main button[type=submit]");
+  await owner.waitForURL(/\/dashboard/);
   step = "log out";
   await owner.goto(BASE + "/dashboard");
   await owner.click("header button[type=submit]");
@@ -581,6 +839,8 @@ try {
     UNION SELECT o.say_audio FROM menu_option o JOIN line l ON l.id = o.line_id JOIN account a ON a.id = l.account_id
       WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const p of prompts) if (p.f) rmSync(join(dirname(DB), "prompts", p.f), { force: true });
+  const logos = db.prepare("SELECT l.logo AS f FROM line l JOIN account a ON a.id = l.account_id WHERE a.name LIKE 'e2e-%@example.com'").all();
+  for (const p of logos) if (p.f) rmSync(join(dirname(DB), "logos", p.f), { force: true });
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
   db.prepare("DELETE FROM push_log WHERE line LIKE 'e2e-%'").run();
   db.prepare("DELETE FROM promo_code WHERE code LIKE 'E2E-%'").run();

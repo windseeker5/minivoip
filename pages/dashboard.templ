@@ -70,8 +70,8 @@ templ NewLine(email string, f LineForm) {
 	@accountShell("Your business") {
 		@stepLabel("Step 2 of 2: your business")
 		<h1 class="text-2xl font-bold tracking-tight">What's your business called?</h1>
-		<p class="mt-1 text-sm text-muted-foreground">Callers see and hear this name.</p>
-		<form method="post" action="/dashboard/line" class="mt-6 flex flex-col gap-5" data-new-line>
+		<p class="mt-1 text-sm text-muted-foreground">Callers see and hear this name, beside your logo.</p>
+		<form method="post" action="/dashboard/line" enctype="multipart/form-data" class="mt-6 flex flex-col gap-5" data-new-line>
 			@formError(f.Error)
 			@formField("business", "Business name") {
 				@input.Input(input.Props{ID: "business", Name: "business", Value: f.Business, Required: true, Placeholder: "Joe's B&B", Attributes: templ.Attributes{"autofocus": "", "autocomplete": "organization", "data-business": ""}})
@@ -97,6 +97,10 @@ templ NewLine(email string, f LineForm) {
 					}
 				</div>
 			</div>
+			@formField("logo", "Your logo (optional)") {
+				@input.Input(input.Props{ID: "logo", Name: "logo", Type: "file", Accept: logoAccept})
+				<p class="text-xs text-muted-foreground">{ logoHint }</p>
+			}
 			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "h-10 w-full"}) {
 				Create my line
 			}
@@ -126,10 +130,38 @@ func customName(f LineForm) string {
 	return ""
 }
 
+const logoAccept = "image/png,image/jpeg,image/webp"
+const logoHint = "Callers see it when they call you and in your meeting room. PNG, JPG or WebP, 2 MB at most; a square one looks best."
+
+// dashBadge is the business's logo (or initials) on the dashboard.
+templ dashBadge(l lines.Line, size string) {
+	if l.Logo != "" {
+		<span class={ "grid flex-none place-items-center overflow-hidden rounded-2xl bg-white ring-1 ring-border", size } data-logo-badge><img src={ logoURL(l) } alt={ l.Business + " logo" } class="size-[84%] object-contain"/></span>
+	} else {
+		<span class={ "grid flex-none place-items-center rounded-2xl bg-foreground font-semibold text-background", size } aria-hidden="true">{ initials(l.Business) }</span>
+	}
+}
+
+// logoNote says what just happened to the logo (?logo= on the dashboard).
+func logoNote(msg string) (text string, bad bool) {
+	switch msg {
+	case "saved":
+		return "Saved. Callers see your new logo right away.", false
+	case "removed":
+		return "Removed. Callers see your initials instead.", false
+	case "bad":
+		return "That file can't be a logo. Use a PNG, JPG or WebP picture of 2 MB or less.", true
+	}
+	return "", false
+}
+
 // Dashboard is "My line": the call link and what to do next.
-templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemails int, plan string) {
+templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemails int, plan, logoMsg string) {
 	@dashShell("My line", email, "/dashboard") {
-		<h1 class="text-3xl font-bold tracking-tight">{ l.Business }</h1>
+		<div class="flex items-center gap-4">
+			@dashBadge(l, "size-14 text-lg")
+			<h1 class="text-3xl font-bold tracking-tight">{ l.Business }</h1>
+		</div>
 		<p class="mt-2 text-muted-foreground">Your receptionist answers at this link. Share it, or put it behind a Call button on your website.</p>
 		<p class="mt-1 text-sm text-muted-foreground" data-plan>{ plan }</p>
 		<div class="mt-8 flex flex-col gap-6">
@@ -145,6 +177,45 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 						@icon.PhoneCall()
 						Test call
 					}
+				</div>
+			}
+			@panel() {
+				<div id="logo" class="scroll-mt-6">
+					<h2 class="flex items-center gap-2 font-semibold">
+						@icon.Image(icon.Props{Class: "size-4"})
+						Your logo
+					</h2>
+					if text, bad := logoNote(logoMsg); bad {
+						<div class="mt-3">
+							@formError(text)
+						</div>
+					} else if text != "" {
+						<p class="mt-3 rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400" role="status">{ text }</p>
+					}
+					<div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
+						@dashBadge(l, "size-20 text-2xl")
+						<div class="flex min-w-0 flex-1 flex-col gap-2">
+							<form method="post" action="/dashboard/logo" enctype="multipart/form-data" class="flex flex-col gap-2 sm:flex-row" data-logo-form>
+								@input.Input(input.Props{ID: "logo-file", Name: "logo", Type: "file", Accept: logoAccept, Required: true, Attributes: templ.Attributes{"aria-label": "Logo file"}})
+								@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline}) {
+									if l.Logo != "" {
+										Change logo
+									} else {
+										Add my logo
+									}
+								}
+							</form>
+							<p class="text-xs text-muted-foreground">
+								{ logoHint }
+								The name comes from your <a href="/dashboard/menu" class="underline underline-offset-4">voice menu</a>.
+							</p>
+							if l.Logo != "" {
+								<form method="post" action="/dashboard/logo/remove">
+									<button type="submit" class="text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">Remove the logo</button>
+								</form>
+							}
+						</div>
+					</div>
 				</div>
 			}
 			@panel() {

@@ -12,6 +12,7 @@ type roomData struct {
 	Owner    string `json:"owner"`    // who opens the room
 	IsOwner  bool   `json:"isOwner"`  // this visitor is the line's owner
 	Initials string `json:"initials"` // the owner's, for their face on the stage
+	Logo     string `json:"logo,omitempty"` // the business's logo: the owner's face instead
 	URL      string `json:"url"`
 }
 
@@ -39,11 +40,15 @@ templ Room(l lines.Line, isOwner bool, url string) {
 				<div class="rm-preview">
 					<div class="rm-self" data-preview>
 						<video data-preview-video autoplay muted playsinline></video>
-						<span class="rm-self-face" data-preview-face aria-hidden="true">
-							if isOwner {
-								{ initials(owner) }
-							}
-						</span>
+						if isOwner && l.Logo != "" {
+							<span class="rm-self-face has-logo" data-preview-face aria-hidden="true"><img src={ logoURL(l) } alt=""/></span>
+						} else {
+							<span class="rm-self-face" data-preview-face aria-hidden="true">
+								if isOwner {
+									{ initials(owner) }
+								}
+							</span>
+						}
 						<span class="rm-self-name">You</span>
 					</div>
 					<div class="rm-toggles">
@@ -57,7 +62,7 @@ templ Room(l lines.Line, isOwner bool, url string) {
 					<p class="rm-cam-note" data-cam-note role="status" hidden></p>
 				</div>
 				<div class="rm-side">
-					<span class="rm-badge" aria-hidden="true">{ initials(l.Business) }</span>
+					@faceBadge(l, l.Business, "rm-badge")
 					<p class="rm-kicker">Meeting room</p>
 					<h1 class="rm-title" tabindex="-1" data-focus>{ l.Business }</h1>
 					<div class="rm-step" data-show="lobby joining">
@@ -98,7 +103,7 @@ templ Room(l lines.Line, isOwner bool, url string) {
 			</section>
 			<section class="rm-in" data-show="in" hidden aria-label="Meeting">
 				<header class="rm-bar">
-					<span class="rm-badge is-small" aria-hidden="true">{ initials(l.Business) }</span>
+					@faceBadge(l, l.Business, "rm-badge is-small")
 					<div class="rm-bar-text">
 						<p class="rm-bar-name" tabindex="-1" data-focus>{ l.Business }</p>
 						<p class="rm-bar-sub" data-people>Meeting room</p>
@@ -148,7 +153,7 @@ templ Room(l lines.Line, isOwner bool, url string) {
 			</section>
 			<div data-audio hidden></div>
 		</main>
-		@templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), URL: url})
+		@templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), Logo: logoURL(l), URL: url})
 		<script src="/assets/js/meet.js" defer></script>
 		<script src="/assets/js/room.js" defer></script>
 	}

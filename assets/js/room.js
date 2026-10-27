@@ -139,7 +139,7 @@
 
   function enter(m) {
     myId = m.id;
-    meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: myName, initials: room.isOwner ? room.initials : initials(myName) },
+    meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: myName, initials: room.isOwner ? room.initials : initials(myName), logo: room.isOwner ? room.logo : "" },
       mic: mic, camera: cam, muted: muted, onChange: changed });
     cam = null; // the session has it now
     preview();
@@ -157,7 +157,7 @@
     audio.autoplay = true;
     audio.setAttribute("playsinline", "");
     $("[data-audio]").append(audio);
-    var link = meet.link(p.id, pc, { name: p.name, initials: p.owner ? room.initials : initials(p.name), onAudio: function (stream) {
+    var link = meet.link(p.id, pc, { name: p.name, initials: p.owner ? room.initials : initials(p.name), logo: p.owner ? room.logo : "", onAudio: function (stream) {
       audio.srcObject = stream;
       audio.play().catch(function () {});
     } });

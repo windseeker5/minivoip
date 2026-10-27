@@ -96,3 +96,41 @@ func TestCallPreview(t *testing.T) {
 		}
 	}
 }
+
+// A business with a logo shows it instead of its initials: on the call
+// window, in the meeting room, and as the owner's face on the stage.
+func TestLogoShows(t *testing.T) {
+	l := sampleCallLine()
+	l.Logo = "logo-0123456789abcdef0123456789abcdef.png"
+	src := `src="/logo/logo-0123456789abcdef0123456789abcdef.png"`
+	page := render(t, Call(l, 30))
+	if strings.Count(page, src) != 5 || strings.Contains(page, ">AP<") || strings.Contains(page, ">M<") {
+		t.Errorf("call page: %d logos, initials still there: %v", strings.Count(page, src), strings.Contains(page, ">AP<"))
+	}
+	if !strings.Contains(page, `"logo":"/logo/logo-0123456789abcdef0123456789abcdef.png"`) {
+		t.Error("call.js isn't given the logo for the owner's face")
+	}
+	host := render(t, Room(l, true, "https://voip.example.com/room/auberge"))
+	if strings.Count(host, src) != 3 || !strings.Contains(host, `"logo":"/logo/`) {
+		t.Errorf("room page: %d logos", strings.Count(host, src))
+	}
+	dash := render(t, Dashboard("marie@example.com", l, "https://x/call/auberge", "https://x/room/auberge", 0, "Plan: Premium", "saved"))
+	for _, want := range []string{src, "Change logo", "Remove the logo", "Callers see your new logo right away", `enctype="multipart/form-data"`} {
+		if !strings.Contains(dash, want) {
+			t.Errorf("dashboard is missing %q", want)
+		}
+	}
+	l.Logo = ""
+	dash = render(t, Dashboard("marie@example.com", l, "https://x/call/auberge", "https://x/room/auberge", 0, "Plan: Premium", "bad"))
+	for _, want := range []string{"Add my logo", "That file", ">AP<"} {
+		if !strings.Contains(dash, want) {
+			t.Errorf("dashboard without a logo is missing %q", want)
+		}
+	}
+	if strings.Contains(dash, "Remove the logo") {
+		t.Error("no logo to remove")
+	}
+	if !strings.Contains(render(t, NewLine("marie@example.com", LineForm{Host: "x"})), `name="logo"`) {
+		t.Error("creating a line doesn't ask for the logo")
+	}
+}

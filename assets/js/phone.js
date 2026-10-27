@@ -337,7 +337,7 @@
         show("connecting");
         pc = new RTCPeerConnection(cfg);
         // The voice, plus cameras, screens and the whiteboard (meet.js).
-        meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials }, mic: mic, onChange: meetChanged });
+        meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials, logo: root.dataset.meLogo }, mic: mic, onChange: meetChanged });
         link = meet.link(id, pc, { name: "Caller", onAudio: function (stream) {
           var el = $("[data-remote]");
           el.srcObject = stream;

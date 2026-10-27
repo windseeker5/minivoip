@@ -19,6 +19,7 @@ type callData struct {
 	Options       []callOption `json:"options"`
 	RingSeconds   int          `json:"ringSeconds"` // the owner's phones ring this long, then voicemail
 	OwnerInitials string       `json:"ownerInitials"` // the owner's face on the stage until their camera is on
+	Logo          string       `json:"logo,omitempty"`  // the business's logo, their face instead of the initials
 }
 
 type callOption struct {
@@ -39,7 +40,7 @@ func promptURL(name string) string {
 
 func newCallData(l lines.Line, ringSeconds int) callData {
 	d := callData{Line: l.Name, Business: l.Business, Owner: ownerName(l), Greeting: l.Greeting,
-		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l))}
+		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l)), Logo: logoURL(l)}
 	for _, o := range l.Options {
 		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, SayAudio: promptURL(o.SayAudio), URL: o.URL})
 	}
@@ -52,6 +53,14 @@ func ownerName(l lines.Line) string {
 		return l.Owner
 	}
 	return l.Business
+}
+
+// logoURL is where a line's logo is served, "" without one.
+func logoURL(l lines.Line) string {
+	if l.Logo == "" {
+		return ""
+	}
+	return "/logo/" + l.Logo
 }
 
 // initials are the business's face until it has a logo: the first letters
@@ -130,10 +139,19 @@ templ iconBack() {
 	<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
 }
 
+// faceBadge is the business's face: its logo, else the initials of name.
+templ faceBadge(l lines.Line, name, class string) {
+	if l.Logo != "" {
+		<span class={ class, "has-logo" } aria-hidden="true"><img src={ logoURL(l) } alt=""/></span>
+	} else {
+		<span class={ class } aria-hidden="true">{ initials(name) }</span>
+	}
+}
+
 // callHead is the top of the window while a call is on.
 templ callHead(l lines.Line, status string, attrs templ.Attributes) {
 	<header class="cw-head">
-		<span class="cw-badge" aria-hidden="true">{ initials(l.Business) }</span>
+		@faceBadge(l, l.Business, "cw-badge")
 		<div>
 			<p class="cw-head-name" tabindex="-1" data-focus>{ l.Business }</p>
 			<p class="cw-head-status" { attrs... }>{ status }</p>
@@ -164,7 +182,7 @@ templ Call(l lines.Line, ringSeconds int) {
 						</a>
 					</div>
 					<div class="cw-center">
-						<span class="cw-badge is-xl" aria-hidden="true">{ initials(l.Business) }</span>
+						@faceBadge(l, l.Business, "cw-badge is-xl")
 						<h1 class="cw-title" tabindex="-1" data-focus>{ l.Business }</h1>
 					</div>
 					<button type="button" class="cw-dial" data-action="call">
@@ -217,7 +235,7 @@ templ Call(l lines.Line, ringSeconds int) {
 				<section class="cw-view" data-show="ringing connecting" hidden aria-label="Ringing">
 					<div class="cw-center">
 						<div class="cw-rings">
-							<span class="cw-badge is-round" aria-hidden="true">{ initials(owner) }</span>
+							@faceBadge(l, owner, "cw-badge is-round")
 						</div>
 						<h2 class="cw-title" tabindex="-1" data-focus data-ring-title>Ringing { owner }…</h2>
 						<p class="cw-muted" data-ring-choice></p>
@@ -237,14 +255,14 @@ templ Call(l lines.Line, ringSeconds int) {
 				</section>
 				<section class="cw-view" data-show="talking" hidden aria-label="On the call">
 					<header class="cw-head cw-talk-head">
-						<span class="cw-badge" aria-hidden="true">{ initials(owner) }</span>
+						@faceBadge(l, owner, "cw-badge")
 						<div>
 							<p class="cw-head-name">On the line with { owner }</p>
 							<p class="cw-head-status" data-timer aria-hidden="true">0:00</p>
 						</div>
 					</header>
 					<div class="cw-center">
-						<span class="cw-badge is-round" aria-hidden="true">{ initials(owner) }</span>
+						@faceBadge(l, owner, "cw-badge is-round")
 						<h2 class="cw-title" tabindex="-1" data-focus>On the line with { owner }</h2>
 						<p class="cw-timer" data-timer aria-hidden="true">0:00</p>
 						<div class="cw-live" data-live aria-hidden="true">

@@ -47,6 +47,7 @@ A phone line: the call link `/call/<name>` and its voice menu. One per account.
 | `greeting` | text | Welcome message, read by the browser's voice |
 | `greeting_audio` | text | The owner's recorded welcome (file under `prompts/`), or empty. When set, callers hear it instead of `greeting` and the spoken menu |
 | `away_until` | text (UTC) | The app's Available switch: '' = available; a time = paused until then ("Pause for 1 hour"); `9999-12-31 00:00:00` = Off until turned back on. While away, calls go straight to voicemail and nothing rings |
+| `logo` | text | The business's logo (file under `logos/`, PNG, JPG or WebP, 2 MB at most), or empty. Callers see it instead of the initials: call window, meeting room, the owner's face on the stage. Asked when the line is made, changed on the dashboard |
 | `created_at` | text (UTC) | |
 
 ## menu_option
@@ -157,3 +158,4 @@ Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, mad
 | 6 | 2026-10-22 | `push_log` (delivery receipts) |
 | 7 | 2026-10-24 | `call_log` (call history), `voicemail.call_id`, `line.away_until` (Available switch) |
 | 8 | 2026-10-25 | `account.plan`, `promo_code.plan` (Basic or Premium); admins' accounts start on Premium |
+| 9 | 2026-10-27 | `line.logo` (in `<data dir>/logos/`, public at `/logo/<name>`, random names; a new logo or Remove deletes the old file) |

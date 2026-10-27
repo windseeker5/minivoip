@@ -203,6 +203,13 @@ try {
   await owner.fill("#name", LINE);
   check(await owner.textContent("[data-link-preview]") === LINE, "'Change it' edits the call link");
   await owner.fill("#business", "E2E Shop");
+  // The logo, asked here too: a file that isn't a picture is refused, the rest of the form kept.
+  await owner.setInputFiles("#logo", { name: "logo.txt", mimeType: "text/plain", buffer: Buffer.from("not a picture") });
+  await owner.click("form[data-new-line] button[type=submit]");
+  await owner.waitForSelector("form[data-new-line] [role=alert]");
+  check((await owner.textContent("[role=alert]")).includes("PNG, JPG or WebP") && await owner.inputValue("#business") === "E2E Shop" && await owner.inputValue("#name") === LINE,
+    "a file that isn't a picture is refused as a logo, the name and link kept");
+  await owner.setInputFiles("#logo", "assets/brand/app-icon-192.png");
   await owner.click("form[data-new-line] button[type=submit]");
   await owner.waitForSelector("[data-add-choice]");
   check(true, "creating the line opens the menu editor");
@@ -280,6 +287,8 @@ try {
   await owner.screenshot({ path: `${SHOTS}/dashboard.png`, fullPage: true });
   // A new account without a promo code is Basic: no meeting room.
   check((await owner.textContent("[data-plan]")).includes("Plan: Basic"), "a new account is on Basic");
+  const loaded = (p, sel) => p.evaluate((s) => [...document.querySelectorAll(s)].filter((i) => i.complete && i.naturalWidth > 0).length, sel);
+  check(await loaded(owner, "[data-logo-badge] img") === 2, "the dashboard shows the logo given at sign up");
   check(await owner.isVisible("[data-room-locked]") && (await owner.locator("#room-link").count()) === 0, "a Basic dashboard says the meeting room comes with Premium");
   check((await owner.request.get(BASE + `/room/${LINE}`)).status() === 404, "a Basic line has no meeting room page");
   const phoneSize = await newPage(390, 844);
@@ -339,6 +348,9 @@ try {
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   const caller = await newPage(390, 760);
   await caller.goto(BASE + `/call/${LINE}`);
+  await caller.waitForLoadState("load");
+  check(await loaded(caller, '[data-show="idle"] .cw-badge.has-logo img') === 1, "the caller sees the business's logo, not its initials");
+  await caller.screenshot({ path: `${SHOTS}/call-logo.png` });
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="3"]:visible');
   const ringStart = pushes.length;
@@ -683,6 +695,20 @@ try {
   await phoneOnly.click("text=Log out");
   await phoneOnly.waitForSelector("[data-app-login]");
   check(true, "logging out of the phone app returns to the app's log in");
+  step = "logo";
+  await owner.goto(BASE + "/dashboard");
+  await owner.click('form[action="/dashboard/logo/remove"] button');
+  await owner.waitForSelector("text=Callers see your initials instead");
+  check((await owner.locator("[data-logo-badge]").count()) === 0, "Remove the logo goes back to the initials");
+  await owner.click('form[data-logo-form] button[type=submit]');
+  check(await owner.evaluate(() => !document.querySelector("#logo-file").validity.valid), "Add my logo asks for a file first");
+  await owner.setInputFiles("#logo-file", "assets/brand/apple-touch-icon.png");
+  await owner.click('form[data-logo-form] button[type=submit]');
+  await owner.waitForSelector("text=Callers see your new logo right away");
+  check(await loaded(owner, "[data-logo-badge] img") === 2, "Add my logo puts a new one on the dashboard");
+  await owner.screenshot({ path: `${SHOTS}/dashboard-logo.png` });
+  await owner.click('form[action="/dashboard/logo/remove"] button');
+  await owner.waitForSelector("text=Callers see your initials instead");
   step = "log out";
   await owner.goto(BASE + "/dashboard");
   await owner.click("header button[type=submit]");
@@ -706,6 +732,8 @@ try {
     UNION SELECT o.say_audio FROM menu_option o JOIN line l ON l.id = o.line_id JOIN account a ON a.id = l.account_id
       WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const p of prompts) if (p.f) rmSync(join(dirname(DB), "prompts", p.f), { force: true });
+  const logos = db.prepare("SELECT l.logo AS f FROM line l JOIN account a ON a.id = l.account_id WHERE a.name LIKE 'e2e-%@example.com'").all();
+  for (const p of logos) if (p.f) rmSync(join(dirname(DB), "logos", p.f), { force: true });
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
   db.prepare("DELETE FROM push_log WHERE line LIKE 'e2e-%'").run();
   db.prepare("DELETE FROM promo_code WHERE code LIKE 'E2E-%'").run();

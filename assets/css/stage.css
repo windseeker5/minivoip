@@ -4,7 +4,7 @@
    shows it (display: flex) only while it's in use.
    Layouts (data-layout): "pair" (the other person fills it, me in the
    corner), "grid" (three people or more) and "present" (a screen or the
-   whiteboard fills it, people in a strip under it). */
+   whiteboard fills it, people with a camera on in a strip under it). */
 
 .mv-stage {
   --mv-tile: #18181b; --mv-face: #2c2c31; --mv-ink: #0c0c0d; --mv-red: #d33a2c;
@@ -34,6 +34,9 @@
 .mv-face { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--mv-face);
   font: 600 30px/1 "Funnel Display", Onest, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; }
 .mv-face svg { width: 36px; height: 36px; color: #c9c9ce; }
+/* A business's logo: on white, whole, never cropped. */
+.mv-face.has-logo { background: #fff; overflow: hidden; }
+.mv-face.has-logo img { width: 72%; height: 72%; object-fit: contain; }
 .mv-tile.has-video .mv-face { visibility: hidden; }
 .mv-name { position: absolute; z-index: 1; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 5px; max-width: calc(100% - 20px);
   padding: 4px 9px; border-radius: 999px; background: rgb(12 12 13 / .62); color: #fff; font-size: 12.5px; font-weight: 500;

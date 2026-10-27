@@ -45,12 +45,15 @@
   border-radius: 50%; background: none; color: var(--cw-ink); }
 .cw-icon-btn:hover { background: var(--cw-soft); }
 
-/* The business's face: its initials on ink (its logo, later). */
+/* The business's face: its logo on white, else its initials on ink. */
 .cw-badge { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: .625rem;
   background: var(--cw-ink); color: #fff; font: 600 .8125rem/1 "Funnel Display", "Funnel Sans", sans-serif; letter-spacing: -.01em; }
 .cw-badge.is-xl { width: 4.75rem; height: 4.75rem; border-radius: 1.375rem; font-size: 1.75rem; }
 .cw-badge.is-round { width: 6rem; height: 6rem; border-radius: 50%; font-size: 2.125rem; }
 .cw-badge svg { width: 2.375rem; height: 2.375rem; }
+.cw-badge.has-logo { overflow: hidden; background: #fff; box-shadow: 0 0 0 1px var(--cw-line); }
+.cw-badge.has-logo img { width: 84%; height: 84%; object-fit: contain; }
+.cw-badge.is-round.has-logo img { width: 70%; height: 70%; }
 
 .cw-title { margin: 0; font: 600 1.625rem/1.15 "Funnel Display", "Funnel Sans", sans-serif; letter-spacing: -.02em; text-wrap: balance; }
 .cw-text { margin: 0; color: #4a4a50; font-size: 1.0625rem; line-height: 1.5; text-wrap: pretty; }

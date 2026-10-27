@@ -79,6 +79,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /app/calls", s.auth(s.callsFragment))
 	mux.Handle("POST /app/available", s.auth(s.setAvailable))
 	mux.Handle("POST /dashboard/prompt", s.auth(s.uploadPrompt))
+	mux.Handle("POST /dashboard/logo", s.auth(s.uploadLogo))
+	mux.Handle("POST /dashboard/logo/remove", s.auth(s.removeLogo))
 	mux.Handle("POST /app/push/subscribe", s.auth(s.pushSubscribe))
 	mux.Handle("POST /app/push/unsubscribe", s.auth(s.pushUnsubscribe))
 	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
@@ -92,6 +94,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /admin/promo/{code}/revoke", s.admin(s.revokePromo))
 	mux.Handle("POST /admin/accounts/{id}/plan", s.admin(s.setPlan))
 	mux.HandleFunc("GET /prompt/{name}", s.prompt)
+	mux.HandleFunc("GET /logo/{name}", s.logo)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))
 	mux.Handle("GET /voicemail/{id}/audio", s.auth(s.voicemailAudio))

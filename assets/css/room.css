@@ -23,6 +23,10 @@
 .rm-badge { display: grid; place-items: center; flex: none; width: 3.5rem; height: 3.5rem; border-radius: 1rem; background: var(--rm-ink);
   color: #fff; font: 600 1.25rem/1 "Funnel Display", "Funnel Sans", sans-serif; letter-spacing: -.01em; }
 .rm-badge.is-small { width: 2.25rem; height: 2.25rem; border-radius: .7rem; font-size: .875rem; }
+.rm-badge.has-logo { overflow: hidden; background: #fff; box-shadow: 0 0 0 1px #e7e7ea; }
+.rm-badge.has-logo img { width: 84%; height: 84%; object-fit: contain; }
+.rm-self-face.has-logo { overflow: hidden; background: #fff; }
+.rm-self-face.has-logo img { width: 72%; height: 72%; object-fit: contain; }
 
 /* ------------------------------------------------------------ get ready */
 

@@ -109,6 +109,9 @@ B&B and may become a SaaS.
   `/manifest.webmanifest`. The phone app's notification panel is in `phone.js`.
 - Landing page "Call us now" buttons call a real line: `MINIVOIP_CALL_LINE`, default `ken` (Ken's own account);
   hidden if that line doesn't exist. Tests must never press Call on it: it rings Ken's phone.
+- Logos: `line.logo`, files in `data/logos/` (`store/logos.go`), served at `/logo/<name>` (`web/logo.go`). Asked on
+  "create your line" (optional), changed on the dashboard (`POST /dashboard/logo`, `/dashboard/logo/remove`).
+  `faceBadge` in `pages/call.templ` shows it, else the initials; the stage gets it as `logo` (meet.js).
 - Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
   `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. Promo codes (each gives a plan) and the
   Accounts list, where Ken moves an account between Basic and Premium.

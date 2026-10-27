@@ -63,8 +63,9 @@ voice in the middle, B answers first, C like a text conversation).
   #f4f4f5, ink buttons, red #d33a2c only for hang up and recording. The voice wave lights up in the logo's
   colours; the word being said is on peach #ffe4d6, words still to come grey #76767c. Always light. The page has
   its own bare layout (`layouts.Plain`): no site CSS, htmx or component scripts.
-- **The business's face:** its initials on an ink square (`initials`), its logo later. No business colour yet: the
-  mocks' green was only an example of one.
+- **The business's face:** its logo (`line.logo`, on white with a hairline ring, never cropped), else its initials on an
+  ink square (`initials`); the same in the meeting room and as the owner's face on the stage (`faceBadge`). Asked
+  when the line is made, changed on the dashboard (Ken, 2026-10-27). No business colour or background yet (parked).
 - **Phone:** the whole screen. **Computer:** one 400px white panel on the grey ground, the size of the corner panel it
   will become on a business's website.
 - **Steps, one view each:** Start (name, big ink "Call us" button, a line that the browser will ask for the
@@ -108,7 +109,8 @@ One look for the call window, the owner's app and the meeting room (`assets/css/
 dark tiles (#18181b, 18px radius) on whatever page holds them; a person without a camera is their initials on a
 grey circle; names in a small dark pill at the bottom left, with a red crossed mic when muted. Two people: the other
 fills the stage, me in a small corner tile (only with my camera on, mirrored). Three or more: a grid. A screen or the
-whiteboard fills the stage (the newest one), with the others small and everyone in a strip under it; a click on a
+whiteboard fills the stage (the newest one), with the others small and, under it, only the people whose camera is on
+(Ken, 2026-10-27: empty tiles were noise); a click on a
 small screen or the whiteboard makes it fill the stage. My own screen shows small as "Your screen" with a red
 "Stop sharing" on it, never big unless I click it (a full-size copy of my screen repeats itself); Ken asked for this
 after his first test, 2026-10-26. The whiteboard is white paper with a faint dot grid (16:10, it

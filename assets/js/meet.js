@@ -6,9 +6,10 @@
 // offer. The data channel carries who has what on and the whiteboard's
 // strokes. The server never sees any of it.
 //
-//   var s = MinivoipMeet.Session({ stage: el, me: { name, initials }, mic: stream, onChange: fn,
+//   var s = MinivoipMeet.Session({ stage: el, me: { name, initials, logo }, mic: stream, onChange: fn,
 //                                  camera: track, muted: bool });  // the last two optional
-//   var link = s.link(id, pc, { name, initials, onAudio: fn });  // before the offer or the answer
+//   var link = s.link(id, pc, { name, initials, logo, onAudio: fn });  // before the offer or the answer
+//   (logo: the business's logo URL, the owner's face instead of initials)
 //   link.offer() / link.answer(sdp)  -> the local description's SDP
 //   s.camera(), s.screen(), s.board(), s.mute(on), s.drop(id), s.end()
 //   MinivoipMeet.cameraError(err, blockedText): why the camera didn't start
@@ -197,9 +198,9 @@
 
   // people is everyone on the stage, me first.
   Session.prototype.people = function () {
-    var list = [{ key: "me", self: true, name: this.me.name, initials: this.me.initials, track: this.cam, muted: this.muted }];
+    var list = [{ key: "me", self: true, name: this.me.name, initials: this.me.initials, logo: this.me.logo, track: this.cam, muted: this.muted }];
     this.each(function (l) {
-      list.push({ key: "p:" + l.id, name: l.name, initials: l.initials, track: l.showCamera() ? l.tracks[CAMERA] : null, muted: l.muted, lost: l.lost });
+      list.push({ key: "p:" + l.id, name: l.name, initials: l.initials, logo: l.logo, track: l.showCamera() ? l.tracks[CAMERA] : null, muted: l.muted, lost: l.lost });
     });
     return list;
   };
@@ -256,8 +257,20 @@
     t.box.classList.toggle("is-screen", !!p.screen);
     t.box.classList.toggle("is-board", !!p.board);
     t.box.classList.toggle("is-lost", !!p.lost);
-    if (p.initials) t.face.textContent = p.initials;
-    else t.face.innerHTML = p.icon || personIcon;
+    // The face: a logo, the initials, else an icon. Set only when it
+    // changes, so a logo doesn't reload on every render.
+    var face = p.logo ? "logo:" + p.logo : p.initials ? "text:" + p.initials : "icon:" + (p.icon ? "pen" : "person");
+    if (t.faceKey !== face) {
+      t.faceKey = face;
+      t.face.classList.toggle("has-logo", !!p.logo);
+      if (p.logo) {
+        var img = el("img");
+        img.src = p.logo;
+        img.alt = "";
+        t.face.replaceChildren(img);
+      } else if (p.initials) t.face.textContent = p.initials;
+      else t.face.innerHTML = p.icon || personIcon;
+    }
     t.label.innerHTML = "";
     if (p.muted) t.label.insertAdjacentHTML("beforeend", mutedIcon);
     t.label.append(p.label || (p.self ? "You" : p.lost ? p.name + " · reconnecting…" : p.name));
@@ -311,9 +324,14 @@
         // (only with my camera on).
         if (!p.self) wantMain.push(t.box);
         else if (p.track) { t.box.classList.add("is-pip"); wantMain.push(t.box); }
-      } else {
+      } else if (layout === "grid") {
         t.box.classList.remove("is-pip");
-        (layout === "grid" ? wantMain : wantStrip).push(t.box);
+        wantMain.push(t.box);
+      } else if (p.track) {
+        // Under a screen or the whiteboard: only people with their camera
+        // on; the others are just voices, and the screen gets the room.
+        t.box.classList.remove("is-pip");
+        wantStrip.push(t.box);
       }
       if (layout !== "pair") t.box.classList.remove("is-pip");
     });
@@ -350,6 +368,7 @@
     l.pc = pc;
     l.name = info.name || "Guest";
     l.initials = info.initials || "";
+    l.logo = info.logo || "";
     l.onAudio = info.onAudio || function () {};
     l.state = {};
     l.tracks = [null, null];

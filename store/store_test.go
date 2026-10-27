@@ -1,7 +1,10 @@
 package store
 
 import (
+	"bytes"
 	"errors"
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,6 +122,7 @@ func TestPlansMigration(t *testing.T) {
 	s.db.Exec("PRAGMA user_version = 7")
 	s.db.Exec("ALTER TABLE account DROP COLUMN plan")
 	s.db.Exec("ALTER TABLE promo_code DROP COLUMN plan")
+	s.db.Exec("ALTER TABLE line DROP COLUMN logo")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)
@@ -336,4 +340,53 @@ func TestAvailable(t *testing.T) {
 	if l, _ := s.LineForAccount(u.AccountID); l.AwayUntil == "" {
 		t.Fatal("the line reads away_until")
 	}
+}
+
+func TestLogo(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	if err := s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B"); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{"", "hello, not a picture", "\x89PNG\r\n\x1a\nbroken"} {
+		if err := s.SetLogo(u.AccountID, strings.NewReader(bad)); !errors.Is(err, ErrBadLogo) {
+			t.Errorf("SetLogo(%q) = %v, want ErrBadLogo", bad, err)
+		}
+	}
+	if err := s.SetLogo(u.AccountID, bytes.NewReader(tinyPNG(t))); err != nil {
+		t.Fatal(err)
+	}
+	l, _ := s.LineByName("joesbnb")
+	first := s.LogoPath(l.Logo)
+	if first == "" || !strings.HasSuffix(l.Logo, ".png") {
+		t.Fatalf("logo name %q", l.Logo)
+	}
+	if _, err := os.Stat(first); err != nil {
+		t.Fatal(err)
+	}
+	// A new logo replaces the old file; removing it leaves none.
+	s.SetLogo(u.AccountID, bytes.NewReader(tinyPNG(t)))
+	if _, err := os.Stat(first); !os.IsNotExist(err) {
+		t.Errorf("old logo still there: %v", err)
+	}
+	l, _ = s.LineByName("joesbnb")
+	second := s.LogoPath(l.Logo)
+	if err := s.RemoveLogo(u.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	l, _ = s.LineByName("joesbnb")
+	if _, err := os.Stat(second); l.Logo != "" || !os.IsNotExist(err) {
+		t.Errorf("after remove: logo %q, file %v", l.Logo, err)
+	}
+	if s.LogoPath("../test.db") != "" {
+		t.Error("LogoPath takes any name")
+	}
+}
+
+func tinyPNG(t *testing.T) []byte {
+	var b bytes.Buffer
+	if err := png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 4, 4))); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
 }

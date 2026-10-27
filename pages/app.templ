@@ -422,7 +422,7 @@ templ Phone(d AppData) {
 	@layouts.Base("minivoip", "") {
 		<link rel="stylesheet" href="/assets/css/app.css"/>
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
-		<div class="ap" data-phone data-android-latest={ d.Android } data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) }>
+		<div class="ap" data-phone data-android-latest={ d.Android } data-line={ d.Line.Name } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) } data-me-logo={ logoURL(d.Line) }>
 			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
 			if d.Line.Premium {
 				<a class="ap-room-alert" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-alert hidden={ len(d.RoomWaiting) == 0 } role="status">

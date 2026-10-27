@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -31,10 +32,18 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request, u store.User)
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, baseURL(r)+"/room/"+l.Name, s.Store.NewVoicemails(u.AccountID), s.planText(u.AccountID)))
+	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, baseURL(r)+"/room/"+l.Name, s.Store.NewVoicemails(u.AccountID), s.planText(u.AccountID), r.URL.Query().Get("logo")))
 }
 
 func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User) {
+	// A logo comes with the form; one too big to read is a bad logo.
+	r.Body = http.MaxBytesReader(w, r.Body, store.MaxLogoBytes+1<<20)
+	var tooBig *http.MaxBytesError
+	if err := r.ParseMultipartForm(1 << 20); errors.As(err, &tooBig) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		render(w, r, pages.NewLine(u.Email, pages.LineForm{Host: r.Host, Error: store.ErrBadLogo.Error() + " Or skip it: you can add it later."}))
+		return
+	}
 	f := pages.LineForm{
 		Name:     strings.ToLower(strings.TrimSpace(r.FormValue("name"))),
 		Business: strings.TrimSpace(r.FormValue("business")),
@@ -44,8 +53,12 @@ func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User
 	if !custom {
 		f.Name = lines.Suggest(f.Business)
 	}
+	logo, logoErr := logoFile(r)
 	if f.Business == "" {
 		f.Error = "Write your business name."
+	} else if logoErr != nil {
+		f.Error = store.ErrBadLogo.Error() + " Or skip it: you can add it later."
+		f.Custom = custom
 	} else if err := lines.CheckName(f.Name); err != nil {
 		f.Error = err.Error()
 		f.Custom = true
@@ -63,6 +76,12 @@ func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User
 			serverError(w, r, err)
 			return
 		default:
+			if logo != nil {
+				if err := s.Store.SetLogo(u.AccountID, bytes.NewReader(logo)); err != nil {
+					serverError(w, r, err)
+					return
+				}
+			}
 			http.Redirect(w, r, "/dashboard/menu", http.StatusSeeOther)
 			return
 		}

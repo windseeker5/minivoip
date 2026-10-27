@@ -187,6 +187,18 @@ for (const [name, vw, vh] of [["phone", 390, 844], ["desk", 1280, 860]]) {
   await owner.click('[data-board="close"]');
   check(await until(async () => !(await stage(visitor)).board), `${name}: Close closes the board for both`);
 
+  // Nobody's camera on: the whiteboard gets the whole stage, no empty tiles under it (Ken, 2026-10-27).
+  await owner.click('[data-action="camera"]');
+  await visitor.click('[data-action="camera"]');
+  await visitor.click('[data-action="board"]');
+  const bare = async (p) => (await p.isVisible(".mv-main .mv-board")) && (await p.locator(".mv-strip > *").count()) === 0;
+  check(await until(() => bare(visitor)) && await until(() => bare(owner)), `${name}: without cameras, nobody's tile shows under the whiteboard`);
+  await visitor.mouse.move(5, 5);
+  await visitor.waitForTimeout(700);
+  await visitor.screenshot({ path: `${SHOTS}/meet-${name}-board-nocam.png` });
+  await visitor.click('[data-action="board"]');
+  check(await until(async () => !(await stage(owner)).board), `${name}: the whiteboard closes again`);
+
   // Mute shows on the other side.
   await visitor.click('[data-action="mute"]');
   check(await until(async () => (await owner.locator('.mv-tile[data-tile="p:c1"] .mv-name svg').count()) === 1), `${name}: the owner sees the visitor is muted`);

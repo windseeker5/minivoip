@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy. `main` has everything up to PR #8 (calls, the owner's app, the Android app 0.3, the landing page, the call window, Premium video and meeting room, plans, logos, the website Call button). Branch `security-limits` (not pushed): limits on calls, room knocks, voicemails, wrong passwords and sign ups (`web/limits.go`). Plan and progress: `docs/plan.md` "Where we are".
-- Next action: Ken says "ship it" for `security-limits`. Then from `docs/plan.md`: the container and home server. Maybe later: a "verify you're human" check (outside service, Ken's call), limits on the relay. Open: the landing page still says Premium is "coming soon"; no payments yet. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-28. Built the limits; all tests pass: `go vet`, `go test`, `site.mjs` (new "limits" step), `call.mjs` (the "try again later" screen), `meet.mjs`, `app.mjs`.
+- Status: healthy. `main` has everything up to PR #8 (calls, the owner's app, the Android app 0.3, the landing page, the call window, Premium video and meeting room, plans, logos, the website Call button). Limits (PR #10, merged 2026-10-29): on calls, room knocks, voicemails, wrong passwords and sign ups (`web/limits.go`). Plan and progress: `docs/plan.md` "Where we are".
+- Next action: from `docs/plan.md`, the container and home server. Maybe later: a "verify you're human" check (outside service, Ken's call), limits on the relay. Open: the landing page still says Premium is "coming soon"; no payments yet. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-29. Shipped the limits (PR #10); all tests pass: `go vet`, `go test`, `site.mjs` (new "limits" step), `call.mjs` (the "try again later" screen), `meet.mjs`, `app.mjs`.
 
 ## Rules
 

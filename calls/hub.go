@@ -5,12 +5,13 @@
 //
 // Visitor -> server: call, voicemail, offer, ice, hangup
 // Owner   -> server: hello, accept, decline, answer, ice, hangup
-// Server  -> visitor: ringing, busy, accepted, no-answer, voicemail, answer, ice, hangup
+// Server  -> visitor: ringing, busy, accepted, no-answer, voicemail, limited, answer, ice, hangup
 // Server  -> owner:   ready, incoming, taken, missed, voicemail, offer, ice, hangup,
-//                    room (who waits in the meeting room, room.go)
+// room (who waits in the meeting room, room.go)
 //
 // "no-answer" and "voicemail" to the visitor carry a one-time token that lets
-// the browser upload one voicemail (UseVoicemailToken).
+// the browser upload one voicemail (UseVoicemailToken). "limited" instead
+// says this caller left enough messages for now (AllowVoicemail).
 package calls
 
 import (
@@ -41,6 +42,7 @@ type Message struct {
 type peer struct {
 	conn  *websocket.Conn
 	owner bool
+	req   *http.Request // who connected, for AllowCall and AllowVoicemail
 }
 
 func (p *peer) send(m Message) {
@@ -110,6 +112,12 @@ type Hub struct {
 	// Available switch). When not, callers go straight to voicemail. Nil
 	// means always.
 	Available func(line string) bool
+	// AllowCall says whether this caller may ring the line now (call
+	// limits, web/limits.go); when not, they're offered voicemail without
+	// ringing. AllowVoicemail says whether they may leave a message. Both
+	// run with the hub locked. Nil allows everything.
+	AllowCall      func(r *http.Request, line string) bool
+	AllowVoicemail func(r *http.Request, line string) bool
 
 	mu       sync.Mutex
 	lines    map[string]*line
@@ -170,7 +178,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	me := &peer{conn: conn, owner: role == "owner"}
+	me := &peer{conn: conn, owner: role == "owner", req: r}
 	if me.owner {
 		h.mu.Lock()
 		h.line(name).owners[me] = true
@@ -209,7 +217,13 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 			id := newID()
 			h.record(name, Record{ID: id, Option: m.Option, Outcome: "away", Started: now, Ended: now})
 			log.Printf("calls: %s: call %s while away, sent to voicemail", name, id)
-			me.send(Message{Type: "no-answer", ID: id, Token: h.issueToken(name, m.Option, id)})
+			me.send(h.offerVoicemail(name, me, "no-answer", m.Option, id))
+			return
+		}
+		if h.AllowCall != nil && !h.AllowCall(me.req, name) {
+			// Too many calls: no ring and no call history, just voicemail.
+			log.Printf("calls: %s: call limit reached, sent to voicemail", name)
+			me.send(h.offerVoicemail(name, me, "no-answer", m.Option, newID()))
 			return
 		}
 		c = &call{id: newID(), option: m.Option, visitor: me, started: time.Now()}
@@ -226,7 +240,7 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 
 	case !me.owner && m.Type == "voicemail":
 		// The caller picked a "take a voicemail" choice.
-		me.send(Message{Type: "voicemail", Token: h.issueToken(name, m.Option, "")})
+		me.send(h.offerVoicemail(name, me, "voicemail", m.Option, ""))
 
 	case me.owner && m.Type == "hello":
 		me.send(Message{Type: "ready"})
@@ -322,7 +336,7 @@ func (h *Hub) endUnanswered(name string, c *call, outcome string) {
 	h.record(name, Record{ID: c.id, Option: c.option, Outcome: outcome, Started: c.started, Ended: time.Now()})
 	l.current = nil
 	log.Printf("calls: %s: call %s not answered", name, c.id)
-	c.visitor.send(Message{Type: "no-answer", ID: c.id, Token: h.issueToken(name, c.option, c.id)})
+	c.visitor.send(h.offerVoicemail(name, c.visitor, "no-answer", c.option, c.id))
 	for o := range l.owners {
 		o.send(Message{Type: "missed", ID: c.id})
 	}
@@ -361,6 +375,17 @@ func (h *Hub) record(name string, r Record) {
 	if h.OnEnd != nil {
 		h.OnEnd(name, r)
 	}
+}
+
+// offerVoicemail is the message that lets a caller record a voicemail
+// (typ "no-answer" or "voicemail", with a pass), or "limited" when they left
+// enough messages for now. Caller holds h.mu.
+func (h *Hub) offerVoicemail(name string, to *peer, typ, option, callID string) Message {
+	if h.AllowVoicemail != nil && !h.AllowVoicemail(to.req, name) {
+		log.Printf("calls: %s: voicemail limit reached", name)
+		return Message{Type: "limited", ID: callID}
+	}
+	return Message{Type: typ, ID: callID, Token: h.issueToken(name, option, callID)}
 }
 
 // issueToken makes a one-time voicemail pass. Caller holds h.mu.

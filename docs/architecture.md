@@ -174,6 +174,25 @@ sequenceDiagram
     A->J: voice, cameras, screens, whiteboard: direct (or via the relay)
 ```
 
+## Limits against robots and pranks (2026-10-28)
+
+A call link is public, so anyone (robots too) can press Call. The server counts, per visitor address, in memory
+(`web/limits.go`, forgotten on restart):
+
+| What | Limit | Past it |
+|---|---|---|
+| A visitor ringing one line | 3 in 10 minutes | Voicemail without ringing, not in the call history |
+| Everyone ringing one line | 20 an hour | Same |
+| A guest knocking on a meeting room | 3 in 10 minutes | Still waits, but the owner's phone isn't woken again |
+| A visitor leaving messages on one line | 3 an hour | "Please try again later", no voicemail |
+| Everyone leaving messages on one line | 20 an hour | Same |
+| Wrong passwords from one visitor | 5 in 15 minutes | Waits 15 minutes, even with the right password |
+| New accounts from one visitor | 3 an hour | "Please try again in an hour" |
+
+The visitor's address comes from Caddy's `X-Forwarded-For` (Caddy writes it, so a visitor can't fake it). Visitors on
+the same machine or the home network aren't limited: the tests, and Ken's own phone. Not yet: a "verify you're
+human" check (an outside service, Ken's call) and limits on the relay.
+
 ## The voice menu
 The owner records each prompt. Every option points to one action:
 

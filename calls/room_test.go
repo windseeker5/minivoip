@@ -146,3 +146,23 @@ func TestRoomWaitingGuestLeaves(t *testing.T) {
 	roomExpect(t, owner, "welcome")
 	roomExpect(t, owner, "joined")
 }
+
+func TestRoomKnockLimit(t *testing.T) {
+	rs, srv := roomServer(t)
+	var mu sync.Mutex
+	knocks := 0
+	rs.OnKnock = func(line, name string) { mu.Lock(); knocks++; mu.Unlock() }
+	rs.AllowKnock = func(r *http.Request, line string) bool { return false }
+
+	// Past the limit the guest still waits, but the owner's phone stays quiet.
+	ana := enter(t, srv, "Ana", false)
+	roomExpect(t, ana, "waiting")
+	if w := rs.Waiting("joesbnb"); len(w) != 1 {
+		t.Fatalf("waiting = %v", w)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if knocks != 0 {
+		t.Fatalf("knocks = %d, want 0", knocks)
+	}
+}

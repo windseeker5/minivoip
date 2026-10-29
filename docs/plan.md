@@ -1,6 +1,6 @@
 # Build plan
 
-Last update: 2026-10-25 · Design: [architecture.md](architecture.md) · Goal: [vision.md](vision.md)
+Last update: 2026-10-28 · Design: [architecture.md](architecture.md) · Goal: [vision.md](vision.md)
 
 ## Where we are (2026-10-24)
 - **Works end to end:** a visitor clicks "Call us", hears the owner's voice menu, and talks to the owner or leaves a
@@ -22,7 +22,9 @@ Last update: 2026-10-25 · Design: [architecture.md](architecture.md) · Goal: [
   meeting room are Premium only. A promo code gives the plan Ken picks; his admin page switches any account. No
   payments yet: everyone is free in the beta.
 - **Next, most important first:**
-  1. **Security:** anyone who knows a call link can call, robots too.
+  1. **Security:** step 1 done 2026-10-28 (branch `security-limits`): limits on calls, room knocks, voicemails,
+     wrong passwords and sign ups ([architecture.md](architecture.md) "Limits against robots and pranks"). Maybe
+     later: a "verify you're human" check, limits on the relay.
   2. Container and home server (Phase 6).
   3. **iPhone app** that rings, last (Ken, 2026-10-24): until then iPhone owners use the web app with a short
      warning. Same idea as Android: Apple's call screen; $99 USD a year Apple account, built on a rented Mac; the

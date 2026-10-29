@@ -816,6 +816,65 @@ try {
   await owner.fill("#password", "e2e-password");
   await owner.click("main button[type=submit]");
   await owner.waitForURL(/\/dashboard/);
+
+  // Limits (web/limits.go). Visitors on this machine aren't limited, so each
+  // check comes from a made-up visitor address in X-Forwarded-For, as Caddy
+  // would send it.
+  step = "limits";
+  {
+    const visitorAddr = () => `2001:db8::${randomBytes(6).toString("hex").match(/.{4}/g).join(":")}`;
+    const as = async (addr) => {
+      const ctx = await browser.newContext({ extraHTTPHeaders: { "X-Forwarded-For": addr } });
+      return { ctx, page: await ctx.newPage() };
+    };
+    // Log in: 5 wrong passwords, then that visitor waits, even with the right one.
+    const guesser = await as(visitorAddr());
+    const logIn = (who, password) => who.ctx.request.post(BASE + "/login", { form: { email: EMAIL, password }, maxRedirects: 0 });
+    const wrong = [];
+    for (let i = 0; i < 5; i++) wrong.push((await logIn(guesser, "not-the-password")).status());
+    const blocked = await logIn(guesser, "e2e-password");
+    check(wrong.every((s) => s === 422) && blocked.status() === 429 && (await blocked.text()).includes("Too many wrong passwords"),
+      `after 5 wrong passwords that visitor waits 15 minutes (${wrong.join(",")} then ${blocked.status()})`);
+    const someoneElse = await as(visitorAddr());
+    check((await logIn(someoneElse, "e2e-password")).status() === 303, "another visitor still logs in");
+    // Sign up: 3 new accounts an hour from one visitor.
+    const maker = await as(visitorAddr());
+    const made = [];
+    for (let i = 1; i <= 4; i++) {
+      made.push((await maker.ctx.request.post(BASE + "/signup", { form: { email: `e2e-${stamp}-limit${i}@example.com`, password: "e2e-password" }, maxRedirects: 0 })).status());
+    }
+    check(made.join(",") === "303,303,303,429", `a 4th account in an hour from one visitor is refused (${made.join(",")})`);
+    // Calls: 3 rings in 10 minutes, then voicemail without ringing.
+    const ringer = await as(visitorAddr());
+    await ringer.page.goto(BASE + "/login");
+    const ask = (m) => ringer.page.evaluate(({ line, m }) => new Promise((ok, fail) => {
+      let answer;
+      const ws = new WebSocket(location.origin.replace(/^http/, "ws") + "/ws?role=visitor&line=" + line);
+      ws.onopen = () => ws.send(JSON.stringify(m));
+      ws.onmessage = (e) => {
+        answer = JSON.parse(e.data);
+        if (answer.type === "ringing") ws.send(JSON.stringify({ type: "hangup", id: answer.id }));
+        ws.close();
+      };
+      ws.onclose = () => (answer ? ok(answer) : fail(new Error("the socket closed without an answer")));
+      setTimeout(() => fail(new Error("no answer")), 5000);
+    }), { line: LINE, m });
+    const rings = [];
+    for (let i = 0; i < 4; i++) rings.push((await ask({ type: "call", option: "Limits" })).type);
+    check(rings.join(",") === "ringing,ringing,ringing,no-answer", `a 4th call in 10 minutes goes to voicemail without ringing (${rings.join(",")})`);
+    // Messages: 3 an hour from one visitor. Four passes first, then four uploads.
+    const passes = [];
+    for (let i = 0; i < 4; i++) passes.push((await ask({ type: "voicemail", option: "Limits" })).token);
+    const sent = [];
+    for (const token of passes) {
+      sent.push((await ringer.ctx.request.post(BASE + "/api/voicemail", { multipart: { token, duration_ms: "1000", audio: { name: "m.webm", mimeType: "audio/webm", buffer: Buffer.from("e2e message") } } })).status());
+    }
+    check(sent.join(",") === "204,204,204,429", `a 4th message in an hour is refused (${sent.join(",")})`);
+    const more = await ask({ type: "voicemail", option: "Limits" });
+    check(more.type === "limited" && !more.token, "and the call page is told to try later, with no voicemail pass");
+    for (const v of [guesser, someoneElse, maker, ringer]) await v.ctx.close();
+  }
+
   step = "log out";
   await owner.goto(BASE + "/dashboard");
   await owner.click("header button[type=submit]");

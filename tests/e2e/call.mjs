@@ -200,6 +200,30 @@ for (const [name, w, h] of [["phone", 390, 844], ["desk", 1280, 860]]) {
   await page.waitForFunction(() => /Message sent/.test(document.querySelector("[data-end-title]").textContent), null, { timeout: 10000 });
   check(true, `${name}: "Try sending again" sends the same message`);
 
+  // Limits (web/limits.go): enough messages for now.
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.click('[data-key="1"]');
+  await waitState(page, "ringing");
+  sock.ws.send(JSON.stringify({ type: "limited", id: "c1" }));
+  await waitState(page, "ended");
+  check(/try again later/.test(await page.textContent("[data-end-title]")), `${name}: past the limit, no voicemail: "Please try again later"`);
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.click('[data-key="1"]');
+  await waitState(page, "ringing");
+  sock.ws.send(JSON.stringify({ type: "no-answer", id: "c1", token: "t3" }));
+  await waitState(page, "recording", 15000);
+  await page.waitForTimeout(1200);
+  vmStatus = 429;
+  await page.click('[data-action="send-message"]');
+  await waitState(page, "ended", 10000);
+  check(/try again later/.test(await page.textContent("[data-end-title]")) && !(await page.isVisible('[data-action="retry-send"]')),
+    `${name}: a message refused by the limit says to try later, without "Try sending again"`);
+  await settle(page);
+  await page.screenshot({ path: `${SHOTS}/call-${name}-8-limited.png` });
+  vmStatus = 204;
+
   // Answered: connecting, then the talking view with Mute.
   await page.click('[data-action="call"]:visible');
   await waitState(page, "menu");

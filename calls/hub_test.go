@@ -2,6 +2,7 @@ package calls
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -231,4 +232,43 @@ func TestDeclineFromOutside(t *testing.T) {
 	if h.Decline("joesbnb", id) {
 		t.Fatal("declined twice")
 	}
+}
+
+func TestLimits(t *testing.T) {
+	h := NewHub(func(string) bool { return true })
+	ended := records(h)
+	calls, messages := true, true
+	h.AllowCall = func(r *http.Request, line string) bool { return calls }
+	h.AllowVoicemail = func(r *http.Request, line string) bool { return messages }
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	owner := ready(t, srv)
+	visitor := dial(t, srv, "visitor")
+
+	// Too many calls: no ring, no call history, voicemail instead.
+	calls = false
+	send(t, visitor, Message{Type: "call"})
+	if m := expect(t, visitor, "no-answer"); m.Token == "" {
+		t.Fatalf("a limited call is offered voicemail: %+v", m)
+	}
+	send(t, owner, Message{Type: "hello"})
+	expect(t, owner, "ready") // and no "incoming" before it
+	select {
+	case r := <-ended:
+		t.Fatalf("a limited call isn't in the call history: %+v", r)
+	default:
+	}
+
+	// Too many messages: "limited", without a voicemail pass.
+	messages = false
+	send(t, visitor, Message{Type: "voicemail"})
+	if m := expect(t, visitor, "limited"); m.Token != "" {
+		t.Fatalf("limited = %+v", m)
+	}
+	calls = true
+	send(t, visitor, Message{Type: "call"})
+	id := expect(t, visitor, "ringing").ID
+	expect(t, owner, "incoming")
+	send(t, owner, Message{Type: "decline", ID: id})
+	expect(t, visitor, "limited")
 }

@@ -24,6 +24,10 @@ func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "This voicemail link has expired. Please call again.", http.StatusForbidden)
 		return
 	}
+	if s.voicemailFull(r, pass.Line) {
+		http.Error(w, "You left a few messages already. Please try again later.", http.StatusTooManyRequests)
+		return
+	}
 	file, header, err := r.FormFile("audio")
 	if err != nil {
 		http.Error(w, "No recording received.", http.StatusBadRequest)
@@ -43,6 +47,7 @@ func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
 		serverError(w, r, err)
 		return
 	}
+	s.voicemailSaved(r, pass.Line)
 	s.Hub.NotifyOwners(pass.Line, calls.Message{Type: "voicemail"})
 	if s.OnVoicemail != nil {
 		s.OnVoicemail(pass.Line)

@@ -41,6 +41,9 @@ type Server struct {
 	Relay RelayInfo
 	// Rooms are the lines' meeting rooms (/room/<line>).
 	Rooms *calls.Rooms
+	// Limits count calls, messages, log ins and sign ups (limits.go); Routes
+	// sets the agreed ones when nil.
+	Limits *Limits
 }
 
 // RelayInfo tells browsers how to reach the relay.
@@ -54,7 +57,13 @@ type ctxKey struct{}
 
 // Routes registers every page on mux.
 func (s *Server) Routes(mux *http.ServeMux) {
+	if s.Limits == nil {
+		s.Limits = NewLimits()
+	}
 	s.Hub.CanAnswer = s.canAnswer
+	s.Hub.AllowCall = s.allowCall
+	s.Hub.AllowVoicemail = func(r *http.Request, line string) bool { return !s.voicemailFull(r, line) }
+	s.Rooms.AllowKnock = s.allowKnock
 	s.Hub.Available = s.Store.Available
 	s.Hub.OnEnd = s.logCall
 	s.Rooms.IsOwner = s.canAnswer
@@ -238,6 +247,11 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case !s.sameSite(r):
 		f.Error = "This form came from another site."
+	case s.signupFull(r):
+		f.Error = "Too many new accounts from your connection. Please try again in an hour."
+		w.WriteHeader(http.StatusTooManyRequests)
+		render(w, r, pages.Signup(f))
+		return
 	case !strings.Contains(f.Email, "@"):
 		f.Error = "Enter your email address."
 	case len(password) < 8:
@@ -254,6 +268,7 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 			serverError(w, r, err)
 			return
 		default:
+			s.signedUp(r)
 			if err := s.startSession(w, r, u); err != nil {
 				serverError(w, r, err)
 				return
@@ -281,12 +296,17 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	f := pages.AccountForm{Email: strings.TrimSpace(r.FormValue("email")), Next: r.FormValue("next")}
+	status := http.StatusUnprocessableEntity
 	if !s.sameSite(r) {
 		f.Error = "This form came from another site."
+	} else if s.loginBlocked(r) {
+		f.Error = "Too many wrong passwords. Please wait 15 minutes, then try again."
+		status = http.StatusTooManyRequests
 	} else {
 		u, err := s.Store.Login(f.Email, r.FormValue("password"))
 		switch {
 		case errors.Is(err, store.ErrBadLogin):
+			s.wrongPassword(r)
 			f.Error = "Wrong email or password."
 		case err != nil:
 			serverError(w, r, err)
@@ -300,7 +320,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.WriteHeader(http.StatusUnprocessableEntity)
+	w.WriteHeader(status)
 	if strings.HasPrefix(f.Next, "/app") {
 		render(w, r, pages.AppLogin(f))
 		return

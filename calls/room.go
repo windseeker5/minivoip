@@ -51,6 +51,7 @@ type RoomPeer struct {
 type member struct {
 	RoomPeer
 	conn *websocket.Conn
+	req  *http.Request // who connected, for AllowKnock
 }
 
 func (m *member) send(msg RoomMessage) {
@@ -94,6 +95,10 @@ type Rooms struct {
 	// not block. Nil skips them.
 	OnWaiting func(line string, names []string)
 	OnKnock   func(line, name string)
+	// AllowKnock says whether this guest's knock may wake the owner's phone
+	// (limits, web/limits.go); when not, the guest still waits. It runs
+	// with the rooms locked. Nil allows every knock.
+	AllowKnock func(r *http.Request, line string) bool
 
 	mu    sync.Mutex
 	rooms map[string]*room
@@ -161,7 +166,7 @@ func (rs *Rooms) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(256 << 10) // offers with video are a few kB; keep it bounded
-	me := &member{RoomPeer: RoomPeer{ID: newID(), Owner: owner}, conn: conn}
+	me := &member{RoomPeer: RoomPeer{ID: newID(), Owner: owner}, conn: conn, req: r}
 	defer rs.leave(line, me)
 	for {
 		var m RoomMessage
@@ -186,7 +191,7 @@ func (rs *Rooms) handle(line string, me *member, m RoomMessage) {
 			r.waiting = append(r.waiting, me)
 			log.Printf("rooms: %s: %s is waiting", line, me.Name)
 			me.send(RoomMessage{Type: "waiting"})
-			if rs.OnKnock != nil {
+			if rs.OnKnock != nil && (rs.AllowKnock == nil || rs.AllowKnock(me.req, line)) {
 				rs.OnKnock(line, me.Name)
 			}
 			rs.waitingChanged(line, r)

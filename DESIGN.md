@@ -63,9 +63,10 @@ voice in the middle, B answers first, C like a text conversation).
   #f4f4f5, ink buttons, red #d33a2c only for hang up and recording. The voice wave lights up in the logo's
   colours; the word being said is on peach #ffe4d6, words still to come grey #76767c. Always light. The page has
   its own bare layout (`layouts.Plain`): no site CSS, htmx or component scripts.
-- **The business's face:** its logo (`line.logo`, on white with a hairline ring, never cropped), else its initials on an
+- **The business's face:** its logo (`line.logo`) filling its shape edge to edge (Ken, 2026-10-29: no white plate or ring), else its initials on an
   ink square (`initials`); the same in the meeting room and as the owner's face on the stage (`faceBadge`). Asked
-  when the line is made, changed on the dashboard (Ken, 2026-10-27). No business colour or background yet (parked).
+  when the line is made, changed on the dashboard (Ken, 2026-10-27). The owner frames it in a round guide, since
+  round places (the stage, the website button) cut the square's corners; transparent parts show white. No business colour or background yet (parked).
 - **Phone:** the whole screen. **Computer:** one 400px white panel on the grey ground, the size of the corner panel it
   will become on a business's website.
 - **Steps, one view each:** Start (name, big ink "Call us" button, a line that the browser will ask for the
@@ -90,7 +91,7 @@ https://claude.ai/artifact/GUgtWk5t9fAzWQMFrn9aUK. A pill in the bottom-right co
 styles and ours never mix; system fonts (the site's page doesn't load ours).
 
 - **Here** (Available switch on, a choice that rings, and a phone that can ring: an open app or one with push): ink
-  pill, the business's logo (else initials) on a white circle with a green dot that pulses, a phone icon, "Talk to us
+  pill, the business's logo filling a circle (else initials on white) with a green dot that pulses, a phone icon, "Talk to us
   now". A small white note above: "<Owner> is here. Talk to us now."
 - **Away:** white pill with a hairline ring, the logo greyed with a grey dot, a message icon, "Leave us a message";
   the note says "We're away. Our menu answers, or leave a message." The menu still plays (hours, links, answers):

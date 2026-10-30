@@ -117,7 +117,7 @@ B&B and may become a SaaS.
 - Logos: `line.logo`, files in `data/logos/` (`store/logos.go`), served at `/logo/<name>` (`web/logo.go`). Asked on
   "create your line" (optional), changed on the dashboard (`POST /dashboard/logo`, `/dashboard/logo/remove`).
   `faceBadge` in `pages/call.templ` shows it, else the initials; the stage gets it as `logo` (meet.js). The owner
-  frames the picture in a crop window first (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
+  frames the picture in a crop window first (a round guide; the logo fills its shape everywhere) (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
   1.6.2 copied into `assets/vendor/`, as in minipass); the browser sends a 512 px WebP, so big photos are fine.
 - Limits against robots (`web/limits.go`, `Limits`): calls, room knocks, voicemails, wrong passwords and sign ups,
   counted per visitor address in memory (the hub's `AllowCall`/`AllowVoicemail`, the rooms' `AllowKnock`). The address

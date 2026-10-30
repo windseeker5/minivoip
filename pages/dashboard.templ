@@ -100,7 +100,7 @@ templ NewLine(email string, f LineForm) {
 			</div>
 			@formField("logo", "Your logo (optional)") {
 				<div class="flex items-center gap-3">
-					<img data-logo-preview hidden alt="Your logo, framed" class="size-14 flex-none rounded-xl bg-white object-contain ring-1 ring-border"/>
+					<img data-logo-preview hidden alt="Your logo, framed" class="size-14 flex-none rounded-xl bg-white object-cover"/>
 					@input.Input(input.Props{ID: "logo", Name: "logo", Type: "file", Accept: logoAccept, Attributes: templ.Attributes{"data-logo-input": ""}})
 				</div>
 				<p class="text-sm text-destructive" data-logo-error hidden role="alert"></p>
@@ -143,11 +143,11 @@ const logoHint = "Callers see it when they call you and in your meeting room. Pi
 // (assets/js/logo.js, with Cropper.js).
 templ logoCrop() {
 	<link rel="stylesheet" href="/assets/vendor/cropperjs-1.6.2/cropper.min.css"/>
-	<style>[data-logo-crop] .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; } [data-logo-crop] .cropper-line, [data-logo-crop] .cropper-point { display: none; }</style>
+	<style>[data-logo-crop] .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; } [data-logo-crop] .cropper-line, [data-logo-crop] .cropper-point { display: none; } [data-logo-crop] .cropper-view-box, [data-logo-crop] .cropper-face { border-radius: 50%; }</style>
 	<dialog data-logo-crop aria-labelledby="logo-crop-title" class="m-auto w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/50">
 		<div class="px-5 pt-5">
 			<h2 id="logo-crop-title" class="font-semibold">Frame your logo</h2>
-			<p class="mt-1 text-sm text-muted-foreground">Drag to move it, zoom to fit. The square is what callers see.</p>
+			<p class="mt-1 text-sm text-muted-foreground">Drag to move it, zoom to fit. The circle is what callers see.</p>
 		</div>
 		<div class="mt-4 h-80 bg-muted">
 			<img data-logo-crop-img alt="" class="block max-w-full"/>
@@ -180,7 +180,7 @@ templ logoCrop() {
 // dashBadge is the business's logo (or initials) on the dashboard.
 templ dashBadge(l lines.Line, size string) {
 	if l.Logo != "" {
-		<span class={ "grid flex-none place-items-center overflow-hidden rounded-2xl bg-white ring-1 ring-border", size } data-logo-badge><img src={ logoURL(l) } alt={ l.Business + " logo" } class="size-[84%] object-contain"/></span>
+		<span class={ "grid flex-none place-items-center overflow-hidden rounded-2xl bg-white", size } data-logo-badge><img src={ logoURL(l) } alt={ l.Business + " logo" } class="size-full object-cover"/></span>
 	} else {
 		<span class={ "grid flex-none place-items-center rounded-2xl bg-foreground font-semibold text-background", size } aria-hidden="true">{ initials(l.Business) }</span>
 	}

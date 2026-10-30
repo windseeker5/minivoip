@@ -35,7 +35,7 @@
     ".btn:hover{transform:translateY(-1px)}.btn:active{transform:scale(.98)}" +
     ".btn:focus-visible,.x:focus-visible,.close:focus-visible{outline:2px solid #0c0c0d;outline-offset:3px}" +
     ".face{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:#fff;color:#0c0c0d;font-size:15px;font-weight:600}" +
-    ".face img{width:72%;height:72%;object-fit:contain;border-radius:4px}" +
+    ".face img{width:100%;height:100%;object-fit:cover;border-radius:50%}" +
     ".dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;box-sizing:border-box;border-radius:50%;background:#1f9d55;border:2.5px solid #0c0c0d;animation:pulse 1.8s ease-out infinite}" +
     "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(31,157,85,.55)}70%{box-shadow:0 0 0 9px rgba(31,157,85,0)}100%{box-shadow:0 0 0 0 rgba(31,157,85,0)}}" +
     ".btn svg{width:20px;height:20px;flex:none}" +

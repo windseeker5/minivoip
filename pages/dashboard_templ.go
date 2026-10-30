@@ -448,7 +448,7 @@ func NewLine(email string, f LineForm) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex items-center gap-3\"><img data-logo-preview hidden alt=\"Your logo, framed\" class=\"size-14 flex-none rounded-xl bg-white object-contain ring-1 ring-border\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex items-center gap-3\"><img data-logo-preview hidden alt=\"Your logo, framed\" class=\"size-14 flex-none rounded-xl bg-white object-cover\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -579,7 +579,7 @@ func logoCrop() templ.Component {
 			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<link rel=\"stylesheet\" href=\"/assets/vendor/cropperjs-1.6.2/cropper.min.css\"><style>[data-logo-crop] .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; } [data-logo-crop] .cropper-line, [data-logo-crop] .cropper-point { display: none; }</style><dialog data-logo-crop aria-labelledby=\"logo-crop-title\" class=\"m-auto w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/50\"><div class=\"px-5 pt-5\"><h2 id=\"logo-crop-title\" class=\"font-semibold\">Frame your logo</h2><p class=\"mt-1 text-sm text-muted-foreground\">Drag to move it, zoom to fit. The square is what callers see.</p></div><div class=\"mt-4 h-80 bg-muted\"><img data-logo-crop-img alt=\"\" class=\"block max-w-full\"></div><div class=\"flex items-center gap-2 px-5 pt-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<link rel=\"stylesheet\" href=\"/assets/vendor/cropperjs-1.6.2/cropper.min.css\"><style>[data-logo-crop] .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; } [data-logo-crop] .cropper-line, [data-logo-crop] .cropper-point { display: none; } [data-logo-crop] .cropper-view-box, [data-logo-crop] .cropper-face { border-radius: 50%; }</style><dialog data-logo-crop aria-labelledby=\"logo-crop-title\" class=\"m-auto w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/50\"><div class=\"px-5 pt-5\"><h2 id=\"logo-crop-title\" class=\"font-semibold\">Frame your logo</h2><p class=\"mt-1 text-sm text-muted-foreground\">Drag to move it, zoom to fit. The circle is what callers see.</p></div><div class=\"mt-4 h-80 bg-muted\"><img data-logo-crop-img alt=\"\" class=\"block max-w-full\"></div><div class=\"flex items-center gap-2 px-5 pt-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -732,7 +732,7 @@ func dashBadge(l lines.Line, size string) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if l.Logo != "" {
-			var templ_7745c5c3_Var28 = []any{"grid flex-none place-items-center overflow-hidden rounded-2xl bg-white ring-1 ring-border", size}
+			var templ_7745c5c3_Var28 = []any{"grid flex-none place-items-center overflow-hidden rounded-2xl bg-white", size}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var28...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -757,7 +757,7 @@ func dashBadge(l lines.Line, size string) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(logoURL(l))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 183, Col: 153}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 183, Col: 134}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 			if templ_7745c5c3_Err != nil {
@@ -770,13 +770,13 @@ func dashBadge(l lines.Line, size string) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(l.Business + " logo")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 183, Col: 182}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 183, Col: 163}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" class=\"size-[84%] object-contain\"></span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" class=\"size-full object-cover\"></span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

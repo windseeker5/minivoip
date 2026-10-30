@@ -110,8 +110,11 @@ B&B and may become a SaaS.
 - The Call button for a business's website: `assets/js/w.js`, served at `/w.js` (`main.go`); the dashboard shows
   the line to paste. It reads `GET /api/status/<line>` (`web/status.go`: `here` = Available, a ringing choice, and an
   open app or a push device; `pages.Presence`), and so does the call page (`data-here`, `cw-if-here`/`cw-if-away`).
-  On a computer the call page opens in an iframe panel; call.js tells it to close or grow (`postMessage`).
-  Tested by `site.mjs` ("website button": a fake business site on another port, a real call from the panel).
+  On a computer the call page opens in a modal `<dialog>` with an iframe (dimmed, blurred page behind); call.js
+  tells it to close, grow, or that a call is on (`postMessage` "close", "stage", "busy"). Links with
+  `data-minivoip-call` open it too: the landing page loads `/w.js` for Ken's line. Tested by `site.mjs` ("website
+  button": a fake business site on another port, a real call from the window; "landing": the window opens, Call is
+  never pressed).
 - Landing page "Call us now" buttons call a real line: `MINIVOIP_CALL_LINE`, default `ken` (Ken's own account);
   hidden if that line doesn't exist. Tests must never press Call on it: it rings Ken's phone.
 - Logos: `line.logo`, files in `data/logos/` (`store/logos.go`), served at `/logo/<name>` (`web/logo.go`). Asked on

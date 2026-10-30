@@ -67,8 +67,8 @@ voice in the middle, B answers first, C like a text conversation).
   ink square (`initials`); the same in the meeting room and as the owner's face on the stage (`faceBadge`). Asked
   when the line is made, changed on the dashboard (Ken, 2026-10-27). The owner frames it in a round guide, since
   round places (the stage, the website button) cut the square's corners; transparent parts show white. No business colour or background yet (parked).
-- **Phone:** the whole screen. **Computer:** one 400px white panel on the grey ground, the size of the corner panel it
-  will become on a business's website.
+- **Phone:** the whole screen. **Computer:** one 400px white panel on the grey ground, the size of the call window it
+  becomes on a business's website.
 - **Steps, one view each:** Start (name, big ink "Call us" button, a line that the browser will ask for the
   microphone) → the menu (wave, the words written out as they're said, the choices as big buttons that light up
   when the voice names them, a quiet Hang up; a "play" answer is written out and the menu stays) → Ringing (rings
@@ -97,9 +97,16 @@ styles and ours never mix; system fonts (the site's page doesn't load ours).
   the note says "We're away. Our menu answers, or leave a message." The menu still plays (hours, links, answers):
   a ringing choice says "Away now: leave a message" and goes to voicemail.
 - The note has an ×, remembered for the visit; it's hidden on phones. The status is read again every minute.
-- **Click:** on a computer, the call page opens in a 400px panel above the button (it grows to almost the whole
-  window while a camera, a screen or the whiteboard is on; × or the call page's Back closes it and ends the call);
-  on a phone, the call page takes the whole screen.
+- **Click:** on a computer, the call page opens in a 400px window in the middle of the page (Ken, 2026-10-29), a
+  modal dialog: the page behind is dimmed (ink at 45%) and blurred (6px) and doesn't scroll; the window rises in. It
+  grows to almost the whole page while a camera, a screen or the whiteboard is on. × closes it (and ends a call);
+  Esc or a click on the dimmed page close it too, but never while a call is on. The call page's own back arrow is
+  hidden there (the × is in that corner); its "Back to the website" at the end closes it. On a phone, the call page
+  takes the whole screen.
+- The site's own links can open the same window: any element with `data-minivoip-call`. While one of them is on
+  screen, the corner button fades aside, so two call buttons never sit on top of each other (on a phone it covered
+  the hero's). The minivoip landing page uses it: our own button in the corner, and its "Call us now" buttons open
+  the window (Ken's line).
 - **The call page** says it too: under the name a green "<Owner> is here" or a grey "Away right now", and the big
   button reads "Hear our menu" (white, ink ring) when away.
 

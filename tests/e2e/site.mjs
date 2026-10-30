@@ -165,6 +165,17 @@ try {
     check(res.ok() && (await res.text()).includes('data-action="call"'), `"Call us now" opens a working call page (${callUs})`);
     const calls = await visitorSite.$$eval('a[href^="/call/"]', (as) => as.map((a) => a.getAttribute("href")));
     check(calls.length === 2 && calls.every((h) => h === callUs), `every "Call us now" on the landing page calls minivoip's own line (${calls.join(", ")})`);
+    // On a computer it opens our own call window over the page (w.js). Only
+    // the call page loads in it; Call is never pressed.
+    await until(async () => visitorSite.evaluate(() => { const m = document.querySelector("[data-minivoip]")?.shadowRoot?.querySelector(".mv"); return m && !m.hidden; }));
+    await visitorSite.click("[data-call-us]");
+    const landingCall = await until(async () => visitorSite.frames().find((f) => f.url().endsWith(callUs)), 10000);
+    check(!!landingCall && visitorSite.context().pages().length === 1, `"Call us now" opens the call window over the landing page, not a new tab`);
+    if (landingCall) await landingCall.waitForSelector('[data-action="call"]:visible');
+    await visitorSite.waitForTimeout(500);
+    await visitorSite.screenshot({ path: `${SHOTS}/landing-call.png` });
+    await visitorSite.click(".close");
+    check(await until(async () => visitorSite.frames().length === 1), "× closes it");
   } else {
     check(await visitorSite.isVisible('a[href="#how"]'), "without a real line, the hero offers how it works");
   }
@@ -545,7 +556,8 @@ try {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>E2E Shop</title>
       <style>body{margin:0;font:16px Georgia,serif;background:#f7f4ee;color:#23302a}h1{font-size:56px;margin:120px 72px 0}button{all:unset}</style></head>
-      <body><h1>E2E Shop, a business website</h1><p style="margin:16px 72px">Its own styles must not touch the button.</p>${snippet}</body></html>`);
+      <body><h1>E2E Shop, a business website</h1><p style="margin:16px 72px">Its own styles must not touch the button.</p>
+      <p style="margin:1600px 72px 400px"><a id="own-link" href="${BASE}/call/${LINE}" data-minivoip-call>Call us</a></p>${snippet}</body></html>`);
   });
   await new Promise((r) => bizSite.listen(0, "127.0.0.1", r));
   const BIZ = `http://127.0.0.1:${bizSite.address().port}/`;
@@ -572,13 +584,24 @@ try {
   check(await until(async () => (await awayPage.evaluate(() => document.querySelector("[data-call]").dataset.here)) === "true", 40000),
     "an open call page sees the owner come back, without a reload");
   await awayPage.context().close();
-  // A computer: the call opens in a panel in the corner, and a real call works in it.
+  // A computer: the call opens in a window over the page, which dims and
+  // blurs behind it, and a real call works in it.
   await biz.reload();
   await until(async () => (await btnState(biz)) === "true");
   await biz.click(".btn");
   const panelFrame = await until(async () => biz.frames().find((f) => f.url().includes(`/call/${LINE}`)), 10000);
-  check(!!panelFrame, "a click opens the call page in a panel on the website");
+  check(!!panelFrame, "a click opens the call page in a window on the website");
+  const callWindow = () => biz.evaluate(() => {
+    const d = document.querySelector("[data-minivoip]").shadowRoot.querySelector(".panel");
+    return { open: d.open, modal: d.matches(":modal"), blur: getComputedStyle(d, "::backdrop").backdropFilter, scroll: document.documentElement.style.overflow };
+  });
+  // What the call page tells the window (busy while a call is on).
+  await biz.evaluate(() => { window.__said = []; window.addEventListener("message", (e) => window.__said.push(e.data)); });
+  const cw = await callWindow();
+  check(cw.open && cw.modal && /blur/.test(cw.blur) && cw.scroll === "hidden", `the window is modal: the page behind is dimmed, blurred and doesn't scroll (${JSON.stringify(cw)})`);
   await panelFrame.waitForSelector('[data-action="call"]:visible');
+  await biz.waitForTimeout(400);
+  await biz.screenshot({ path: `${SHOTS}/button-window.png` });
   await panelFrame.click('[data-action="call"]:visible');
   await panelFrame.waitForSelector('[data-key="1"]:visible');
   await panelFrame.click('[data-key="1"]');
@@ -587,10 +610,33 @@ try {
   check(await until(async () => (await panelFrame.evaluate(() => document.querySelector("[data-call]").dataset.state)) === "talking", 15000),
     "a call from the website's panel connects (microphone allowed in the panel)");
   await biz.screenshot({ path: `${SHOTS}/button-panel.png` });
+  await biz.mouse.click(30, 30);
+  await biz.waitForTimeout(300);
+  check((await callWindow()).open && (await panelFrame.evaluate(() => document.querySelector("[data-call]").dataset.state)) === "talking",
+    "a click on the dimmed page doesn't end a call");
   await panelFrame.click('[data-action="hangup"]:visible');
   await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
+  await panelFrame.waitForSelector('[data-show~="ended"]:visible');
+  await until(async () => biz.evaluate(() => window.__said.some((m) => m.type === "busy" && !m.on)));
+  await biz.mouse.click(30, 30);
+  check(await until(async () => biz.frames().length === 1) && (await callWindow()).scroll === "", "after the call, a click on the dimmed page closes the window and the page scrolls again");
+  // The site's own link opens it too, and the corner button steps aside
+  // while that link is on screen; × and Esc close it.
+  const aside = () => biz.evaluate(() => document.querySelector("[data-minivoip]").shadowRoot.querySelector(".mv").classList.contains("aside"));
+  check(!(await aside()), "the corner button shows while the site's own call link is off screen");
+  await biz.locator("#own-link").scrollIntoViewIfNeeded();
+  check(await until(async () => (await aside()) && !(await biz.locator(".btn").isVisible())), "and steps aside while the link is on screen");
+  await biz.click("#own-link");
+  check(await until(async () => (await callWindow()).open) && biz.context().pages().length === 1, "the site's own Call us link opens the same window");
   await biz.click(".close");
-  check(await until(async () => biz.frames().length === 1), "Close takes the panel away");
+  check(await until(async () => biz.frames().length === 1), "× closes the window");
+  await biz.evaluate(() => window.scrollTo(0, 0));
+  check(await until(async () => !(await aside())), "the corner button comes back once the link is scrolled away");
+  await biz.click(".btn");
+  await until(async () => (await callWindow()).open);
+  await biz.locator(".close").focus();
+  await biz.keyboard.press("Escape");
+  check(await until(async () => !(await callWindow()).open), "Esc closes the window when no call is on");
   await biz.context().close();
   // A phone: the call page takes the whole screen.
   const bizPhone = await newPage(390, 844);

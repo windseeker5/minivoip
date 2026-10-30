@@ -93,6 +93,11 @@ templ Home(loggedIn bool, line *lines.Line, site string) {
 			@finalCall(line)
 		</div>
 		<script src="/assets/js/landing.js" defer></script>
+		if line != nil {
+			// Our own Call button, as a business pastes it: the corner button,
+			// and "Call us now" opens the same call window over the page.
+			<script src="/w.js" data-line={ line.Name } async></script>
+		}
 	}
 }
 
@@ -150,7 +155,7 @@ templ hero(line *lines.Line) {
 				Get my free line
 			}
 			if line != nil {
-				<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-call-us class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">
+				<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-call-us data-minivoip-call class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">
 					@icon.Phone(icon.Props{Class: "size-4"})
 					Call us now, it's the real thing
 				</a>
@@ -402,7 +407,7 @@ templ finalCall(line *lines.Line) {
 			<div class="mt-9 flex flex-col items-center gap-3 sm:flex-row">
 				<a href="/signup" class="flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full bg-[var(--ink-fg)] px-7 sm:w-auto text-base font-semibold text-[var(--ink-bg)] transition-opacity hover:opacity-90">Get my free line</a>
 				if line != nil {
-					<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--ink-rule)] sm:w-auto transition-colors hover:bg-white/10">
+					<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-minivoip-call class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--ink-rule)] sm:w-auto transition-colors hover:bg-white/10">
 						@icon.Phone(icon.Props{Class: "size-4"})
 						Call us now
 					</a>

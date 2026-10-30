@@ -110,14 +110,17 @@ B&B and may become a SaaS.
 - The Call button for a business's website: `assets/js/w.js`, served at `/w.js` (`main.go`); the dashboard shows
   the line to paste. It reads `GET /api/status/<line>` (`web/status.go`: `here` = Available, a ringing choice, and an
   open app or a push device; `pages.Presence`), and so does the call page (`data-here`, `cw-if-here`/`cw-if-away`).
-  On a computer the call page opens in an iframe panel; call.js tells it to close or grow (`postMessage`).
-  Tested by `site.mjs` ("website button": a fake business site on another port, a real call from the panel).
+  On a computer the call page opens in a modal `<dialog>` with an iframe (dimmed, blurred page behind); call.js
+  tells it to close, grow, or that a call is on (`postMessage` "close", "stage", "busy"). Links with
+  `data-minivoip-call` open it too: the landing page loads `/w.js` for Ken's line. Tested by `site.mjs` ("website
+  button": a fake business site on another port, a real call from the window; "landing": the window opens, Call is
+  never pressed).
 - Landing page "Call us now" buttons call a real line: `MINIVOIP_CALL_LINE`, default `ken` (Ken's own account);
   hidden if that line doesn't exist. Tests must never press Call on it: it rings Ken's phone.
 - Logos: `line.logo`, files in `data/logos/` (`store/logos.go`), served at `/logo/<name>` (`web/logo.go`). Asked on
   "create your line" (optional), changed on the dashboard (`POST /dashboard/logo`, `/dashboard/logo/remove`).
   `faceBadge` in `pages/call.templ` shows it, else the initials; the stage gets it as `logo` (meet.js). The owner
-  frames the picture in a crop window first (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
+  frames the picture in a crop window first (a round guide; the logo fills its shape everywhere) (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
   1.6.2 copied into `assets/vendor/`, as in minipass); the browser sends a 512 px WebP, so big photos are fine.
 - Limits against robots (`web/limits.go`, `Limits`): calls, room knocks, voicemails, wrong passwords and sign ups,
   counted per visitor address in memory (the hub's `AllowCall`/`AllowVoicemail`, the rooms' `AllowKnock`). The address

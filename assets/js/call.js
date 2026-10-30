@@ -24,9 +24,11 @@
     $$("[data-back]").forEach(function (a) { a.href = document.referrer; a.hidden = false; });
   }
 
-  // Inside the Call button's panel on a business's website (w.js): Back
-  // closes the panel, and the panel grows while the stage is on.
-  var embedded = window.parent !== window, stageWas = false;
+  // Inside the Call button's window on a business's website (w.js): Back
+  // closes the window, the window grows while the stage is on, and it knows
+  // when a call is on (then Esc or a click beside it doesn't close it).
+  var embedded = window.parent !== window, stageWas = false, busyWas = false;
+  var BUSY = ["ringing", "connecting", "talking", "voicemail", "recording", "sending"];
   function tellPage(m) {
     if (!embedded) return;
     m.minivoip = true;
@@ -34,7 +36,8 @@
   }
   if (embedded) {
     $$("[data-back]").forEach(function (a) {
-      a.hidden = false;
+      // The window has its own × in that corner, so no back arrow there.
+      a.hidden = a.classList.contains("cw-icon-btn");
       a.addEventListener("click", function (e) { e.preventDefault(); tellPage({ type: "close" }); });
     });
   }
@@ -56,6 +59,8 @@
   function show(p) {
     phase = p;
     root.dataset.state = p;
+    var busy = BUSY.indexOf(p) !== -1;
+    if (busy !== busyWas) { busyWas = busy; tellPage({ type: "busy", on: busy }); }
     var view;
     $$("[data-show]").forEach(function (el) {
       el.hidden = el.dataset.show.split(" ").indexOf(p) === -1;

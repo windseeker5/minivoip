@@ -34,9 +34,9 @@
 .mv-face { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--mv-face);
   font: 600 30px/1 "Funnel Display", Onest, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; }
 .mv-face svg { width: 36px; height: 36px; color: #c9c9ce; }
-/* A business's logo: on white, whole, never cropped. */
+/* A business's logo fills the circle; the owner framed it for that. */
 .mv-face.has-logo { background: #fff; overflow: hidden; }
-.mv-face.has-logo img { width: 72%; height: 72%; object-fit: contain; }
+.mv-face.has-logo img { width: 100%; height: 100%; object-fit: cover; }
 .mv-tile.has-video .mv-face { visibility: hidden; }
 .mv-name { position: absolute; z-index: 1; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 5px; max-width: calc(100% - 20px);
   padding: 4px 9px; border-radius: 999px; background: rgb(12 12 13 / .62); color: #fff; font-size: 12.5px; font-weight: 500;

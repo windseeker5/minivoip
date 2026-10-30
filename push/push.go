@@ -29,6 +29,9 @@ type Notification struct {
 	Renotify bool   `json:"renotify"` // sound and vibrate again when replacing
 	ID       int64  `json:"id"`       // push_log row; the phone reports it back
 	Call     string `json:"call,omitempty"`
+	// Icon is the business's logo (/logo/<name>), which the service worker
+	// shows round; "" shows the minivoip mark. ToLine fills it in.
+	Icon string `json:"icon,omitempty"`
 	// Until (Unix ms) is when a ring stops. A ring that arrives later is
 	// shown as a missed call instead.
 	Until int64 `json:"until,omitempty"`
@@ -145,6 +148,9 @@ func (s *Sender) ToLine(line string, n Notification, ttl time.Duration, urgent b
 		log.Printf("push: devices for %s: %v", line, err)
 		return 0
 	}
+	if n.Icon == "" {
+		_, n.Icon = s.about(line)
+	}
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	ok := 0
@@ -177,18 +183,38 @@ func (s *Sender) ToLine(line string, n Notification, ttl time.Duration, urgent b
 	return ok
 }
 
+// about gives the line's business name and logo address, for notifications.
+func (s *Sender) about(line string) (business, icon string) {
+	l, err := s.Store.LineByName(line)
+	if err != nil {
+		return "", ""
+	}
+	if l.Logo != "" {
+		icon = "/logo/" + l.Logo
+	}
+	return l.Business, icon
+}
+
+// titled names the business after what happened ("Incoming call: Joe's
+// B&B"), so an owner with several lines knows which one.
+func (s *Sender) titled(what, line string) (title, icon string) {
+	business, icon := s.about(line)
+	if business == "" {
+		return what, icon
+	}
+	return what + ": " + business, icon
+}
+
 // Ring notifies the owner's devices now and every RingEvery until stop is
 // called or RingFor has passed. It returns at once; stop is safe to call
-// more than once.
-func (s *Sender) Ring(line, callID, option string) (stop func()) {
+// more than once. The caller's menu choice isn't shown: its label ("Talk to
+// Joe") reads oddly to Joe.
+func (s *Sender) Ring(line, callID, _ string) (stop func()) {
 	done := make(chan struct{})
 	var once sync.Once
-	body := "A visitor is calling from your website."
-	if option != "" {
-		body = "A visitor pressed " + option + "."
-	}
-	n := Notification{Kind: "ring", Title: "Incoming call", Body: body, URL: "/app", Tag: "call-" + callID, Renotify: true,
-		Call: callID, Until: time.Now().Add(RingFor).UnixMilli()}
+	title, icon := s.titled("Incoming call", line)
+	n := Notification{Kind: "ring", Title: title, Body: "Someone on your website wants to talk to you.", Icon: icon,
+		URL: "/app", Tag: "call-" + callID, Renotify: true, Call: callID, Until: time.Now().Add(RingFor).UnixMilli()}
 	go func() {
 		deadline := time.After(RingFor)
 		tick := time.NewTicker(RingEvery)
@@ -211,8 +237,11 @@ func (s *Sender) Ring(line, callID, option string) (stop func()) {
 
 // Missed replaces the ringing notification with "Missed call".
 func (s *Sender) Missed(line, callID string) {
-	go s.ToLine(line, Notification{Kind: "missed", Title: "Missed call", Body: "A website visitor called. They may leave a message.",
-		URL: "/app", Tag: "call-" + callID, Call: callID}, 24*time.Hour, false)
+	go func() {
+		title, icon := s.titled("Missed call", line)
+		s.ToLine(line, Notification{Kind: "missed", Title: title, Body: "Someone called from your website. They may leave a message.",
+			Icon: icon, URL: "/app", Tag: "call-" + callID, Call: callID}, 24*time.Hour, false)
+	}()
 }
 
 // Answered removes the ringing notification from the owner's other devices
@@ -224,8 +253,11 @@ func (s *Sender) Answered(line, callID string) {
 
 // Voicemail says a new message is waiting.
 func (s *Sender) Voicemail(line string) {
-	go s.ToLine(line, Notification{Kind: "voicemail", Title: "New voicemail", Body: "A caller left you a message.",
-		URL: "/app", Tag: "voicemail", Renotify: true}, 7*24*time.Hour, false)
+	go func() {
+		title, icon := s.titled("New voicemail", line)
+		s.ToLine(line, Notification{Kind: "voicemail", Title: title, Body: "A caller left you a message.",
+			Icon: icon, URL: "/app", Tag: "voicemail", Renotify: true}, 7*24*time.Hour, false)
+	}()
 }
 
 // RoomKnock says a guest is waiting in the meeting room.

@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy. `main` has everything up to PR #8 (calls, the owner's app, the Android app 0.3, the landing page, the call window, Premium video and meeting room, plans, logos, the website Call button). Limits (PR #10, merged 2026-10-29): on calls, room knocks, voicemails, wrong passwords and sign ups (`web/limits.go`). Plan and progress: `docs/plan.md` "Where we are".
-- Next action: from `docs/plan.md`, the container and home server. Maybe later: a "verify you're human" check (outside service, Ken's call), limits on the relay. Open: the landing page still says Premium is "coming soon"; no payments yet. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-29. Shipped the limits (PR #10); all tests pass: `go vet`, `go test`, `site.mjs` (new "limits" step), `call.mjs` (the "try again later" screen), `meet.mjs`, `app.mjs`.
+- Status: healthy. `main` has everything up to PR #12: calls, the owner's app, the Android app 0.3, the landing page, Premium video and meeting room, plans, logos, the website Call button, limits (PR #10, `web/limits.go`), and (PR #12) the logo filling its shape everywhere plus the call opening in a window over the page (dimmed, blurred behind; `assets/js/w.js`, also on the landing page). Plan and progress: `docs/plan.md` "Where we are".
+- Next action: from `docs/plan.md`, the container and home server. Parked by Ken: polish of the admin, sign up and button looks; the landing page's "Paste this on your site" box still shows the old plain link. Maybe later: a "verify you're human" check (outside service, Ken's call), limits on the relay. Open: the landing page still says Premium is "coming soon"; no payments yet. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-30. Shipped the logo fill and the call window (PR #12); all tests pass: `go vet`, `go test`, `site.mjs` (landing and modal checks), `call.mjs`, `meet.mjs`, `app.mjs`.
 
 ## Rules
 

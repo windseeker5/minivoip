@@ -159,6 +159,15 @@ var migrations = []string{
 	`
 	ALTER TABLE line ADD COLUMN logo TEXT NOT NULL DEFAULT '';
 	`,
+	// 10: people who asked for Premium on the landing page (no payments yet:
+	// Ken writes back and sets them up).
+	`
+	CREATE TABLE premium_request (
+		id          INTEGER PRIMARY KEY,
+		email       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+		created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

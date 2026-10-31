@@ -3,25 +3,25 @@ package pages
 import (
 	"minivoip/components/button"
 	"minivoip/components/icon"
+	"minivoip/components/input"
 	"minivoip/layouts"
 	"minivoip/lines"
 )
 
 // The words come from docs/landing-copy.md; change them there first.
 
-// stage is one step of "the call grows": what the visitor does, what
-// minivoip does for it, and the plan that has it.
+// stage is one step of "how it works": what minivoip or the owner does,
+// and the plan that has it.
 type stage struct {
 	Title string
 	Text  string
 	Plan  string
-	Soon  bool
 }
 
 var stages = []stage{
-	{"They ask.", "Your menu answers the easy questions. Hours, prices, directions, or a link to the right page of your site. In your own voice.", "Basic", false},
-	{"They talk.", "A real customer reaches you. Your phone or computer rings. Busy? They leave a voicemail.", "Basic", false},
-	{"They see.", "Turn on video, share your screen or open the whiteboard. The demo happens while they're still interested.", "Premium · coming soon", true},
+	{"It filters.", "Your voice menu answers the easy questions: hours, prices, directions, or a link to the right page of your site. Recorded in your own voice.", "Basic"},
+	{"You answer.", "Your phone rings, and so does your computer. Pick up on the go, or at your desk with a headset. Away? They leave a voicemail and you get an alert.", "Basic"},
+	{"You show them.", "Share your screen in seconds, draw on a whiteboard together, or turn on video. The demo happens while they're still interested.", "Premium"},
 }
 
 type plan struct {
@@ -29,24 +29,24 @@ type plan struct {
 	Price   string
 	Line    string
 	Items   []string
+	Soon    string // a feature on its way, shown after the items
 	Premium bool
 }
 
 var plans = []plan{
-	{"Basic", "$2", "Your website answers the phone for you.", []string{
+	{"Basic", "$2", "A business line without giving out your cell.", []string{
 		"Call button, call link and QR code",
 		"Voice menu in your own voice",
 		"Sends callers to the right page of your site",
 		"Rings your phone and your computer",
 		"Voicemail with an alert",
-	}, false},
-	{"Premium", "$5", "From a question to a live demo, in one click.", []string{
+	}, "", false},
+	{"Premium", "$10", "Talk, show, close the deal.", []string{
 		"Everything in Basic",
-		"AI front desk that answers from your FAQ",
-		"Video and screen sharing",
-		"Whiteboard to draw together",
-		"A meeting room for your team, no time limit",
-	}, true},
+		"Share your screen in seconds",
+		"Draw together on a whiteboard",
+		"Video, and a meeting room for your team",
+	}, "Notes taken for you, with a summary in your app after each call", true},
 }
 
 type step struct {
@@ -65,11 +65,12 @@ type faq struct {
 	A string
 }
 
+// faqs are only the worries a first visitor really has; the rest is "press
+// Call and ask me" (Ken, 2026-10-31).
 var faqs = []faq{
 	{"Can people call me from a regular phone?", "Not yet. Calls come from your website, your call link or a QR code. A real phone number is planned as an add-on."},
 	{"Will my phone ring like a normal call?", "On Android, yes: the minivoip app rings with your ringtone and shows the call screen, even when your phone is locked. Computers ring while the app is open. On iPhone, for now you get a notification with a sound and answer by tapping it; a ringing iPhone app is next."},
 	{"Does the visitor need to install anything?", "No. They click the button and talk from their browser, after allowing the microphone."},
-	{"I can't edit my website. Can I still use it?", "Yes. Put your call link on your Google Maps listing, your Facebook page, your email signature, or print it as a QR code for your door."},
 }
 
 // Home is the landing page; loggedIn swaps "Log in" for the dashboard link.
@@ -77,7 +78,7 @@ var faqs = []faq{
 // and "Call us now" calls it. nil shows an example menu and hides the call
 // buttons. site is this site's address, for the code to paste.
 templ Home(loggedIn bool, line *lines.Line, site string) {
-	@layouts.Base("minivoip: your website answers the phone for you", "minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install.") {
+	@layouts.Base("minivoip: one click, and they're talking to you", "minivoip puts a Call button on your website. Your voice menu answers the easy questions. When a customer needs you, your phone and your computer ring, and you can share your screen or draw together in seconds. No phone line, nothing to install.") {
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400..700&family=Funnel+Sans:wght@400..600&family=JetBrains+Mono:wght@400;600&display=swap"/>
 		<div class="lp min-h-screen bg-background text-foreground">
 			@siteNav(loggedIn)
@@ -88,7 +89,7 @@ templ Home(loggedIn bool, line *lines.Line, site string) {
 				@pricing()
 				@maker()
 				@howItWorks(site)
-				@faqList()
+				@faqList(line)
 			</main>
 			@finalCall(line)
 		</div>
@@ -135,7 +136,7 @@ templ siteNav(loggedIn bool) {
 				} else {
 					<a href="/login" class="hidden min-h-11 items-center rounded-full px-4 text-[15px] font-medium transition-colors hover:bg-muted sm:flex">Log in</a>
 					@button.Button(button.Props{Href: "/signup", Size: button.SizeSm, Class: "h-11 rounded-full px-4 text-[15px] font-medium sm:h-10"}) {
-						Get my free line
+						Get my line
 					}
 				}
 			</div>
@@ -147,12 +148,12 @@ templ siteNav(loggedIn bool) {
 // big voice wave, with the words written underneath.
 templ hero(line *lines.Line) {
 	<section class="mx-auto max-w-[1280px] px-4 pt-12 text-center sm:px-8 sm:pt-[76px]">
-		<h1 class="lp-display mx-auto max-w-[1000px] text-[2.875rem] leading-[1] font-semibold tracking-[-0.035em] text-balance sm:text-7xl lg:text-[5.5rem] lg:leading-[.98]">Your website answers the phone for you.</h1>
-		<p class="mx-auto mt-5 max-w-[620px] text-lg/relaxed text-pretty text-muted-foreground sm:mt-6 sm:text-xl/relaxed">Record a short menu in your own voice. Visitors hear it, press a number, and get their answer or your cell.</p>
+		<h1 class="lp-display mx-auto max-w-[1000px] text-[2.875rem] leading-[1] font-semibold tracking-[-0.035em] text-balance sm:text-7xl lg:text-[5.5rem] lg:leading-[.98]">One click, and they're talking to you.</h1>
+		<p class="mx-auto mt-5 max-w-[620px] text-lg/relaxed text-pretty text-muted-foreground sm:mt-6 sm:text-xl/relaxed">A Call button for your website. It rings your phone and your computer, and your cell number stays private.</p>
 		@voicePlayer(line)
 		<div class="mt-10 flex flex-col items-center justify-center gap-3 sm:mt-12 sm:flex-row">
 			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "h-[52px] w-full max-w-[320px] rounded-full px-7 text-base font-semibold sm:w-auto"}) {
-				Get my free line
+				Get my line
 			}
 			if line != nil {
 				<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-call-us data-minivoip-call class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">
@@ -163,7 +164,7 @@ templ hero(line *lines.Line) {
 				<a href="#how" class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">See how it works</a>
 			}
 		</div>
-		<p class="mt-4 text-sm text-muted-foreground">Free while in beta · No phone line · Nothing to install</p>
+		<p class="mt-4 text-sm text-muted-foreground">$2 a month · No phone line · Nothing to install</p>
 	</section>
 }
 
@@ -220,7 +221,7 @@ templ phoneRings(line *lines.Line) {
 			<div class="relative z-[1] grid items-center gap-10 px-6 py-14 sm:px-12 sm:py-20 lg:grid-cols-2 lg:gap-6 lg:px-16">
 				<div class="max-w-[30rem] text-[#0c0c0d]">
 					<h2 class="lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">Then your own phone rings.</h2>
-					<p class="mt-5 text-lg/relaxed font-medium">You see what they chose before you answer. Busy? They leave a voicemail and you get an alert.</p>
+					<p class="mt-5 text-lg/relaxed font-medium">Or your computer, when you're at your desk with a headset. You see what they chose before you answer. Busy? They leave a voicemail and you get an alert.</p>
 				</div>
 				<div class="relative mx-auto h-[600px] w-full max-w-[460px]" aria-hidden="true">
 					<div class="lp-phone absolute top-0 right-0 sm:right-6">
@@ -257,18 +258,18 @@ templ sectionHead(title, lead string) {
 	</div>
 }
 
-// callGrows tells the story in three steps: answers, then the owner, then
-// the owner's screen. The last one is Premium.
+// callGrows tells the story in three steps: the menu filters, the owner
+// answers, the owner shows them. The last one is Premium.
 templ callGrows() {
 	<section id="how" class="scroll-mt-[72px] px-4 pt-24 sm:px-8 sm:pt-32">
 		<div class="mx-auto max-w-[1280px]">
-			@sectionHead("One click, and the call grows with the question.", "Most visitors only need an answer. Some need you. A few need to see it. minivoip handles all three in the same call.")
+			@sectionHead("It filters. You answer. You show them.", "Most visitors only need an answer. Some need you. A few need to see it. minivoip handles all three in the same call.")
 			<div class="mt-12 grid gap-10 sm:mt-16 md:grid-cols-3 md:gap-12">
 				for _, s := range stages {
 					<div class="flex flex-col border-t pt-7">
 						<h3 class="lp-display text-[2rem] font-semibold tracking-[-0.03em]">{ s.Title }</h3>
 						<p class="mt-3 text-[17px]/[1.55] text-muted-foreground">{ s.Text }</p>
-						<p class={ "mt-auto pt-5 text-[13px] font-semibold", templ.KV("text-muted-foreground", s.Soon) }>{ s.Plan }</p>
+						<p class="mt-auto pt-5 text-[13px] font-semibold">{ s.Plan }</p>
 					</div>
 				}
 			</div>
@@ -279,13 +280,13 @@ templ callGrows() {
 templ pricing() {
 	<section id="pricing" class="scroll-mt-[72px] px-4 pt-24 sm:px-8 sm:pt-32">
 		<div class="mx-auto max-w-[1280px]">
-			@sectionHead("Start with Basic. Grow into Premium.", "Free while in beta. No per‑minute charges.")
+			@sectionHead("Start with Basic. Grow into Premium.", "One price a month. No per‑minute charges.")
 			<div class="mx-auto mt-12 grid max-w-[920px] gap-4 sm:mt-16 md:grid-cols-2">
 				for _, p := range plans {
 					@planCard(p)
 				}
 			</div>
-			<p class="mt-8 text-center text-sm text-muted-foreground">Have a promo code? Enter it when you sign up.</p>
+			<p class="mt-8 text-center text-sm text-muted-foreground">Got a promo code? Enter it when you sign up and it's free.</p>
 		</div>
 	</section>
 }
@@ -294,15 +295,10 @@ templ planCard(p plan) {
 	<div class={ "flex flex-col rounded-2xl p-7 sm:p-9", templ.KV("bg-card shadow-[0_0_0_1px_var(--border)]", !p.Premium), templ.KV("bg-muted", p.Premium) }>
 		<div class="flex items-baseline justify-between gap-3">
 			<h3 class="lp-display text-2xl font-semibold tracking-[-0.02em]">{ p.Name }</h3>
-			if p.Premium {
-				<span class="rounded-full bg-background px-3 py-1 text-xs font-semibold">Coming soon</span>
-			} else {
-				<span class="rounded-full bg-muted px-3 py-1 text-xs font-semibold">Free in beta</span>
-			}
 		</div>
 		<p class="mt-6 flex items-baseline gap-2">
 			<span class="lp-display text-[3.25rem] leading-none font-semibold tracking-[-0.04em]">{ p.Price }</span>
-			<span class="text-muted-foreground">/ month after beta, planned</span>
+			<span class="text-muted-foreground">/ month</span>
 		</p>
 		<p class="mt-3 text-[17px] font-medium">{ p.Line }</p>
 		<ul class="mt-7 mb-8 flex flex-col text-[15px]">
@@ -312,25 +308,43 @@ templ planCard(p plan) {
 					{ item }
 				</li>
 			}
+			if p.Soon != "" {
+				<li class="flex items-start gap-3 border-t py-3 text-muted-foreground">
+					<span class="mt-0.5 shrink-0 rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground">Soon</span>
+					{ p.Soon }
+				</li>
+			}
 		</ul>
 		if p.Premium {
-			@button.Button(button.Props{Href: "mailto:kdresdell@minipass.me?subject=minivoip%20Premium", Variant: button.VariantOutline, Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full bg-background text-[15px] font-semibold"}) {
-				Tell me when it's ready
-			}
+			@premiumForm()
 		} else {
 			@button.Button(button.Props{Href: "/signup", Size: button.SizeLg, Class: "mt-auto h-12 w-full rounded-full text-[15px] font-semibold"}) {
-				Get my free line
+				Get my line
 			}
 		}
 	</div>
 }
 
-// maker is Ken's own reason for minivoip: he uses it on his businesses first.
+// premiumForm: no payments yet, so Premium starts with an email to Ken
+// (POST /premium, the admin page's "Asked for Premium"). landing.js sends it
+// and shows the thanks in place.
+templ premiumForm() {
+	<form method="post" action="/premium" class="mt-auto flex flex-col gap-3" data-premium-form>
+		<label for="premium-email" class="text-[15px]/[1.5] text-muted-foreground">Leave your email. I'll set you up and tell you when the call notes are ready.</label>
+		@input.Input(input.Props{ID: "premium-email", Name: "email", Type: "email", Placeholder: "you@business.com", Required: true, Class: "h-12 rounded-full bg-background px-5 text-[15px]", Attributes: templ.Attributes{"autocomplete": "email"}})
+		@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-12 w-full rounded-full bg-background text-[15px] font-semibold"}) {
+			Get Premium
+		}
+		<p class="hidden text-[15px] font-medium" role="status" data-premium-done></p>
+	</form>
+}
+
+// maker is Ken's own reason for minivoip: he uses it on all his sites.
 templ maker() {
 	<section class="px-4 pt-24 sm:px-8 sm:pt-32">
 		<figure class="mx-auto max-w-[940px] text-center">
 			<blockquote class="lp-display text-[1.75rem] leading-[1.25] font-medium tracking-[-0.025em] text-balance sm:text-[2.75rem] sm:leading-[1.18]">
-				“I built minivoip for my own businesses first. A visitor on my site asks a question, and a minute later I'm showing them the product.”
+				“I build software. I wanted people to reach me in one click from any of my websites and hear a real voice. Now my computer rings, I put on my headset, and I show them my screen right away. It's on all my sites.”
 			</blockquote>
 			<figcaption class="mt-7 text-[15px]"><span class="font-semibold">Ken Dresdell</span> <span class="text-muted-foreground">· Maker of minipass and minivoip</span></figcaption>
 		</figure>
@@ -378,7 +392,9 @@ func stepNumber(i int) string {
 	return []string{"1", "2", "3"}[i]
 }
 
-templ faqList() {
+// faqList ends on the product itself: another question is a call to Ken's
+// line (an email without it).
+templ faqList(line *lines.Line) {
 	<section id="faq" class="scroll-mt-[72px] px-4 py-24 sm:px-8 sm:py-32">
 		<div class="mx-auto max-w-[780px]">
 			@sectionHead("Questions", "")
@@ -393,6 +409,18 @@ templ faqList() {
 					</details>
 				}
 			</div>
+			<p class="mt-10 flex flex-col items-center gap-4 text-center text-lg font-medium sm:flex-row sm:justify-center" data-faq-call>
+				if line != nil {
+					Another question? Press Call and ask me.
+					<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-minivoip-call class="inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">
+						@icon.Phone(icon.Props{Class: "size-4"})
+						Call
+					</a>
+				} else {
+					Another question?
+					<a href="mailto:kdresdell@minipass.me" class="underline underline-offset-4">Write to me</a>
+				}
+			</p>
 		</div>
 	</section>
 }
@@ -402,10 +430,10 @@ templ faqList() {
 templ finalCall(line *lines.Line) {
 	<footer class="lp-ink">
 		<div class="mx-auto flex max-w-[1280px] flex-col items-center px-4 py-20 text-center sm:px-8 sm:py-28">
-			<h2 class="lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">Put a Call button on your website.</h2>
-			<p class="mt-5 text-lg text-[var(--ink-muted)]">Free while in beta. Start with Basic, move to Premium when it's ready.</p>
+			<h2 class="lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl">Let your customers reach a real person.</h2>
+			<p class="mt-5 text-lg text-[var(--ink-muted)]">$2 a month. Set it up from your browser.</p>
 			<div class="mt-9 flex flex-col items-center gap-3 sm:flex-row">
-				<a href="/signup" class="flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full bg-[var(--ink-fg)] px-7 sm:w-auto text-base font-semibold text-[var(--ink-bg)] transition-opacity hover:opacity-90">Get my free line</a>
+				<a href="/signup" class="flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full bg-[var(--ink-fg)] px-7 sm:w-auto text-base font-semibold text-[var(--ink-bg)] transition-opacity hover:opacity-90">Get my line</a>
 				if line != nil {
 					<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-minivoip-call class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--ink-rule)] sm:w-auto transition-colors hover:bg-white/10">
 						@icon.Phone(icon.Props{Class: "size-4"})

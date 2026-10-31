@@ -51,10 +51,15 @@ func (s *Server) renderPromo(w http.ResponseWriter, r *http.Request, u store.Use
 		serverError(w, r, err)
 		return
 	}
+	asked, err := s.Store.PremiumRequests()
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
 	if f.Error != "" {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	}
-	render(w, r, pages.PromoPage(u.Email, list, accounts, f, saved))
+	render(w, r, pages.PromoPage(u.Email, list, accounts, asked, f, saved))
 }
 
 func (s *Server) createPromo(w http.ResponseWriter, r *http.Request, u store.User) {

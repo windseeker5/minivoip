@@ -1,5 +1,5 @@
-// Landing page: the light/dark toggle, the hero's voice player, and the Copy
-// button on the code to paste.
+// Landing page: the light/dark toggle, the hero's voice player, the Copy
+// button on the code to paste, and the "Get Premium" email.
 
 document.querySelectorAll("[data-theme-toggle]").forEach(function (btn) {
   btn.addEventListener("click", function () {
@@ -8,6 +8,32 @@ document.querySelectorAll("[data-theme-toggle]").forEach(function (btn) {
     try {
       localStorage.setItem("theme", dark ? "dark" : "light");
     } catch (e) {}
+  });
+});
+
+// "Get Premium": send the email (POST /premium) and thank them in place.
+document.querySelectorAll("[data-premium-form]").forEach(function (form) {
+  var done = form.querySelector("[data-premium-done]");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var say = function (text) {
+      done.textContent = text;
+      done.classList.remove("hidden");
+    };
+    fetch(form.action, { method: "POST", body: new FormData(form) })
+      .then(function (res) {
+        if (res.ok) {
+          say("Thanks! I'll write to you soon to set up Premium.");
+          form.replaceChildren(done);
+          return;
+        }
+        return res.text().then(function (text) {
+          say(text.trim() || "That didn't work. Please try again.");
+        });
+      })
+      .catch(function () {
+        say("That didn't work. Please check your connection and try again.");
+      });
   });
 });
 

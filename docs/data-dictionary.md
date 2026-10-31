@@ -147,6 +147,15 @@ Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, mad
 | `key` | text, key | |
 | `value` | text | |
 
+## premium_request
+Emails left on the landing page's "Get Premium" form (`POST /premium`, at most 3 an hour from one visitor). There are no payments yet: Ken sees the list on `/admin/promo` ("Asked for Premium"), writes back and sets them up.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `email` | text, unique, case-insensitive | Asking twice keeps the first row |
+| `created_at` | text (UTC) | |
+
 ## Version history
 | Version (`PRAGMA user_version`) | Date | Change |
 |---|---|---|
@@ -159,3 +168,4 @@ Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, mad
 | 7 | 2026-10-24 | `call_log` (call history), `voicemail.call_id`, `line.away_until` (Available switch) |
 | 8 | 2026-10-25 | `account.plan`, `promo_code.plan` (Basic or Premium); admins' accounts start on Premium |
 | 9 | 2026-10-27 | `line.logo` (in `<data dir>/logos/`, public at `/logo/<name>`, random names; a new logo or Remove deletes the old file) |
+| 10 | 2026-10-31 | `premium_request` (the landing page's "Get Premium" emails) |

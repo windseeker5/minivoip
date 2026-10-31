@@ -90,8 +90,9 @@ templ promoStatus(p store.PromoCode) {
 }
 
 // PromoPage is the admin page: make codes, see who used them, revoke them.
-// The Accounts list shows every account's plan and switches it.
-templ PromoPage(email string, list []store.PromoCode, accounts []store.Account, f PromoForm, saved string) {
+// The Accounts list shows every account's plan and switches it; "Asked for
+// Premium" lists the landing page's emails.
+templ PromoPage(email string, list []store.PromoCode, accounts []store.Account, asked []store.PremiumRequest, f PromoForm, saved string) {
 	@dashShell("Admin", email, "/admin/promo") {
 		<h1 class="text-3xl font-bold tracking-tight">Promo codes and plans</h1>
 		<p class="mt-2 text-muted-foreground">A code makes a line free forever, on the plan you pick. Give it to family and friends; revoke it whenever you want. Basic has calls, the voice menu and voicemail; Premium adds video, screen sharing, the whiteboard and the meeting room.</p>
@@ -190,6 +191,22 @@ templ PromoPage(email string, list []store.PromoCode, accounts []store.Account, 
 					</div>
 				}
 			}
+			<section id="premium-requests" class="rounded-2xl border bg-background p-6 sm:p-8">
+				<h2 class="font-semibold">Asked for Premium</h2>
+				<p class="mt-1 text-sm text-muted-foreground">Emails left on the landing page's "Get Premium", newest first. Write back, then give them a Premium code or move their account.</p>
+				if len(asked) == 0 {
+					<p class="mt-4 text-sm text-muted-foreground">Nobody yet.</p>
+				} else {
+					<ul class="mt-4 divide-y text-sm">
+						for _, a := range asked {
+							<li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3" data-premium-request={ a.Email }>
+								<a href={ templ.SafeURL("mailto:" + a.Email + "?subject=minivoip%20Premium") } class="font-medium underline-offset-4 hover:underline">{ a.Email }</a>
+								<span class="text-muted-foreground tabular-nums">{ strings.SplitN(a.CreatedAt, " ", 2)[0] }</span>
+							</li>
+						}
+					</ul>
+				}
+			</section>
 			<section id="accounts" class="rounded-2xl border bg-background p-6 sm:p-8">
 				<h2 class="font-semibold">Accounts</h2>
 				<p class="mt-1 text-sm text-muted-foreground">Everyone who signed up, newest first. Switch an account's plan any time; it takes effect on their next call.</p>

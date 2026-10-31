@@ -31,8 +31,8 @@ Named Basic and Premium on 2026-10-24 (before: Voice and Meetings).
 
 | Plan | Price | What's in it |
 |---|---|---|
-| **Basic** | Really cheap (landing page placeholder: $2 a month) | "Call us" button, voice menu that answers common questions and sends callers to the right page, rings on every device, voicemail. Never video, whiteboard or AI. |
-| **Premium** | About $5 a month (placeholder) | Everything in Basic, plus AI front desk (answers from the owner's FAQ), video, screen sharing, whiteboard, a team meeting room, recording and meeting notes |
+| **Basic** | $2 a month (landing page, 2026-10-31; no payments yet) | "Call us" button, voice menu that answers common questions and sends callers to the right page, rings on every device, voicemail. Never video, whiteboard or AI. |
+| **Premium** | $10 a month (landing page, 2026-10-31) | Everything in Basic, plus video, screen sharing, whiteboard and a team meeting room (built). Next: call notes taken by AI with a summary in the app after each call (on the landing page as "Soon"). Maybe later: an AI front desk answering from the owner's FAQ (kept off the landing page: the pitch is a real person) |
 
 The pitch (2026-10-24): "minivoip puts a Call button on your website. Your voice menu answers the common
 questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line,

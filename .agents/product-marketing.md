@@ -10,7 +10,7 @@ Draft from `docs/architecture.md`, `docs/research.md` and Ken's own words. Items
 **What it does:** A visitor clicks "Call us" on your website (or a call link or QR code). They hear your recorded menu ("press 1 for bookings…"), then your phone rings through a small app installed from the browser. If you don't answer, they leave a voicemail and you get a notification.
 **Product category:** Website call button / virtual business line (people search for "business phone line for small business", "call button for website", "business voicemail without a phone line").
 **Product type:** Hosted web service (small SaaS), self-hosted on Ken's server.
-**Business model:** Free while in beta. Later two plans (amounts are placeholders): **Basic** about $2/month ("Your website answers the phone for you": button, voice menu, rings your devices, voicemail; never video, whiteboard or AI) and **Premium** about $5/month ("From a question to a live demo, in one click": plus AI front desk from your FAQ, video, screen sharing, whiteboard, team room; coming soon). No per-minute charges (calls go directly between the two devices, so they cost almost nothing to carry). Promo codes make a line free forever (Ken gives them to family and friends and can revoke them). For now the landing page is a test; pricing is there so the project looks complete.
+**Business model (2026-10-31):** two plans: **Basic** $2/month ("A business line without giving out your cell": button, voice menu, rings your phone and computer, voicemail; never video, whiteboard or AI) and **Premium** $10/month ("Talk, show, close the deal": plus screen sharing, whiteboard, video, team room; soon, AI call notes with a summary in the app). No payments yet: sign up works without a card, and "Get Premium" leaves an email for Ken. No per-minute charges (calls go directly between the two devices, so they cost almost nothing to carry). Promo codes make a line free forever (Ken gives them to family and friends and can revoke them). For now the landing page is a test; pricing is there so the project looks complete.
 
 ## Target Audience
 **Target companies:** Premium: solo founders and small teams who sell by showing (Ken with minipass is customer number one). Basic: one-person or very small businesses: freelancers and contractors (like Ken after retiring from TELUS), B&Bs and small lodgings, trades, small shops, local services. Mostly Quebec and Canada at first.
@@ -76,7 +76,8 @@ Not B2B; one buyer who is also the user (the owner).
 **How they describe us:** None yet; gather from the first family-and-friends users.
 **Page language:** English for now (French later).
 **Core frame:** the virtual receptionist (Ken, 2026-10-21): owners understand "a receptionist that answers and sends calls to the right person or online process", not IVR/PBX/VoIP.
-**Roadmap to mention:** everything in Premium (AI front desk, video, screen sharing, whiteboard, team room), always labelled "Coming soon" until built.
+**Lead message (2026-10-31):** a real person, one click away ("One click, and they're talking to you."), in a world of AI answering machines. The story: it filters (voice menu), you answer (phone or computer with a headset), you show them (screen, whiteboard). AI only takes notes; it never talks in the owner's place.
+**Roadmap to mention:** AI call notes with a summary after each call, labelled "Soon". The AI front desk stays off the page for now.
 **Words to use:** receptionist, answers, sends the call, the right person, the right page, call button, your phone, your voice, voicemail, no phone line, link, QR code.
 **Words to avoid:** VoIP, WebRTC, SIP, PBX, IVR, TURN, codec, "platform" (jargon that loses the audience).
 **Glossary:**

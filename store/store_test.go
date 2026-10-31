@@ -108,6 +108,20 @@ func TestPlans(t *testing.T) {
 	}
 }
 
+// The landing page's "Get Premium" list keeps each email once.
+func TestPremiumRequests(t *testing.T) {
+	s := open(t)
+	for _, e := range []string{"ann@example.com", "ANN@example.com", "bob@example.com"} {
+		if err := s.AskPremium(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err := s.PremiumRequests()
+	if err != nil || len(list) != 2 {
+		t.Fatalf("requests: %+v %v", list, err)
+	}
+}
+
 // An admin's account becomes Premium when the plans migration runs.
 func TestPlansMigration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "old.db")
@@ -123,6 +137,7 @@ func TestPlansMigration(t *testing.T) {
 	s.db.Exec("ALTER TABLE account DROP COLUMN plan")
 	s.db.Exec("ALTER TABLE promo_code DROP COLUMN plan")
 	s.db.Exec("ALTER TABLE line DROP COLUMN logo")
+	s.db.Exec("DROP TABLE premium_request")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)

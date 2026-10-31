@@ -116,19 +116,23 @@ B&B and may become a SaaS.
   button": a fake business site on another port, a real call from the window; "landing": the window opens, Call is
   never pressed).
 - Landing page "Call us now" buttons call a real line: `MINIVOIP_CALL_LINE`, default `ken` (Ken's own account);
-  hidden if that line doesn't exist. Tests must never press Call on it: it rings Ken's phone.
+  hidden if that line doesn't exist (so is the questions' "Press Call and ask me"). Tests must never press Call on it:
+  it rings Ken's phone. The page's words live in `docs/landing-copy.md` (change them there first).
+- "Get Premium" on the landing page (no payments yet): an email form, `POST /premium` (`web/premium.go`,
+  `store/premium.go`, table `premium_request`), sent by `landing.js`; Ken sees the list on the admin page.
 - Logos: `line.logo`, files in `data/logos/` (`store/logos.go`), served at `/logo/<name>` (`web/logo.go`). Asked on
   "create your line" (optional), changed on the dashboard (`POST /dashboard/logo`, `/dashboard/logo/remove`).
   `faceBadge` in `pages/call.templ` shows it, else the initials; the stage gets it as `logo` (meet.js). The owner
   frames the picture in a crop window first (a round guide; the logo fills its shape everywhere) (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
   1.6.2 copied into `assets/vendor/`, as in minipass); the browser sends a 512 px WebP, so big photos are fine.
-- Limits against robots (`web/limits.go`, `Limits`): calls, room knocks, voicemails, wrong passwords and sign ups,
+- Limits against robots (`web/limits.go`, `Limits`): calls, room knocks, voicemails, wrong passwords, sign ups and
+  "Get Premium" emails,
   counted per visitor address in memory (the hub's `AllowCall`/`AllowVoicemail`, the rooms' `AllowKnock`). The address
   is Caddy's `X-Forwarded-For`; visitors on this machine or the home network aren't limited, so `site.mjs` checks
   the limits with made-up addresses in that header. Past the voicemail limit the call page gets "limited".
 - Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
   `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. Promo codes (each gives a plan) and the
-  Accounts list, where Ken moves an account between Basic and Premium.
+  Accounts list, where Ken moves an account between Basic and Premium, and "Asked for Premium" (the landing page's emails).
 - Plans: `account.plan` is `basic` or `premium` (`store.Plan`, `store.Billing`; sign up takes the promo code's plan,
   else Basic). `lines.Line.Premium` gates video in calls (`call.templ`, `app.templ` leave out Camera, Screen and
   Whiteboard on Basic), the meeting room (`roomPage` 404s, `Rooms` gets `store.HasRoom`) and the dashboard's and

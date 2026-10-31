@@ -62,10 +62,10 @@ templ formField(id, text string) {
 }
 
 templ Signup(f AccountForm) {
-	@accountShell("Get your free line") {
+	@accountShell("Get your line") {
 		@stepLabel("Step 1 of 2: your account")
-		<h1 class="text-2xl font-bold tracking-tight">Get your free line</h1>
-		<p class="mt-1 text-sm text-muted-foreground">Free while in beta. No card required.</p>
+		<h1 class="text-2xl font-bold tracking-tight">Get your line</h1>
+		<p class="mt-1 text-sm text-muted-foreground">No card needed for now. Got a promo code? Enter it below.</p>
 		<form method="post" action="/signup" class="mt-6 flex flex-col gap-4">
 			@formError(f.Error)
 			@formField("email", "Email") {
@@ -91,7 +91,7 @@ templ Signup(f AccountForm) {
 // SignupLoggedIn is the sign up page for someone already logged in: one
 // account per login, so they log out first to make another.
 templ SignupLoggedIn(email string) {
-	@accountShell("Get your free line") {
+	@accountShell("Get your line") {
 		<h1 class="text-2xl font-bold tracking-tight">You're already logged in</h1>
 		<p class="mt-2 text-sm text-muted-foreground" data-signed-in>You're logged in as <b class="font-medium text-foreground">{ email }</b>. To create another account, log out first.</p>
 		<div class="mt-6 flex flex-col gap-3">
@@ -125,7 +125,7 @@ templ Login(f AccountForm) {
 			}
 		</form>
 		<p class="mt-6 text-center text-sm text-muted-foreground">
-			New here? <a href="/signup" class="font-medium text-foreground underline underline-offset-4">Get your free line</a>
+			New here? <a href="/signup" class="font-medium text-foreground underline underline-offset-4">Get your line</a>
 		</p>
 	}
 }

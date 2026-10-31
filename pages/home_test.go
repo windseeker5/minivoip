@@ -22,8 +22,14 @@ func TestHomeRenders(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := b.String()
-	if strings.Count(page, `href="/call/ken"`) != 2 || !strings.Contains(page, "data-call-us") {
-		t.Error(`"Call us now" should call minivoip's own line, in the hero and at the bottom`)
+	if strings.Count(page, `href="/call/ken"`) != 3 || !strings.Contains(page, "data-call-us") {
+		t.Error(`"Call us now" should call minivoip's own line: the hero, the questions' "ask me" and the bottom`)
+	}
+	if strings.Contains(strings.ToLower(page), "free while in beta") || strings.Contains(page, "free line") {
+		t.Error("Basic isn't free any more; only a promo code makes it free")
+	}
+	if !strings.Contains(page, `action="/premium"`) || !strings.Contains(page, "$10") {
+		t.Error("Premium is $10 and starts with an email (POST /premium)")
 	}
 	if !strings.Contains(page, `src="/prompt/prompt-x.webm"`) || !strings.Contains(page, "data-voice-play") {
 		t.Error("the hero should play the line's recorded greeting")

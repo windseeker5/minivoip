@@ -314,7 +314,7 @@ func Signup(f AccountForm) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<h1 class=\"text-2xl font-bold tracking-tight\">Get your free line</h1><p class=\"mt-1 text-sm text-muted-foreground\">Free while in beta. No card required.</p><form method=\"post\" action=\"/signup\" class=\"mt-6 flex flex-col gap-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<h1 class=\"text-2xl font-bold tracking-tight\">Get your line</h1><p class=\"mt-1 text-sm text-muted-foreground\">No card needed for now. Got a promo code? Enter it below.</p><form method=\"post\" action=\"/signup\" class=\"mt-6 flex flex-col gap-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -420,7 +420,7 @@ func Signup(f AccountForm) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = accountShell("Get your free line").Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = accountShell("Get your line").Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -534,7 +534,7 @@ func SignupLoggedIn(email string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = accountShell("Get your free line").Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = accountShell("Get your line").Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -666,7 +666,7 @@ func Login(f AccountForm) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</form><p class=\"mt-6 text-center text-sm text-muted-foreground\">New here? <a href=\"/signup\" class=\"font-medium text-foreground underline underline-offset-4\">Get your free line</a></p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</form><p class=\"mt-6 text-center text-sm text-muted-foreground\">New here? <a href=\"/signup\" class=\"font-medium text-foreground underline underline-offset-4\">Get your line</a></p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

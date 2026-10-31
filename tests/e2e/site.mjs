@@ -49,6 +49,7 @@ const { chromium } = createRequire(import.meta.url)(findPlaywright());
 const stamp = Date.now().toString(36);
 const EMAIL = `e2e-${stamp}@example.com`;
 const LINE = `e2e-${stamp}`;
+const PREMIUM_EMAIL = `e2e-${stamp}-premium@example.com`;
 const failures = [];
 
 // A fake push service: the test subscribes it as one of the owner's phones,
@@ -164,7 +165,7 @@ try {
     const res = await visitorSite.request.get(BASE + callUs);
     check(res.ok() && (await res.text()).includes('data-action="call"'), `"Call us now" opens a working call page (${callUs})`);
     const calls = await visitorSite.$$eval('a[href^="/call/"]', (as) => as.map((a) => a.getAttribute("href")));
-    check(calls.length === 2 && calls.every((h) => h === callUs), `every "Call us now" on the landing page calls minivoip's own line (${calls.join(", ")})`);
+    check(calls.length === 3 && calls.every((h) => h === callUs), `every "Call us now" on the landing page (and the questions' "ask me") calls minivoip's own line (${calls.join(", ")})`);
     // On a computer it opens our own call window over the page (w.js). Only
     // the call page loads in it; Call is never pressed.
     await until(async () => visitorSite.evaluate(() => { const m = document.querySelector("[data-minivoip]")?.shadowRoot?.querySelector(".mv"); return m && !m.hidden; }));
@@ -179,6 +180,32 @@ try {
   } else {
     check(await visitorSite.isVisible('a[href="#how"]'), "without a real line, the hero offers how it works");
   }
+  // The message (docs/landing-copy.md, 2026-10-31): a real person in one
+  // click, Basic $2 and Premium $10, nothing "free" but a promo code.
+  const landingText = await visitorSite.textContent("body");
+  check(landingText.includes("One click, and they're talking to you.") && landingText.includes("It filters. You answer. You show them."), "the landing page leads with talking to a real person");
+  check(landingText.includes("$10") && !/free while in beta|free line/i.test(landingText), "Premium is $10 and Basic isn't sold as free");
+  // "Get Premium": no payments yet, the email goes on the admin page's list.
+  step = "get premium";
+  await visitorSite.fill("#premium-email", PREMIUM_EMAIL);
+  await visitorSite.click("[data-premium-form] button[type=submit]");
+  await visitorSite.waitForSelector("[data-premium-done]:visible");
+  check((await visitorSite.textContent("[data-premium-done]")).includes("Thanks") && !(await visitorSite.isVisible("#premium-email")) && !(await visitorSite.isVisible("[data-premium-form] button")), `"Get Premium" thanks the visitor in place`);
+  {
+    const db = new DatabaseSync(DB);
+    const row = db.prepare("SELECT email FROM premium_request WHERE email = ?").get(PREMIUM_EMAIL);
+    db.close();
+    check(!!row, "the Premium email is saved");
+  }
+  await visitorSite.locator("#pricing").screenshot({ path: `${SHOTS}/landing-pricing.png` });
+  await visitorSite.setViewportSize({ width: 390, height: 844 });
+  await visitorSite.goto(BASE + "/");
+  const landingWide = await visitorSite.evaluate(() => document.documentElement.scrollWidth);
+  check(landingWide <= 390, `phone width: the landing page doesn't scroll sideways (${landingWide}px)`);
+  await visitorSite.screenshot({ path: `${SHOTS}/landing-phone.png`, fullPage: true });
+  await visitorSite.setViewportSize({ width: 1280, height: 900 });
+  await visitorSite.goto(BASE + "/");
+  step = "landing";
   // The hero plays the line's recorded greeting, and the wave and the words follow it.
   // The crawl above already loaded the page, so this is a second visit: the
   // recording comes from the browser's cache (it once broke the words).
@@ -785,6 +812,7 @@ try {
   step = "revoke";
   await owner.goto(BASE + "/admin/promo");
   check(await owner.isVisible(`[data-promo="${CODE}"] >> text=1 of 1 used`) && await owner.isVisible(`[data-promo="${CODE}"] >> text=${FRIEND}`), "the admin page shows who used the code");
+  check(await owner.isVisible(`[data-premium-request="${PREMIUM_EMAIL}"]`), `the admin page lists who asked for Premium on the landing page`);
   await owner.screenshot({ path: `${SHOTS}/admin-promo.png`, fullPage: true });
   await owner.setViewportSize({ width: 390, height: 844 });
   const adminWide = await owner.evaluate(() => document.documentElement.scrollWidth);
@@ -890,6 +918,13 @@ try {
       made.push((await maker.ctx.request.post(BASE + "/signup", { form: { email: `e2e-${stamp}-limit${i}@example.com`, password: "e2e-password" }, maxRedirects: 0 })).status());
     }
     check(made.join(",") === "303,303,303,429", `a 4th account in an hour from one visitor is refused (${made.join(",")})`);
+    // "Get Premium": 3 emails an hour from one visitor.
+    const asker = await as(visitorAddr());
+    const asked = [];
+    for (let i = 1; i <= 4; i++) {
+      asked.push((await asker.ctx.request.post(BASE + "/premium", { form: { email: `e2e-${stamp}-ask${i}@example.com` }, maxRedirects: 0 })).status());
+    }
+    check(asked.join(",") === "303,303,303,429", `a 4th "Get Premium" in an hour from one visitor is refused (${asked.join(",")})`);
     // Calls: 3 rings in 10 minutes, then voicemail without ringing.
     const ringer = await as(visitorAddr());
     await ringer.page.goto(BASE + "/login");
@@ -949,6 +984,7 @@ try {
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
   db.prepare("DELETE FROM push_log WHERE line LIKE 'e2e-%'").run();
   db.prepare("DELETE FROM promo_code WHERE code LIKE 'E2E-%'").run();
+  db.prepare("DELETE FROM premium_request WHERE email LIKE 'e2e-%@example.com'").run();
   db.close();
 }
 

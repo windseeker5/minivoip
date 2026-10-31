@@ -21,6 +21,7 @@ type Limits struct {
 	LineVMs    *Window // everyone leaving messages on one line
 	Logins     *Window // wrong passwords from one visitor
 	Signups    *Window // new accounts from one visitor
+	Premium    *Window // "Get Premium" emails from one visitor
 }
 
 // NewLimits gives the limits agreed with Ken on 2026-10-28.
@@ -33,6 +34,7 @@ func NewLimits() *Limits {
 		LineVMs:    NewWindow(20, time.Hour),
 		Logins:     NewWindow(5, 15*time.Minute),
 		Signups:    NewWindow(3, time.Hour),
+		Premium:    NewWindow(3, time.Hour),
 	}
 }
 

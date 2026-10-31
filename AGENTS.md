@@ -6,9 +6,9 @@ research and proof of concept about a new way to offer voice assistance without 
 
 Keep this short and up to date (status, next action, last update).
 
-- Status: healthy. `main` has everything up to PR #12: calls, the owner's app, the Android app 0.3, the landing page, Premium video and meeting room, plans, logos, the website Call button, limits (PR #10, `web/limits.go`), and (PR #12) the logo filling its shape everywhere plus the call opening in a window over the page (dimmed, blurred behind; `assets/js/w.js`, also on the landing page). Plan and progress: `docs/plan.md` "Where we are".
-- Next action: from `docs/plan.md`, the container and home server. Parked by Ken: polish of the admin, sign up and button looks; the landing page's "Paste this on your site" box still shows the old plain link. Maybe later: a "verify you're human" check (outside service, Ken's call), limits on the relay. Open: the landing page still says Premium is "coming soon"; no payments yet. Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-10-30. Shipped the logo fill and the call window (PR #12); all tests pass: `go vet`, `go test`, `site.mjs` (landing and modal checks), `call.mjs`, `meet.mjs`, `app.mjs`.
+- Status: healthy. `main` has everything up to PR #12 (calls, owner's app, Android 0.3, landing page, Premium video and room, plans, logos, website Call button, limits, call window). Two branches wait for "ship it": `push-look` (notifications name the business and show its logo round) and `landing-message` (the landing page's new message, below).
+- Next action: Ken reviews `landing-message` on http://localhost:7331 and says "ship it"; then ship `push-look` too. After that, from `docs/plan.md`: the container and home server. Parked: polish of the admin, sign up and button looks; the dashboard and app still say Premium "opens after the beta"; the hero animation (motion recipe, storyboard first); AI call notes (on the landing page as "Soon"). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
+- Last update: 2026-10-31. `landing-message`: the landing page leads with "One click, and they're talking to you." (filter, answer, show them), Basic $2 and Premium $10 (no "free in beta"; promo codes still make it free), Premium's "Get Premium" email form (`POST /premium`, table `premium_request`, listed on `/admin/promo`), three questions ending on "Press Call and ask me". Words in `docs/landing-copy.md`. All tests pass: `go vet`, `go test`, `site.mjs`.
 
 ## Rules
 

@@ -212,13 +212,14 @@
 /* ------------------------------------------------------------ cameras, screen, whiteboard */
 
 /* While a camera, a screen or the whiteboard is on (meet.js), the stage takes
-   the place of the voice wave and the window opens wide on a computer. */
-.cw-stage { display: none; }
+   the place of the voice wave and the window opens wide on a computer. The menu
+   has its own .cw-stage (its wave and words), so these rules name [data-stage]. */
+.cw-stage[data-stage] { display: none; }
 .cw-talk-head { display: none; }
 .cw-screen[data-stage-on="on"] { height: 100dvh; }
 .cw-screen[data-stage-on="on"] [data-show="talking"] .cw-center { display: none; }
 .cw-screen[data-stage-on="on"] .cw-talk-head { display: flex; margin-bottom: .75rem; }
-.cw-screen[data-stage-on="on"] .cw-stage { display: flex; flex: 1; }
+.cw-screen[data-stage-on="on"] .cw-stage[data-stage] { display: flex; flex: 1; }
 .cw-screen[data-stage-on="on"] .cw-round-row { padding-top: .875rem; }
 .cw-talk-head .cw-head-status { font-variant-numeric: tabular-nums; }
 .cw-meet-note { margin: .75rem 0 0; padding: .625rem .875rem; border-radius: .875rem; background: var(--cw-end-soft); font-size: .875rem; line-height: 1.45; }

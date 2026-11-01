@@ -105,7 +105,9 @@ B&B and may become a SaaS.
   every 10 s until answered (30 s max), `OnAnswered` clears it on other devices, `OnMissed` "Missed call", a new
   voicemail "New voicemail". Every push is logged in `push_log` and the phone sends a receipt back
   (`POST /app/push/receipt`), so `push_log` shows what each phone really got and how late. The service worker
-  is `assets/js/sw.js`, served at `/sw.js`; the install manifest is `assets/brand/manifest.webmanifest` at
+  is `assets/js/sw.js`, served at `/sw.js`. Notifications name the business ("Incoming call: Joe's B&B") and show
+  its logo cut round (`roundIcon` in `sw.js`, see-through corners; the minivoip mark without a logo), and the app's
+  own alert goes through the worker too (a `show` message). The install manifest is `assets/brand/manifest.webmanifest` at
   `/manifest.webmanifest`. The phone app's notification panel is in `phone.js`.
 - The Call button for a business's website: `assets/js/w.js`, served at `/w.js` (`main.go`); the dashboard shows
   the line to paste. It reads `GET /api/status/<line>` (`web/status.go`: `here` = Available, a ringing choice, and an

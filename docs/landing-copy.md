@@ -19,7 +19,7 @@ FR : minivoip ajoute un bouton « Appelez-nous » à votre site. Votre menu voca
 Ken, 2026-11-01: say plainly what it is for the owner, so anyone gets it. No app screens (the app will be redesigned) and no wordplay. It replaced the voice player and the 3D film tried on branch `hero-motion`.
 - Headline: Let people call you from your website, in one click.
 - Sub: They tap Call us on your site, your phone rings, and you talk. No phone number needed, and yours stays private.
-- CTA: Get my line · Call us now, it's the real thing (minivoip's own line, `MINIVOIP_CALL_LINE`; without it: See how it works)
+- CTA: Get my line · Call us (minivoip's own line, its phone rings once in a while, `MINIVOIP_CALL_LINE`; without it: See how it works)
 - Microcopy: $2 a month · No phone line · Nothing to install
 - Five steps under it, each an icon on one line, lighting up one after the other when the page opens:
   1. A visitor is on your website

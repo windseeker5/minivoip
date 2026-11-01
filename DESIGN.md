@@ -42,9 +42,11 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
   #0b0b0c ground, the same band and field.
 - **Hero (`hero`, `heroSteps`):** centred on a computer, like the steps and the band under it (Ken, 2026-11-01:
   a left headline over centred steps looked unaligned); left-aligned on a phone. Headline 84px on a computer, a
-  line in the logo's colours under "in one click.", then sub, buttons and price line, then five steps on one line
-  (`.lp-steps`): 64px round icons with a hairline ring on a 150px voice wave (bars in the logo's colours, drawn on
-  a canvas by `landing.js`, none right around an icon, ends faded), their words under them; Call us is the orange
+  line in the logo's colours under "in one click.", then sub, buttons (Get my line, and "Call us" whose orange phone rings every 6 s with a soft
+  orange ring around the button) and price line, then five steps on one line (`.lp-steps`): 64px round icons with
+  a hairline ring, their words under them, and one voice wave (bars in the logo's colours, 150px band, drawn on a
+  canvas by `landing.js`) from Call us to the screen, passing behind the icons so it reads as one signal; no wave
+  before Call us (Ken, 2026-11-01: there is no sound before the visitor taps) or after the screen; Call us is the orange
   #f46422 circle, Premium an orange outline tag. On a phone the steps stack down the wave, right under the
   headline.
 - **Then your own phone rings (`phoneRings`):** a 32px-radius band with the gradient field, shorter than the
@@ -174,9 +176,10 @@ white, Funnel, ink, red only for Leave), not a new look.
 
 The landing page has one authored moment, the hero, about 8 s once per page view: the headline's words come in
 one after the other out of a blur, its line in the logo's colours wipes in under "in one click.", then each step
-rises in while the voice wave colours in up to it (its front edge rises like a voice arriving); Call us is pressed
+rises in; when Call us is pressed the voice wave starts there and runs on to each next step as it lights up
+(its front edge rises like a voice arriving); Call us is pressed
 with one ripple, the phone icon shakes, "Hi, it's Marie!" comes in, a stroke draws on the screen icon, then
 Premium. The headline and steps are CSS (`globals.css`); the wave is `landing.js`, which takes its time from the
 steps' own animation so they meet, keeps moving gently while on screen and stops when off screen or hidden.
-Smooth ease-outs only, no bounce. With `prefers-reduced-motion` everything simply shows, on a still wave in
+The hero's Call us button rings every 6 s (its phone shakes, a soft ring grows around it). Smooth ease-outs only, no bounce. With `prefers-reduced-motion` everything simply shows, on a still wave in
 colour. Smooth scrolling to the sections, off under `prefers-reduced-motion`.

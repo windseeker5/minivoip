@@ -217,6 +217,19 @@ body:has(> .lp) {
     color: var(--ink-fg);
   }
 
+  /* The hero's Call us (minivoip's own line): its phone rings once in a
+     while, with a soft ring around the button. */
+  .lp-call {
+    position: relative;
+  }
+  .lp-call::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
   /* The hero's headline (hero): its words come in one after the other, out
      of a blur, then a line in the logo's colours runs under "in one click."
      With less motion it is simply there. */
@@ -258,7 +271,6 @@ body:has(> .lp) {
     left: 0;
     width: 100%;
     height: var(--band);
-    mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
   }
   .lp-step {
     display: grid;
@@ -350,7 +362,6 @@ body:has(> .lp) {
       left: 0;
       width: 48px;
       height: 100%;
-      mask-image: linear-gradient(180deg, transparent, #000 4%, #000 96%, transparent);
     }
     .lp-step {
       grid-template-columns: 48px minmax(0, 1fr);
@@ -385,8 +396,11 @@ body:has(> .lp) {
     .lp-mark::after {
       animation: lp-wipe 0.7s 1.05s cubic-bezier(0.65, 0, 0.35, 1) both;
     }
-    .lp-steps-wave {
-      animation: lp-fade-in 0.8s 0.5s ease-out both;
+    .lp-call svg {
+      animation: lp-call-ring 6s 2s ease-in-out infinite;
+    }
+    .lp-call::after {
+      animation: lp-call-pulse 6s 2s ease-out infinite;
     }
     .lp-step {
       animation: lp-step-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
@@ -558,9 +572,16 @@ body:has(> .lp) {
   from { clip-path: inset(0 100% 0 0 round 999px); }
   to { clip-path: inset(0 0 0 0 round 999px); }
 }
-@keyframes lp-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* Every 6 s: the phone rings for 0.9 s, the ring around the button grows
+   and fades, then both rest. */
+@keyframes lp-call-ring {
+  0%, 15%, 100% { transform: rotate(0); }
+  2.5%, 7.5%, 12.5% { transform: rotate(-14deg); }
+  5%, 10% { transform: rotate(14deg); }
+}
+@keyframes lp-call-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(244 100 34 / 0.45); }
+  22%, 100% { box-shadow: 0 0 0 14px rgb(244 100 34 / 0); }
 }
 @keyframes lp-step-in {
   from { opacity: 0; transform: translateY(10px); }

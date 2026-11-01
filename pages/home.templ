@@ -179,9 +179,9 @@ templ hero(line *lines.Line) {
 				Get my line
 			}
 			if line != nil {
-				<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-call-us data-minivoip-call class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">
-					@icon.Phone(icon.Props{Class: "size-4"})
-					Call us now, it's the real thing
+				<a href={ templ.SafeURL("/call/" + line.Name) } target="_blank" data-call-us data-minivoip-call class="lp-call inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2.5 rounded-full px-7 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">
+					@icon.Phone(icon.Props{Class: "size-[18px] text-[#f46422]"})
+					Call us
 				</a>
 			} else {
 				<a href="#how" class="inline-flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full px-6 sm:w-auto text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted">See how it works</a>
@@ -193,9 +193,10 @@ templ hero(line *lines.Line) {
 }
 
 // heroSteps is how a call goes, in five steps that light up one after the
-// other when the page opens (CSS, globals.css .lp-steps), on a voice wave in
-// the logo's colours that runs along with them (landing.js draws it). With
-// less motion they simply show, on a still wave.
+// other when the page opens (CSS, globals.css .lp-steps). From the moment Call
+// us is pressed, one voice wave in the logo's colours runs behind the steps up
+// to the screen (landing.js draws it). With less motion they simply show, on a
+// still wave.
 templ heroSteps() {
 	<div class="lp-steps order-2 w-full md:order-5" data-hero-steps>
 		<canvas class="lp-steps-wave" aria-hidden="true" data-hero-wave></canvas>

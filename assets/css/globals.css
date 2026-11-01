@@ -163,6 +163,7 @@
   --input: #e7e7ea;
   --ring: #0c0c0d;
   --now: #ffe4d6;       /* a highlight: your-business in the code to paste */
+  --wave: #ececef;      /* the faint voice wave behind the hero's steps */
   /* The closing band, the page's one dark moment. */
   --ink-bg: #0c0c0d;
   --ink-fg: #f4f4f5;
@@ -187,6 +188,7 @@
   --input: #2c2c31;
   --ring: #f4f4f5;
   --now: #4a2a1c;
+  --wave: #1e1e21;
   --ink-bg: #141416;
   --ink-fg: #f4f4f5;
   --ink-muted: #a1a1a8;
@@ -272,6 +274,25 @@ body:has(> .lp) {
     width: 100%;
     height: var(--band);
   }
+  .lp-steps-line {
+    position: absolute;
+    top: calc(var(--band) / 2 - 1px);
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: var(--border);
+  }
+  .lp-steps-line > i {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #f3840f, #f46422 30%, #e31a5a 55%, #9f1574 75%, #143495);
+  }
+  /* Each step's colour on the line, for its ring as the line reaches it. */
+  .lp-step:nth-child(1) { --at: #f3840f; }
+  .lp-step:nth-child(2) { --at: #f46422; }
+  .lp-step:nth-child(3) { --at: #e31a5a; }
+  .lp-step:nth-child(4) { --at: #9f1574; }
+  .lp-step:nth-child(5) { --at: #143495; }
   .lp-step {
     display: grid;
     align-content: start;
@@ -320,6 +341,14 @@ body:has(> .lp) {
     background: var(--background);
     box-shadow: 0 0 0 1px var(--border);
   }
+  .lp-step-ic::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid var(--at);
+    border-radius: 999px;
+    opacity: 0;
+  }
   .lp-step-ic svg {
     width: 26px;
     height: 26px;
@@ -362,6 +391,17 @@ body:has(> .lp) {
       left: 0;
       width: 48px;
       height: 100%;
+    }
+    .lp-steps-line {
+      top: 24px;
+      bottom: 24px;
+      left: 23px;
+      right: auto;
+      width: 2px;
+      height: auto;
+    }
+    .lp-steps-line > i {
+      background: linear-gradient(180deg, #f3840f, #f46422 30%, #e31a5a 55%, #9f1574 75%, #143495);
     }
     .lp-step {
       grid-template-columns: 48px minmax(0, 1fr);
@@ -410,8 +450,26 @@ body:has(> .lp) {
     .lp-step:nth-child(3) { animation-delay: 3.5s; }
     .lp-step:nth-child(4) { animation-delay: 4.8s; }
     .lp-step:nth-child(5) { animation-delay: 6.2s; }
-    .lp-step-call {
-      animation: lp-press 0.45s 2.65s ease-out both;
+    /* Each icon grows in out of a blur and a ring in its colour on the line
+       goes out from it; Call us is then pressed. */
+    .lp-step-ic {
+      animation: lp-icon-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .lp-step-ic::before {
+      animation: lp-ripple 1s ease-out both;
+    }
+    .lp-step:nth-child(1) .lp-step-ic { animation-delay: 1.2s; }
+    .lp-step:nth-child(2) .lp-step-ic { animation-delay: 2.2s; }
+    .lp-step:nth-child(3) .lp-step-ic { animation-delay: 3.5s; }
+    .lp-step:nth-child(4) .lp-step-ic { animation-delay: 4.8s; }
+    .lp-step:nth-child(5) .lp-step-ic { animation-delay: 6.2s; }
+    .lp-step:nth-child(1) .lp-step-ic::before { animation-delay: 1.35s; }
+    .lp-step:nth-child(2) .lp-step-ic::before { animation-delay: 2.35s; }
+    .lp-step:nth-child(3) .lp-step-ic::before { animation-delay: 3.65s; }
+    .lp-step:nth-child(4) .lp-step-ic::before { animation-delay: 4.95s; }
+    .lp-step:nth-child(5) .lp-step-ic::before { animation-delay: 6.35s; }
+    .lp-step-ic.lp-step-call {
+      animation: lp-icon-in 0.7s 2.2s cubic-bezier(0.16, 1, 0.3, 1) both, lp-press 0.45s 2.65s ease-out;
     }
     .lp-step-call::after {
       animation: lp-ripple 0.8s 2.75s ease-out both;
@@ -427,6 +485,14 @@ body:has(> .lp) {
     }
     .lp-step em {
       animation: lp-pop 0.4s 7.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .lp-steps-line > i {
+      animation: lp-fill-x 6.4s ease-in-out both;
+    }
+    @media (max-width: 767px) {
+      .lp-steps-line > i {
+        animation-name: lp-fill-y;
+      }
     }
   }
   /* The logo's colours as one field, behind the owner's phone. The field is
@@ -587,6 +653,10 @@ body:has(> .lp) {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
+@keyframes lp-icon-in {
+  from { opacity: 0; filter: blur(6px); transform: scale(0.5); }
+  to { opacity: 1; filter: none; transform: none; }
+}
 @keyframes lp-press {
   0% { transform: scale(1); }
   35% { transform: scale(0.86); }
@@ -608,4 +678,19 @@ body:has(> .lp) {
 @keyframes lp-draw {
   from { stroke-dashoffset: 20; }
   to { stroke-dashoffset: 0; }
+}
+/* The line reaches each step as it comes in (the delays above, out of 6.4 s). */
+@keyframes lp-fill-x {
+  0%, 25.8% { clip-path: inset(0 100% 0 0); }
+  36.7%, 46.1% { clip-path: inset(0 75% 0 0); }
+  57%, 66.4% { clip-path: inset(0 50% 0 0); }
+  77.3%, 88.3% { clip-path: inset(0 25% 0 0); }
+  99.2%, 100% { clip-path: inset(0); }
+}
+@keyframes lp-fill-y {
+  0%, 25.8% { clip-path: inset(0 0 100% 0); }
+  36.7%, 46.1% { clip-path: inset(0 0 75% 0); }
+  57%, 66.4% { clip-path: inset(0 0 50% 0); }
+  77.3%, 88.3% { clip-path: inset(0 0 25% 0); }
+  99.2%, 100% { clip-path: inset(0); }
 }

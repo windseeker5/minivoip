@@ -37,16 +37,17 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
   rest of the site keeps Onest). Headlines semibold, tight (`tracking-[-0.04em]`): hero 88px, sections 60px.
 - **Colour:** pure white, ink #0c0c0d, muted #66666c, hairlines #e7e7ea, soft grey panels #f4f4f5 (`.lp` tokens in
   `globals.css`). Buttons are ink pills. The logo's colours appear in three places only: the line under the
-  hero's "in one click.", the voice wave behind the hero's steps, and the one gradient field (`.lp-spectrum`, blurred radial blobs from orange #f3840f to blue
+  hero's "in one click.", the line between the hero's steps, and the one gradient field (`.lp-spectrum`, blurred radial blobs from orange #f3840f to blue
   #143495). Peach #ffe4d6 highlights `your-business` in the code to paste. One dark moment: the closing band (`lp-ink`). Dark mode:
   #0b0b0c ground, the same band and field.
 - **Hero (`hero`, `heroSteps`):** centred on a computer, like the steps and the band under it (Ken, 2026-11-01:
   a left headline over centred steps looked unaligned); left-aligned on a phone. Headline 84px on a computer, a
   line in the logo's colours under "in one click.", then sub, buttons (Get my line, and "Call us" whose orange phone rings every 6 s with a soft
   orange ring around the button) and price line, then five steps on one line (`.lp-steps`): 64px round icons with
-  a hairline ring, their words under them, and one voice wave (bars in the logo's colours, 150px band, drawn on a
-  canvas by `landing.js`) from Call us to the screen, passing behind the icons so it reads as one signal; no wave
-  before Call us (Ken, 2026-11-01: there is no sound before the visitor taps) or after the screen; Call us is the orange
+  a hairline ring, their words under them, joined by a 2px grey line that fills in the logo's colours; behind the
+  line, one faint grey voice wave (`--wave`, #ececef; 150px band, drawn on a canvas by `landing.js`) from Call us
+  to the screen, passing behind the icons so it reads as one signal (Ken, 2026-11-01: colourful bars were too
+  loud); no wave before Call us (there is no sound before the visitor taps) or after the screen; Call us is the orange
   #f46422 circle, Premium an orange outline tag. On a phone the steps stack down the wave, right under the
   headline.
 - **Then your own phone rings (`phoneRings`):** a 32px-radius band with the gradient field, shorter than the
@@ -176,8 +177,9 @@ white, Funnel, ink, red only for Leave), not a new look.
 
 The landing page has one authored moment, the hero, about 8 s once per page view: the headline's words come in
 one after the other out of a blur, its line in the logo's colours wipes in under "in one click.", then each step
-rises in; when Call us is pressed the voice wave starts there and runs on to each next step as it lights up
-(its front edge rises like a voice arriving); Call us is pressed
+comes in (its icon grows out of a blur and sends out one ring in its colour on the line) as the line fills up to
+it; when Call us is pressed the faint voice wave starts there and runs on with the line (its front edge rises
+like a voice arriving); Call us is pressed
 with one ripple, the phone icon shakes, "Hi, it's Marie!" comes in, a stroke draws on the screen icon, then
 Premium. The headline and steps are CSS (`globals.css`); the wave is `landing.js`, which takes its time from the
 steps' own animation so they meet, keeps moving gently while on screen and stops when off screen or hidden.

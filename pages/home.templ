@@ -192,14 +192,15 @@ templ hero(line *lines.Line) {
 	</section>
 }
 
-// heroSteps is how a call goes, in five steps that light up one after the
-// other when the page opens (CSS, globals.css .lp-steps). From the moment Call
-// us is pressed, one voice wave in the logo's colours runs behind the steps up
-// to the screen (landing.js draws it). With less motion they simply show, on a
-// still wave.
+// heroSteps is how a call goes, in five steps that come in one after the
+// other when the page opens, joined by a line that fills in the logo's colours
+// as it reaches each one (CSS, globals.css .lp-steps). From the moment Call us
+// is pressed, a faint voice wave runs behind the line up to the screen
+// (landing.js draws it). With less motion they simply show.
 templ heroSteps() {
 	<div class="lp-steps order-2 w-full md:order-5" data-hero-steps>
 		<canvas class="lp-steps-wave" aria-hidden="true" data-hero-wave></canvas>
+		<span class="lp-steps-line" aria-hidden="true"><i></i></span>
 		<ol>
 			<li class="lp-step">
 				<span class="lp-step-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"></circle><path d="M2.5 12h19"></path><path d="M12 2.5a14.5 14.5 0 0 1 3.8 9.5 14.5 14.5 0 0 1-3.8 9.5 14.5 14.5 0 0 1-3.8-9.5A14.5 14.5 0 0 1 12 2.5z"></path></svg></span>

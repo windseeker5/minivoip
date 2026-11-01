@@ -58,12 +58,12 @@ document.querySelectorAll("[data-copy-code]").forEach(function (btn) {
   });
 });
 
-// The voice wave behind the hero's steps: one signal in the logo's colours.
-// There is no sound before the visitor taps Call us, so it starts at Call us,
-// when it is pressed, and runs behind the next steps as each one lights up
-// (the times of .lp-step in globals.css), up to the screen. Then it keeps
-// moving like a voice while it is on screen. With less motion it is drawn
-// once, in full.
+// The voice wave behind the hero's steps: one faint grey signal behind the
+// line (the line carries the colour). There is no sound before the visitor
+// taps Call us, so it starts at Call us, when it is pressed, and runs on with
+// the line to each next step (the times in globals.css), up to the screen.
+// Then it keeps moving like a voice while it is on screen. With less motion it
+// is drawn once, in full.
 (function () {
   var canvas = document.querySelector("[data-hero-wave]");
   if (!canvas || !canvas.getContext) return;
@@ -77,25 +77,6 @@ document.querySelectorAll("[data-copy-code]").forEach(function (btn) {
   // globals.css.
   var lit = [1.2, 2.2, 3.5, 4.8, 6.2];
   var pressed = 2.65;
-  var stops = [
-    [0, [244, 100, 34]],
-    [0.3, [227, 26, 90]],
-    [0.6, [159, 21, 116]],
-    [0.8, [90, 38, 146]],
-    [1, [20, 52, 149]],
-  ];
-  function colourAt(u) {
-    for (var k = 1; k < stops.length; k++) {
-      if (u <= stops[k][0]) {
-        var a = stops[k - 1], b = stops[k];
-        var f = (u - a[0]) / (b[0] - a[0]);
-        return "rgb(" + [0, 1, 2].map(function (c) {
-          return Math.round(a[1][c] + (b[1][c] - a[1][c]) * f);
-        }).join(",") + ")";
-      }
-    }
-    return "rgb(20,52,149)";
-  }
   function smooth(a, b, x) {
     var f = Math.min(1, Math.max(0, (x - a) / (b - a)));
     return f * f * (3 - 2 * f);
@@ -132,7 +113,6 @@ document.querySelectorAll("[data-copy-code]").forEach(function (btn) {
       var near = Math.min.apply(null, nodes.map(function (n) { return Math.abs(at - n); }));
       bars.push({
         at: at,
-        colour: colourAt((at - from) / (to - from)),
         size: Math.min(1, Math.max(0.2, 0.58 + 0.24 * Math.sin(at * 0.019 + 1.3) + 0.14 * Math.sin(at * 0.061) + (rand() - 0.5) * 0.5)),
         cap: (icon - 16) + (vertical ? w : h) * smooth(icon / 2, icon / 2 + 36, near),
         phase: rand() * 6.28,
@@ -143,7 +123,7 @@ document.querySelectorAll("[data-copy-code]").forEach(function (btn) {
   // How far the voice has gone (px) at t seconds: nowhere before Call us is
   // pressed, then on to each step as it lights up.
   function reach(t) {
-    var from = nodes[1], start = pressed;
+    var from = nodes[1], start = lit[2] - 0.55;
     for (var k = 2; k < nodes.length; k++) {
       var end = lit[k] + 0.15;
       if (t < start) return from;
@@ -165,14 +145,14 @@ document.querySelectorAll("[data-copy-code]").forEach(function (btn) {
     var end = nodes[nodes.length - 1];
     ctx.clearRect(0, 0, w, h);
     if (!still && t < pressed) return; // no sound before Call us is pressed
+    ctx.fillStyle = getComputedStyle(canvas).getPropertyValue("--wave").trim() || "#ececef";
     for (var i = 0; i < bars.length; i++) {
       var b = bars[i];
       if (b.at > head) break;
       var live = still ? 0.8 : 0.62 + 0.38 * Math.sin(t * 2.6 - b.at * 0.035 + b.phase) * Math.sin(t * 1.3 + b.phase * 2);
       // The front edge rises like a voice arriving, until it reaches the end.
-      var front = head < end ? 1 + 0.5 * Math.exp(-Math.pow((head - b.at) / 36, 2)) : 1;
-      var size = Math.max(thick, Math.min(b.cap, b.size * live * front * cross * 0.86));
-      ctx.fillStyle = b.colour;
+      var front = head < end ? 1 + 0.3 * Math.exp(-Math.pow((head - b.at) / 36, 2)) : 1;
+      var size = Math.max(thick, Math.min(b.cap, b.size * live * front * cross * 0.7));
       ctx.beginPath();
       if (vertical) {
         ctx.roundRect ? ctx.roundRect((w - size) / 2, b.at - thick / 2, size, thick, thick / 2) : ctx.rect((w - size) / 2, b.at - thick / 2, size, thick);

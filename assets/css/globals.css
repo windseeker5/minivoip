@@ -143,8 +143,8 @@
 }
 
 /* The landing page (pages/home.templ, DESIGN.md "Landing page"): look
-   "Voice". Pure white, ink type in Funnel, the owner's voice as the hero; the
-   logo's colours as one field behind the phone. It sets the shadcn tokens for
+   "Voice". Pure white, ink type in Funnel; the hero says it in one line and
+   five steps; the logo's colours as one field behind the phone. It sets the shadcn tokens for
    its own subtree, so the components follow. */
 .lp {
   --background: #ffffff;
@@ -162,8 +162,7 @@
   --border: #e7e7ea;
   --input: #e7e7ea;
   --ring: #0c0c0d;
-  --faint: #c9c9ce;     /* the wave and the words not said yet */
-  --now: #ffe4d6;       /* the word being said */
+  --now: #ffe4d6;       /* a highlight: your-business in the code to paste */
   /* The closing band, the page's one dark moment. */
   --ink-bg: #0c0c0d;
   --ink-fg: #f4f4f5;
@@ -187,7 +186,6 @@
   --border: #29292d;
   --input: #2c2c31;
   --ring: #f4f4f5;
-  --faint: #3b3b40;
   --now: #4a2a1c;
   --ink-bg: #141416;
   --ink-fg: #f4f4f5;
@@ -219,112 +217,186 @@ body:has(> .lp) {
     color: var(--ink-fg);
   }
 
-  /* The hero's voice: play button, wave, playhead, and the words. */
-  .lp-play {
+  /* The hero's five steps (heroSteps): a row of icons on a line, stacked down
+     the line on a phone. When the page opens they light up one after the
+     other and the line fills in the logo's colours; with less motion they
+     simply show. */
+  .lp-steps {
     position: relative;
+    margin-top: 80px;
+  }
+  .lp-steps > ol {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .lp-steps-line {
+    position: absolute;
+    top: 31px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: var(--border);
+  }
+  .lp-steps-line > i {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #f3840f, #f46422 45%, #143495);
+  }
+  .lp-step {
+    display: grid;
+    align-content: start;
+    justify-items: center;
+    gap: 16px;
+    padding: 0 8px;
+    text-align: center;
+  }
+  .lp-step > div {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+  }
+  .lp-step b {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .lp-step q {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--muted);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .lp-step em {
+    padding: 6px 12px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px #f46422;
+    color: #f46422;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .lp-step-ic {
+    position: relative;
+    z-index: 1;
     display: grid;
     place-items: center;
-    flex: none;
-    width: 96px;
-    height: 96px;
+    width: 64px;
+    height: 64px;
     border-radius: 999px;
-    background: var(--foreground);
-    color: var(--background);
-    box-shadow: 0 20px 40px -16px rgb(0 0 0 / 0.45);
-    cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    background: var(--background);
+    box-shadow: 0 0 0 1px var(--border);
   }
-  .lp-play:hover {
-    transform: scale(1.04);
+  .lp-step-ic svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
-  .lp-play:focus-visible {
-    outline: 2px solid var(--foreground);
-    outline-offset: 4px;
+  .lp-step-call {
+    background: #f46422;
+    box-shadow: none;
+    color: #ffffff;
   }
-  .lp-play-off,
-  .playing .lp-play-on {
-    display: none;
+  .lp-step-call svg {
+    fill: currentColor;
+    stroke: none;
   }
-  .playing .lp-play-off {
-    display: block;
-  }
-  .lp-wave {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 150px;
-  }
-  .lp-wave > i {
-    display: block;
-    width: 4px;
-    flex: none;
-    border-radius: 3px;
-    background: var(--faint);
-    transition: background-color 0.15s;
-  }
-  .lp-wave > i.on {
-    background: var(--c);
-  }
-  .lp-head {
+  .lp-step-call::after {
+    content: "";
     position: absolute;
-    top: -6px;
-    bottom: -6px;
-    width: 2px;
-    background: var(--foreground);
-    pointer-events: none;
+    inset: 0;
+    border: 2px solid #f46422;
+    border-radius: 999px;
+    opacity: 0;
   }
-  .lp-head > span {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    margin-bottom: 6px;
-    transform: translateX(-50%);
-    font-size: 13px;
-    font-weight: 600;
+  .lp-step-draw {
+    stroke: #f46422;
+    stroke-dasharray: 20;
   }
-  [data-voice-seek] {
-    cursor: pointer;
-  }
-  .lp-words span {
-    color: var(--faint);
-    border-radius: 0.3em;
-    transition: color 0.15s, background-color 0.15s;
-  }
-  .lp-words span.said {
-    color: var(--foreground);
-  }
-  .lp-words span.now {
-    color: var(--foreground);
-    background: var(--now);
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
-  }
-  /* A run of words being said reads as one highlight. */
-  .lp-words span.now:has(+ span.now) {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-  .lp-words span.now + span.now {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-  }
-  @media (max-width: 639px) {
-    .lp-play {
-      width: 64px;
-      height: 64px;
+  @media (max-width: 767px) {
+    .lp-steps {
+      margin-top: 40px;
     }
-    .lp-wave {
-      height: 96px;
+    .lp-steps > ol {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 22px;
     }
-    .lp-wave > i {
-      width: 3px;
+    .lp-steps-line {
+      top: 24px;
+      bottom: 24px;
+      left: 23px;
+      right: auto;
+      width: 2px;
+      height: auto;
     }
-    .lp-wave > i:nth-child(2n) {
-      display: none;
+    .lp-steps-line > i {
+      background: linear-gradient(180deg, #f3840f, #f46422 45%, #143495);
+    }
+    .lp-step {
+      grid-template-columns: 48px minmax(0, 1fr);
+      align-items: center;
+      justify-items: start;
+      column-gap: 16px;
+      padding: 0;
+      text-align: left;
+    }
+    .lp-step > div {
+      justify-items: start;
+      gap: 8px;
+    }
+    .lp-step-ic {
+      width: 48px;
+      height: 48px;
+    }
+    .lp-step-ic svg {
+      width: 22px;
+      height: 22px;
     }
   }
-
+  /* 6.5 s: each step rises in, the line fills up to it; Call us is pressed,
+     the phone shakes, "Hi" pops, the screen gets a stroke, then Premium. */
+  @media (prefers-reduced-motion: no-preference) {
+    .lp-step {
+      animation: lp-step-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+    .lp-step:nth-child(1) { animation-delay: 0.3s; }
+    .lp-step:nth-child(2) { animation-delay: 1.3s; }
+    .lp-step:nth-child(3) { animation-delay: 2.6s; }
+    .lp-step:nth-child(4) { animation-delay: 3.9s; }
+    .lp-step:nth-child(5) { animation-delay: 5.3s; }
+    .lp-step-call {
+      animation: lp-press 0.45s 1.75s ease-out both;
+    }
+    .lp-step-call::after {
+      animation: lp-ripple 0.8s 1.85s ease-out both;
+    }
+    .lp-step:nth-child(3) svg {
+      animation: lp-ring 0.9s 2.85s ease-in-out both;
+    }
+    .lp-step q {
+      animation: lp-pop 0.4s 4.35s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+    }
+    .lp-step-draw {
+      animation: lp-draw 0.8s 5.7s ease-in-out both;
+    }
+    .lp-step em {
+      animation: lp-pop 0.4s 6.2s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+    }
+    .lp-steps-line > i {
+      animation: lp-fill-x 6.3s ease-in-out both;
+    }
+    @media (max-width: 767px) {
+      .lp-steps-line > i {
+        animation-name: lp-fill-y;
+      }
+    }
+  }
   /* The logo's colours as one field, behind the owner's phone. */
   .lp-spectrum {
     position: relative;
@@ -455,4 +527,46 @@ body:has(> .lp) {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
+
+@keyframes lp-step-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lp-press {
+  0% { transform: scale(1); }
+  35% { transform: scale(0.86); }
+  100% { transform: scale(1); }
+}
+@keyframes lp-ripple {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2); }
+}
+@keyframes lp-ring {
+  0%, 90%, 100% { transform: rotate(0); }
+  10%, 30%, 50%, 70% { transform: rotate(-16deg); }
+  20%, 40%, 60%, 80% { transform: rotate(16deg); }
+}
+@keyframes lp-pop {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lp-draw {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+/* The line reaches each step as it comes (delays above, out of 6.3 s). */
+@keyframes lp-fill-x {
+  0%, 15% { clip-path: inset(0 100% 0 0); }
+  21%, 34% { clip-path: inset(0 75% 0 0); }
+  41%, 55% { clip-path: inset(0 50% 0 0); }
+  62%, 77% { clip-path: inset(0 25% 0 0); }
+  84%, 100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes lp-fill-y {
+  0%, 15% { clip-path: inset(0 0 100% 0); }
+  21%, 34% { clip-path: inset(0 0 75% 0); }
+  41%, 55% { clip-path: inset(0 0 50% 0); }
+  62%, 77% { clip-path: inset(0 0 25% 0); }
+  84%, 100% { clip-path: inset(0 0 0 0); }
 }

@@ -1,6 +1,6 @@
 # Landing page copy
 
-Last update: 2026-10-31 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
+Last update: 2026-11-01 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
 Look: "Voice" (with the Spectrum colour band and the Swiss code example), picked by Ken on 2026-10-25 from ten mocks (DESIGN.md "Landing page"). Changes to the words are noted below.
 
 ## The message (Ken, 2026-10-31)
@@ -16,11 +16,18 @@ FR : minivoip ajoute un bouton « Appelez-nous » à votre site. Votre menu voca
 - Description: the elevator sentence.
 
 ## Hero
-- Headline: One click, and they're talking to you.
-- Sub: A Call button for your website. It rings your phone and your computer, and your cell number stays private.
-- The voice player (a stand-in until the hero animation): minivoip's own line's recorded greeting (play and pause), the wave, "minivoip's own line · the real recording" and its length. Under it, the greeting and the spoken menu written out from the line itself. Without the line: an example menu, labelled "Example of a voice menu", no play button.
+Ken, 2026-11-01: say plainly what it is for the owner, so anyone gets it. No app screens (the app will be redesigned) and no wordplay. It replaced the voice player and the 3D film tried on branch `hero-motion`.
+- Headline: Let people call you from your website, in one click.
+- Sub: They tap Call us on your site, your phone rings, and you talk. No phone number needed, and yours stays private.
 - CTA: Get my line · Call us now, it's the real thing (minivoip's own line, `MINIVOIP_CALL_LINE`; without it: See how it works)
 - Microcopy: $2 a month · No phone line · Nothing to install
+- Five steps under it, each an icon on one line, lighting up one after the other when the page opens:
+  1. A visitor is on your website
+  2. They tap Call us
+  3. Your phone rings
+  4. You talk, live · “Hi, it's Marie!”
+  5. Show them your screen · Premium
+  On a phone the steps come right under the headline, then the sub and the buttons.
 
 ## Then your own phone rings (the colour band)
 - Heading: Then your own phone rings.

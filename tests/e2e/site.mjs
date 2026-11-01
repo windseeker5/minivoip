@@ -183,7 +183,7 @@ try {
   // The message (docs/landing-copy.md, 2026-10-31): a real person in one
   // click, Basic $2 and Premium $10, nothing "free" but a promo code.
   const landingText = await visitorSite.textContent("body");
-  check(landingText.includes("One click, and they're talking to you.") && landingText.includes("It filters. You answer. You show them."), "the landing page leads with talking to a real person");
+  check(landingText.includes("Let people call you from your website, in one click.") && landingText.includes("It filters. You answer. You show them."), "the landing page says what it does in one line");
   check(landingText.includes("$10") && !/free while in beta|free line/i.test(landingText), "Premium is $10 and Basic isn't sold as free");
   // "Get Premium": no payments yet, the email goes on the admin page's list.
   step = "get premium";
@@ -206,22 +206,11 @@ try {
   await visitorSite.setViewportSize({ width: 1280, height: 900 });
   await visitorSite.goto(BASE + "/");
   step = "landing";
-  // The hero plays the line's recorded greeting, and the wave and the words follow it.
-  // The crawl above already loaded the page, so this is a second visit: the
-  // recording comes from the browser's cache (it once broke the words).
-  if (await visitorSite.$("[data-voice-play]")) {
-    await visitorSite.click("[data-voice-play]");
-    await visitorSite.waitForTimeout(2000);
-    const voice = await visitorSite.evaluate(() => ({
-      playing: document.querySelector("[data-voice]").classList.contains("playing"),
-      at: document.querySelector("[data-voice] audio").currentTime,
-      said: document.querySelectorAll("[data-voice-text] span.said").length,
-      length: document.querySelector("[data-voice-time]").textContent,
-    }));
-    check(voice.playing && voice.at > 0.5 && voice.length !== "" && voice.said > 0, `the hero plays the greeting (${voice.at.toFixed(1)} s of ${voice.length}, ${voice.said} words said)`);
-    await visitorSite.click("[data-voice-play]");
-    check(await visitorSite.evaluate(() => document.querySelector("[data-voice] audio").paused), "pressing again pauses the greeting");
-  }
+  // The hero's five steps: all shown once their animation is over (6.5 s).
+  await visitorSite.waitForTimeout(7000);
+  const steps = await visitorSite.evaluate(() => [...document.querySelectorAll("[data-hero-steps] .lp-step")].map((s) => getComputedStyle(s).opacity));
+  check(steps.length === 5 && steps.every((o) => o === "1"), `the hero's five steps all show (${steps.join(", ")})`);
+  await visitorSite.screenshot({ path: `${SHOTS}/landing-hero.png` });
   await visitorSite.goto(BASE + "/dashboard");
   check(new URL(visitorSite.url()).pathname === "/login", "dashboard sends logged-out visitors to log in");
 

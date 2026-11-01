@@ -6,7 +6,7 @@ First built on the landing page (`pages/home.templ`) on 2026-10-21; the other sc
 ## Direction
 
 Clean, lean and modern, at the craft level of top product sites (Quo, Aircall, Linear). The product explains
-itself: the landing hero plays the owner's real recorded voice menu (look "Voice", 2026-10-25). No themed metaphors (answering machines,
+itself: the landing page is look "Voice" (2026-10-25), and its hero says in one line and five icon steps how a call goes (2026-11-01). No themed metaphors (answering machines,
 key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
 
 ## Tokens
@@ -31,20 +31,21 @@ directions, and asked for ten. Ten mocks each held to a top site were shown
 (https://claude.ai/artifact/8AZNbvGtZWkXWjugauaBTM); he liked 2 Spectrum, 6 Voice, 8 Swiss and 10 Signal, and
 chose **6 Voice**, held to ElevenLabs and Spotify, with two borrowed pieces: **Spectrum**'s logo-colour field (held to
 Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Built in `pages/home.templ`
-(`pages/voice.go`, `pages/wave.go`, `assets/js/landing.js`); the words are in `docs/landing-copy.md`.
+(`pages/voice.go`, `assets/js/landing.js`); the words are in `docs/landing-copy.md`.
 
 - **Type:** Funnel Display for headings (`.lp-display`) and Funnel Sans for text, loaded by the page itself (the
   rest of the site keeps Onest). Headlines semibold, tight (`tracking-[-0.04em]`): hero 88px, sections 60px.
 - **Colour:** pure white, ink #0c0c0d, muted #66666c, hairlines #e7e7ea, soft grey panels #f4f4f5 (`.lp` tokens in
-  `globals.css`). Buttons are ink pills. The logo's colours appear in two places only: the played part of the
-  voice wave, and the one gradient field (`.lp-spectrum`, blurred radial blobs from orange #f3840f to blue
-  #143495). Peach #ffe4d6 marks the word being said. One dark moment: the closing band (`lp-ink`). Dark mode:
+  `globals.css`). Buttons are ink pills. The logo's colours appear in two places only: the line of the hero's
+  steps, and the one gradient field (`.lp-spectrum`, blurred radial blobs from orange #f3840f to blue
+  #143495). Peach #ffe4d6 highlights `your-business` in the code to paste. One dark moment: the closing band (`lp-ink`). Dark mode:
   #0b0b0c ground, the same band and field.
-- **Hero (`hero`, `voicePlayer`):** centred headline and sub, then the voice: a 96px ink play button and a
-  120-bar wave (`voiceWave`), with "minivoip's own line · the real recording" and its length. landing.js plays
-  the line's recorded greeting (`/prompt/<file>`), lights the wave and the words as it goes, and redraws the wave
-  from the recording's real shape (decoded in the browser, quiet trimmed). The words are the line's greeting and
-  spoken menu (`voiceWords`), so a new recording updates the page. At rest the first 44% looks played.
+- **Hero (`hero`, `heroSteps`):** left-aligned headline (72px on a computer), sub, buttons and price line, then
+  five steps on one line (`.lp-steps`): 64px round icons with a hairline ring, their words under them; Call us is
+  the orange #f46422 circle, Premium an orange outline tag. On a phone the steps stack down the line, right under
+  the headline. Motion (CSS only, 6.5 s, once per page view): each step rises in while the line fills to it in
+  the logo's colours; Call us is pressed with one ripple, the phone icon shakes, "Hi, it's Marie!" pops, a stroke
+  draws on the screen icon, then Premium. With less motion everything simply shows.
 - **Then your own phone rings (`phoneRings`):** a 32px-radius band with the gradient field; ink text on the
   orange end, the owner's phone (the real app screen, with the line's first ringing choice) and a voicemail alert.
 - **Sections:** centred heads (`sectionHead`) for the call grows, plans and questions; plans as one white card

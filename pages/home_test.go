@@ -31,11 +31,14 @@ func TestHomeRenders(t *testing.T) {
 	if !strings.Contains(page, `action="/premium"`) || !strings.Contains(page, "$10") {
 		t.Error("Premium is $10 and starts with an email (POST /premium)")
 	}
-	if !strings.Contains(page, `src="/prompt/prompt-x.webm"`) || !strings.Contains(page, "data-voice-play") {
-		t.Error("the hero should play the line's recorded greeting")
+	if !strings.Contains(page, "Let people call you from your website, in one click.") || strings.Count(page, `class="lp-step"`) != 5 {
+		t.Error("the hero should say it in one line, then show the call in five steps")
 	}
-	if !strings.Contains(page, "Book a demo") || !strings.Contains(page, "you&#39;ve") && !strings.Contains(page, "you've") {
-		t.Error("the hero should write out the line's greeting and menu")
+	if !strings.Contains(page, "Show them your screen") || !strings.Contains(page, "<em>Premium</em>") {
+		t.Error("the hero's last step should be Premium's: show them your screen")
+	}
+	if strings.Contains(page, "data-voice") {
+		t.Error("the hero's voice player is gone")
 	}
 	if !strings.Contains(page, "https://voip.example/call/") {
 		t.Error("the code to paste should use this site's address")

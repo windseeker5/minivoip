@@ -120,6 +120,7 @@ for (const [name, w, h] of [["phone", 390, 844], ["desk", 1280, 860]]) {
   await page.waitForTimeout(1500);
   const words = await page.locator("[data-words] span").count();
   check(words > 10, `${name}: the menu's words are written out (${words} words)`);
+  check(await page.isVisible("[data-wave]") && await page.isVisible("[data-words]"), `${name}: the menu shows its wave and its words`);
   check(await page.locator("[data-words] span.said").count() > 0, `${name}: words light up as the voice goes`);
   check(!(await visibleMute(page)), `${name}: no Mute before the call`);
   check(!(await page.isVisible("text=Connected")), `${name}: the menu doesn't claim someone answered`);

@@ -359,6 +359,34 @@ try {
   await owner.goto(BASE + "/app");
   await owner.waitForFunction(() => !/Checking/.test(document.querySelector("[data-push-state]").textContent), null, { timeout: 10000 });
   check(await owner.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => !!r)), "the phone app registers its service worker");
+  // The notification's picture is the business's logo cut round (sw.js), so
+  // desktops that draw it square still show a circle. Headless Chromium can't
+  // show notifications, so the worker's own code runs in a page.
+  {
+    const logo = await owner.getAttribute("[data-phone]", "data-me-logo");
+    const p = await newPage(800, 600);
+    await p.goto(BASE + "/login");
+    const icons = await p.evaluate(async (logo) => {
+      const shown = [];
+      window.registration = { showNotification: (title, o) => { shown.push(o.icon); return Promise.resolve(); } };
+      const show = new Function((await (await fetch("/sw.js")).text()) + "; return show;")();
+      await show({ icon: logo });
+      await show({ icon: "/manifest.webmanifest" }); // not a picture
+      const alpha = async (url) => {
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        const g = Object.assign(document.createElement("canvas"), { width: img.width, height: img.height }).getContext("2d");
+        g.drawImage(img, 0, 0);
+        return [g.getImageData(2, 2, 1, 1).data[3], g.getImageData(img.width / 2, img.height / 2, 1, 1).data[3]];
+      };
+      return Promise.all(shown.map(async (u) => ({ data: u.startsWith("data:image/png"), alpha: await alpha(u) })));
+    }, logo);
+    await p.close();
+    const round = (i) => i && i.data && i.alpha[0] === 0 && i.alpha[1] === 255;
+    check(/^\/logo\//.test(logo) && round(icons[0]), `a notification shows the logo round, see-through corners (${JSON.stringify(icons[0])})`);
+    check(round(icons[1]), `a logo that can't be read gives the round minivoip mark (${JSON.stringify(icons[1])})`);
+  }
   // Headless Chromium blocks notifications, so the panel must say so; a real
   // phone shows "Off" and the Turn on button.
   const pushText = (await owner.textContent("[data-push-state]")).trim();
@@ -410,6 +438,8 @@ try {
   const r0 = rings[0] || {};
   check(r0.call && r0.topic === "call-" + r0.call && r0.urgency === "high" && r0.until > Date.now(),
     `a ring is urgent, replaceable while waiting, and says when it stops (${JSON.stringify(r0)})`);
+  check(r0.title === "Incoming call: E2E Shop" && r0.body === "Someone on your website wants to talk to you." && /^\/logo\/logo-/.test(r0.icon),
+    `a ring names the business and carries its logo (${r0.title} / ${r0.body} / ${r0.icon})`);
   await owner.click('[data-action="accept"]');
   await caller.waitForSelector("text=On the line with E2E Shop", { timeout: 15000 });
   await caller.waitForTimeout(2500);

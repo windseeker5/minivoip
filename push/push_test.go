@@ -1,9 +1,12 @@
 package push
 
 import (
+	"bytes"
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/base64"
+	"image"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -124,5 +127,24 @@ func TestTopic(t *testing.T) {
 		if got := topic(tag); got != want {
 			t.Errorf("topic(%q) = %q, want %q", tag, got, want)
 		}
+	}
+}
+
+func TestNotificationsNameTheBusiness(t *testing.T) {
+	st, s := setup(t, "https://push.example/x")
+	if title, icon := s.titled("Incoming call", "joesbnb"); title != "Incoming call: Joe's B&B" || icon != "" {
+		t.Fatalf("titled = %q, %q", title, icon)
+	}
+	var b bytes.Buffer
+	png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 8, 8)))
+	u, _ := st.Login("joe@example.com", "password1")
+	if err := st.SetLogo(u.AccountID, &b); err != nil {
+		t.Fatal(err)
+	}
+	if _, icon := s.titled("Missed call", "joesbnb"); !strings.HasPrefix(icon, "/logo/logo-") {
+		t.Fatalf("icon = %q, want the line's logo", icon)
+	}
+	if title, _ := s.titled("Missed call", "nobody"); title != "Missed call" {
+		t.Fatalf("unknown line titled %q", title)
 	}
 }

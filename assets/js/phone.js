@@ -299,14 +299,17 @@
       document.title = on ? "📞 Incoming call" : title;
     }, 900);
     if (!reg || !window.Notification || Notification.permission !== "granted") return;
-    reg.showNotification("Incoming call", {
-      body: (m.option ? "Someone chose “" + m.option + "”. " : "A website visitor is calling. ") + "Click to answer.",
+    // The service worker shows it (sw.js "message"), with the round logo.
+    var business = root.dataset.business;
+    if (reg.active) reg.active.postMessage({ show: {
+      title: "Incoming call" + (business ? ": " + business : ""),
+      body: "Someone on your website wants to talk to you. Click to answer.",
       tag: "call-" + m.id,
       renotify: true,
       requireInteraction: true,
-      icon: "/assets/brand/app-icon-192.png",
-      data: { url: "/app" },
-    }).catch(function () {});
+      icon: root.dataset.meLogo,
+      url: "/app",
+    } });
   }
   function stopFlash() {
     clearInterval(flashIv);

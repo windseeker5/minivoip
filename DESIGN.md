@@ -127,7 +127,12 @@ https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app
 - **Computer** (900 px and wider): a wide window like Google Chat: tabs and the Available switch on the left, the
   list in the middle, the open voicemail on the right (otherwise a "Calls ring here" note). An incoming call covers the whole window
   (Ken, 2026-10-24: a corner card was too easy to miss); if the window is behind others, the app also shows an
-  "Incoming call, click to answer" alert that brings it to the front, and flashes the tab title.
+  "Incoming call: <business>" alert that brings it to the front, and flashes the tab title.
+- **Notifications** (computer and phone): the title names the business ("Incoming call: Joe's B&B", "Missed call:
+  …", "New voicemail: …"), the text is plain ("Someone on your website wants to talk to you."; not the menu
+  choice, whose label reads oddly to the owner), and the picture is the business's logo cut into a circle on white
+  (the minivoip mark without one), so it stays round where the desktop draws pictures square (Omarchy's mako).
+  The browser adds the site's address under the title; a page can't remove it.
 - **Available switch:** Available / Pause for 1 hour / Off. Green, amber, grey dot. While away, calls go straight
   to voicemail.
 

@@ -141,6 +141,22 @@
   color-scheme: dark;
   --autofill: color-mix(in oklab, var(--input) 30%, var(--background));
 }
+/* Where the keyboard is: one clear outline in the ink colour on every page
+   (outside a layer, so it wins over the components' faint grey ring). Inside
+   a scrolling strip, like the dashboard's menu, it is drawn inside the item
+   so the strip doesn't cut it. A dark band sets --focus to its light ink. */
+:focus-visible {
+  outline: 2px solid var(--focus, var(--foreground));
+  outline-offset: 2px;
+  --tw-ring-color: transparent;
+}
+.focus-inset:focus-visible {
+  outline-offset: -2px;
+}
+.lp-ink {
+  --focus: var(--ink-fg);
+}
+
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {

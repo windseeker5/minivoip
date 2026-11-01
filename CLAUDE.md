@@ -90,7 +90,7 @@ B&B and may become a SaaS.
   pane on a computer; the incoming call screen).
 - The owner's app has its own plain CSS, `assets/css/app.css` (look C, warm light, DESIGN.md "Owner app"); the
   visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare
-  layout, `layouts.Plain`. The app never links to the dashboard;
+  layout, `layouts.Plain`. The dashboard pages (`dashShell`) use `layouts.Lean`: Base without htmx and the component bundle, since their components need no script. The app never links to the dashboard;
   logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
 - Checking the app without the server: `node tests/e2e/app.mjs` renders it with sample calls
   (`TestAppPreview` in `pages/app_test.go`) and clicks through it headless with a fake call socket, at phone and
@@ -126,7 +126,7 @@ B&B and may become a SaaS.
   "create your line" (optional), changed on the dashboard (`POST /dashboard/logo`, `/dashboard/logo/remove`).
   `faceBadge` in `pages/call.templ` shows it, else the initials; the stage gets it as `logo` (meet.js). The owner
   frames the picture in a crop window first (a round guide; the logo fills its shape everywhere) (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
-  1.6.2 copied into `assets/vendor/`, as in minipass); the browser sends a 512 px WebP, so big photos are fine.
+  1.6.2 copied into `assets/vendor/`, as in minipass, loaded by `logo.js` on the first pick); the browser sends a 512 px WebP, so big photos are fine. The file field is hidden behind one button (`logoPicker`).
 - Limits against robots (`web/limits.go`, `Limits`): calls, room knocks, voicemails, wrong passwords, sign ups and
   "Get Premium" emails,
   counted per visitor address in memory (the hub's `AllowCall`/`AllowVoicemail`, the rooms' `AllowKnock`). The address

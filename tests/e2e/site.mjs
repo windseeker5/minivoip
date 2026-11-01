@@ -732,7 +732,7 @@ try {
   step = "meeting room links";
   await owner.goto(BASE + "/dashboard");
   check((await owner.textContent("[data-plan]")).includes("Plan: Premium"), "the dashboard says the account is on Premium");
-  check((await owner.inputValue("#room-link")).endsWith(`/room/${LINE}`), "the dashboard shows the meeting room link");
+  check((await owner.getAttribute("#room-link", "data-value")).endsWith(`/room/${LINE}`), "the dashboard shows the meeting room link");
   await owner.goto(BASE + "/app");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await owner.click('[data-tab="room"]');
@@ -908,15 +908,43 @@ try {
   await phoneOnly.click("text=Log out");
   await phoneOnly.waitForSelector("[data-app-login]");
   check(true, "logging out of the phone app returns to the app's log in");
-  step = "logo";
+  step = "dashboard";
   await owner.goto(BASE + "/dashboard");
+  {
+    // Only the page's own scripts: no htmx, component bundle or crop tool until a logo is picked.
+    const extra = await owner.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name).filter((n) => /htmx|shadcn-templ-|cropper/.test(n)));
+    check(extra.length === 0, `the dashboard loads no scripts it doesn't use (${extra.join(", ")})`);
+    // The link and the code to paste show whole, and Copy says it worked.
+    const whole = await owner.evaluate(() => ["call-link", "button-code"].map((id) => { const e = document.getElementById(id); return e.textContent.trim() === e.dataset.value && e.scrollWidth <= e.clientWidth; }));
+    check(whole.every(Boolean), `the call link and the code to paste show whole (${whole})`);
+    await owner.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: BASE });
+    await owner.click('[data-copy="button-code"]');
+    await owner.waitForFunction(() => document.querySelector("[data-copy-status]").textContent === "Copied", null, { timeout: 3000 }).catch(() => {});
+    const copied = await owner.evaluate(async () => [document.querySelector("[data-copy-status]").textContent, !document.querySelector('[data-copy="button-code"] [data-copied-icon]').hidden, await navigator.clipboard.readText()]);
+    check(copied[0] === "Copied" && copied[1] && copied[2].includes("/w.js") && copied[2].includes(`data-line="${LINE}"`), `Copy puts the code on the clipboard, shows a check and tells screen readers (${copied[0]}, ${copied[1]})`);
+    // The keyboard's place: a 2px outline, drawn inside the menu's scrolling strip.
+    await owner.focus('header nav a[href="/dashboard/menu"]');
+    await owner.keyboard.press("Shift+Tab"); await owner.keyboard.press("Tab");
+    const ring = await owner.evaluate(() => { const c = getComputedStyle(document.activeElement); return [document.activeElement.getAttribute("href"), c.outlineStyle, c.outlineWidth, c.outlineOffset]; });
+    check(ring.join() === "/dashboard/menu,solid,2px,-2px", `the keyboard's place shows as a clear outline in the menu (${ring})`);
+    // Thumb-sized buttons on a phone.
+    await owner.setViewportSize({ width: 390, height: 844 });
+    await owner.waitForFunction(() => innerWidth === 390);
+    await owner.waitForTimeout(400); // the buttons' height animates (transition-all)
+    const short = await owner.evaluate(() => [...document.querySelectorAll("main [data-slot=button], header button, header nav a")].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 44).map((e) => e.textContent.trim()));
+    check(short.length === 0, `on a phone the dashboard's buttons are 44px tall (${short.join(", ")})`);
+    await owner.screenshot({ path: `${SHOTS}/dashboard-phone.png`, fullPage: true });
+    await owner.setViewportSize({ width: 1280, height: 900 });
+  }
+  step = "logo";
   await owner.click('form[action="/dashboard/logo/remove"] button');
   await owner.waitForSelector("text=Callers see your initials instead");
   check((await owner.locator("[data-logo-badge]").count()) === 0, "Remove the logo goes back to the initials");
-  await owner.click('form[data-logo-form] button[type=submit]');
-  check(await owner.evaluate(() => !document.querySelector("#logo-file").validity.valid), "Add my logo asks for a file first");
+  const pickBox = await owner.locator("#logo-file").boundingBox();
+  check(pickBox.width <= 1 && (await owner.textContent("[data-logo-pick]")).includes("Add my logo"), `the logo is one Add my logo button, without the browser's file box (${pickBox.width}px)`);
   // Cancel in the crop window: nothing is sent.
-  await owner.setInputFiles("#logo-file", "assets/brand/apple-touch-icon.png");
+  const [chooser] = await Promise.all([owner.waitForEvent("filechooser"), owner.click("[data-logo-pick]")]);
+  await chooser.setFiles("assets/brand/apple-touch-icon.png");
   await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
   await owner.click('[data-crop="cancel"]');
   const afterCancel = [await owner.inputValue("#logo-file"), await owner.locator("[data-logo-badge]").count(), owner.url()];

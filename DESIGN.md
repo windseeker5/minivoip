@@ -20,6 +20,7 @@ key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
   - the logo's bar colours (orange #f3840f to blue #143495) for the live call path and played voice waves only;
   - orange #f46422 for the caller's chosen option;
   - green for Answer and check marks, red for Decline, recording and hang up.
+- **Focus:** a 2px ink outline, 2px out, on everything the keyboard reaches (the owner app already did this).
 - **Shape:** cards 14 to 20px radius with a 1px hairline ring (`shadow-[0_0_0_1px_var(--border)]`), a soft
   offset shadow only on the hero picture; buttons 10 to 12px radius (pills on the landing page). One elevation per element (ring + shadow, never border + shadow).
 - **Layout:** `max-w-6xl` content, `px-4` gutter. Lists use hairline rows (`border-t`), not grids of icon cards.
@@ -67,6 +68,19 @@ computer, at the top on a phone (the keyboard never covers it). Onest, the site'
 as tall as the ink button. Form fields follow the site's theme, not the computer's (`color-scheme` in
 `globals.css`), and a field the browser fills in (saved email, password) keeps its own white look: Ken saw Chrome
 draw them dark grey-blue on a dark computer with the site set to light.
+
+## Dashboard (polished 2026-11-01)
+
+`dashShell` and "My line" in `pages/dashboard.templ`; still the plain shadcn look (a redesign is parked). An audit
+(https://claude.ai/artifact/H7KDsfBXFfmxfYhhXjTZeK, Ken said apply all) set these:
+
+- **Links and code to copy show whole** (`shownValue`): a grey block in the mono font that wraps, never a one-line
+  box that hides the end. The code to paste highlights the line name on peach #ffe4d6, like the landing page.
+- **Copy** (`copyButton`): a check mark and "Copied" for a moment; screen readers hear it (`copyStatus`).
+- **Logo:** one "Add my logo" button (`logoPicker`); the browser's file box stays hidden.
+- **On a phone** every button and menu item on these pages is 44px tall (`tap`).
+- **Keyboard focus, every page:** a 2px outline in the ink colour, 2px out (`:focus-visible` in `globals.css`),
+  drawn inside scrolling strips (`.focus-inset`, the dashboard menu); light on the landing page's dark band.
 
 ## Call window (chosen 2026-10-25: look A "the voice in the middle")
 

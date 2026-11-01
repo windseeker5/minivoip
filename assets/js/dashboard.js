@@ -1,15 +1,30 @@
-// Dashboard: copy the call link, and the menu editor's add/remove choice
-// rows, web-address field and "Hear it" preview.
+// Dashboard: copy the call link, the logo button, and the menu editor's
+// add/remove choice rows, web-address field and "Hear it" preview.
 
+// Copy shows a check mark for a moment, and the status line tells screen
+// readers. If the browser refuses, the text is selected to copy by hand.
 document.querySelectorAll("[data-copy]").forEach(function (btn) {
+  var timer;
   btn.addEventListener("click", function () {
     var field = document.getElementById(btn.dataset.copy);
-    var label = btn.lastChild;
-    navigator.clipboard.writeText(field.value).then(function () {
-      label.textContent = " Copied";
-      setTimeout(function () { label.textContent = " Copy"; }, 1500);
-    }, function () { field.select(); });
+    var status = document.querySelector("[data-copy-status]");
+    navigator.clipboard.writeText(field.dataset.value).then(function () {
+      show(true);
+      if (status) status.textContent = "Copied";
+      clearTimeout(timer);
+      timer = setTimeout(function () { show(false); if (status) status.textContent = ""; }, 1800);
+    }, function () { getSelection().selectAllChildren(field); });
   });
+  function show(done) {
+    btn.querySelector("[data-copy-icon]").toggleAttribute("hidden", done);
+    btn.querySelector("[data-copied-icon]").toggleAttribute("hidden", !done);
+    btn.querySelector("[data-copy-label]").textContent = done ? "Copied" : "Copy";
+  }
+});
+
+// The logo button opens the hidden file field (logo.js takes it from there).
+document.querySelectorAll("[data-logo-pick]").forEach(function (btn) {
+  btn.addEventListener("click", function () { document.getElementById(btn.dataset.logoPick).click(); });
 });
 
 // Step 2 of sign up: show the call link made from the business name, the

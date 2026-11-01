@@ -21,9 +21,10 @@ type LineForm struct {
 	Error    string
 }
 
-// dashShell is the logged-in frame: logo, sections, email and log out.
+// dashShell is the logged-in frame: logo, sections, email and log out. Its
+// pages need no component scripts (layouts.Lean).
 templ dashShell(title, email, current string) {
-	@layouts.Base(title+" · minivoip", "") {
+	@layouts.Lean(title+" · minivoip", "") {
 		<header class="border-b bg-background">
 			<div class="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
 				@brand()
@@ -38,7 +39,7 @@ templ dashShell(title, email, current string) {
 				</nav>
 				<form method="post" action="/logout" class="flex items-center gap-3 text-sm text-muted-foreground">
 					<span class="hidden sm:inline">{ email }</span>
-					@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeSm}) {
+					@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeSm, Class: "max-sm:h-11 max-sm:px-4"}) {
 						Log out
 					}
 				</form>
@@ -53,9 +54,9 @@ templ dashShell(title, email, current string) {
 
 templ dashLink(href, text, current string) {
 	if href == current {
-		<a href={ templ.SafeURL(href) } class="rounded-md bg-muted px-3 py-1.5 font-medium" aria-current="page">{ text }</a>
+		<a href={ templ.SafeURL(href) } class="focus-inset rounded-md bg-muted px-3 py-1.5 font-medium max-sm:py-3" aria-current="page">{ text }</a>
 	} else {
-		<a href={ templ.SafeURL(href) } class="rounded-md px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">{ text }</a>
+		<a href={ templ.SafeURL(href) } class="focus-inset rounded-md px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground max-sm:py-3">{ text }</a>
 	}
 }
 
@@ -101,7 +102,7 @@ templ NewLine(email string, f LineForm) {
 			@formField("logo", "Your logo (optional)") {
 				<div class="flex items-center gap-3">
 					<img data-logo-preview hidden alt="Your logo, framed" class="size-14 flex-none rounded-xl bg-white object-cover"/>
-					@input.Input(input.Props{ID: "logo", Name: "logo", Type: "file", Accept: logoAccept, Attributes: templ.Attributes{"data-logo-input": ""}})
+					@logoPicker("logo", "Choose a picture", false, false)
 				</div>
 				<p class="text-sm text-destructive" data-logo-error hidden role="alert"></p>
 				<p class="text-xs text-muted-foreground">{ logoHint }</p>
@@ -140,9 +141,8 @@ const logoAccept = "image/png,image/jpeg,image/webp"
 const logoHint = "Callers see it when they call you and in your meeting room. Pick a PNG, JPG or WebP picture; you frame it next."
 
 // logoCrop is the window where the owner frames the logo they picked
-// (assets/js/logo.js, with Cropper.js).
+// (assets/js/logo.js, with Cropper.js, which it loads on the first pick).
 templ logoCrop() {
-	<link rel="stylesheet" href="/assets/vendor/cropperjs-1.6.2/cropper.min.css"/>
 	<style>[data-logo-crop] .cropper-view-box { outline: 2px solid #fff; outline-color: #fff; } [data-logo-crop] .cropper-line, [data-logo-crop] .cropper-point { display: none; } [data-logo-crop] .cropper-view-box, [data-logo-crop] .cropper-face { border-radius: 50%; }</style>
 	<dialog data-logo-crop aria-labelledby="logo-crop-title" class="m-auto w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/50">
 		<div class="px-5 pt-5">
@@ -173,8 +173,45 @@ templ logoCrop() {
 			}
 		</div>
 	</dialog>
-	<script src="/assets/vendor/cropperjs-1.6.2/cropper.min.js" defer></script>
 	<script src="/assets/js/logo.js" defer></script>
+}
+
+// tap makes the dashboard's buttons thumb-sized (44px) on a phone.
+const tap = "max-sm:h-11"
+
+// shownValue is a link or a line of code to copy, shown whole: it wraps
+// instead of hiding its end in a one-line box. Copy buttons read data-value.
+templ shownValue(id, value string) {
+	<p id={ id } data-value={ value } class="min-w-0 flex-1 rounded-lg bg-muted px-3 py-2 font-mono text-sm leading-relaxed [overflow-wrap:anywhere]">{ value }</p>
+}
+
+// copyButton copies the shownValue with this id; a check mark and the page's
+// status line (copyStatus) say it worked.
+templ copyButton(id string) {
+	@button.Button(button.Props{Variant: button.VariantOutline, Class: tap, Attributes: templ.Attributes{"data-copy": id}}) {
+		@icon.Copy(icon.Props{Attributes: templ.Attributes{"data-copy-icon": ""}})
+		@icon.Check(icon.Props{Attributes: templ.Attributes{"data-copied-icon": "", "hidden": ""}})
+		<span data-copy-label>Copy</span>
+	}
+}
+
+// copyStatus is read out by screen readers when something is copied.
+templ copyStatus() {
+	<p class="sr-only" role="status" data-copy-status></p>
+}
+
+// logoPicker is one button that opens the owner's pictures; logo.js then
+// opens the crop window. The file field itself stays hidden.
+templ logoPicker(id, text string, submit bool, required bool) {
+	<input type="file" id={ id } name="logo" accept={ logoAccept } required?={ required } class="sr-only" tabindex="-1" aria-hidden="true" data-logo-input
+		if submit {
+			data-logo-submit
+		}
+	/>
+	@button.Button(button.Props{Variant: button.VariantOutline, Class: "self-start " + tap, Attributes: templ.Attributes{"data-logo-pick": id}}) {
+		@icon.ImageUp()
+		{ text }
+	}
 }
 
 // dashBadge is the business's logo (or initials) on the dashboard.
@@ -201,7 +238,8 @@ func logoNote(msg string) (text string, bad bool) {
 
 // Dashboard is "My line": the call link and what to do next.
 templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemails int, plan, logoMsg string) {
-	{{ snippet := `<script src="` + strings.TrimSuffix(callURL, "/call/"+l.Name) + `/w.js" data-line="` + l.Name + `" async></script>` }}
+	{{ host := strings.TrimSuffix(callURL, "/call/"+l.Name) }}
+	{{ snippet := `<script src="` + host + `/w.js" data-line="` + l.Name + `" async></script>` }}
 	@dashShell("My line", email, "/dashboard") {
 		<div class="flex items-center gap-4">
 			@dashBadge(l, "size-14 text-lg")
@@ -212,13 +250,10 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 		<div class="mt-8 flex flex-col gap-6">
 			@panel() {
 				<h2 class="font-semibold">Your call link</h2>
-				<div class="mt-3 flex flex-col gap-2 sm:flex-row">
-					@input.Input(input.Props{ID: "call-link", Value: callURL, ReadOnly: true, Class: "font-mono text-sm"})
-					@button.Button(button.Props{Variant: button.VariantOutline, Attributes: templ.Attributes{"data-copy": "call-link"}}) {
-						@icon.Copy()
-						Copy
-					}
-					@button.Button(button.Props{Href: callURL, Target: "_blank"}) {
+				<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+					@shownValue("call-link", callURL)
+					@copyButton("call-link")
+					@button.Button(button.Props{Href: callURL, Target: "_blank", Class: tap}) {
 						@icon.PhoneCall()
 						Test call
 					}
@@ -230,12 +265,11 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 					A Call button on your website
 				</h2>
 				<p class="mt-2 text-sm text-muted-foreground">Paste this line into your website, just before <code class="font-mono text-xs">&lt;/body&gt;</code>. A button appears in the corner: "Talk to us now" when you're available in the phone app, "Leave us a message" when you're not. Your menu answers either way.</p>
-				<div class="mt-3 flex flex-col gap-2 sm:flex-row">
-					@input.Input(input.Props{ID: "button-code", Value: snippet, ReadOnly: true, Class: "font-mono text-xs"})
-					@button.Button(button.Props{Variant: button.VariantOutline, Attributes: templ.Attributes{"data-copy": "button-code"}}) {
-						@icon.Copy()
-						Copy
-					}
+				<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+					<p id="button-code" data-value={ snippet } class="min-w-0 flex-1 rounded-lg bg-muted px-3 py-2 font-mono text-[13px] leading-relaxed [overflow-wrap:anywhere]">
+						{ `<script src="` + host + `/w.js" data-line="` }<mark class="rounded-sm bg-[#ffe4d6] px-0.5 text-[#0c0c0d]">{ l.Name }</mark>{ `" async></script>` }
+					</p>
+					@copyButton("button-code")
 				</div>
 			}
 			@panel() {
@@ -254,14 +288,11 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 					<div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
 						@dashBadge(l, "size-20 text-2xl")
 						<div class="flex min-w-0 flex-1 flex-col gap-2">
-							<form method="post" action="/dashboard/logo" enctype="multipart/form-data" class="flex flex-col gap-2 sm:flex-row" data-logo-form>
-								@input.Input(input.Props{ID: "logo-file", Name: "logo", Type: "file", Accept: logoAccept, Required: true, Attributes: templ.Attributes{"aria-label": "Logo file", "data-logo-input": "", "data-logo-submit": ""}})
-								@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline}) {
-									if l.Logo != "" {
-										Change logo
-									} else {
-										Add my logo
-									}
+							<form method="post" action="/dashboard/logo" enctype="multipart/form-data" class="flex flex-col" data-logo-form>
+								if l.Logo != "" {
+									@logoPicker("logo-file", "Change logo", true, true)
+								} else {
+									@logoPicker("logo-file", "Add my logo", true, true)
 								}
 							</form>
 							<p class="text-sm text-destructive" data-logo-error hidden role="alert"></p>
@@ -285,13 +316,10 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 				</h2>
 				if l.Premium {
 					<p class="mt-2 text-sm text-muted-foreground">Your own room for video meetings: voice, cameras, screen sharing and a whiteboard. Send the link; people join from their browser, nothing to install. They wait until you open the room.</p>
-					<div class="mt-3 flex flex-col gap-2 sm:flex-row">
-						@input.Input(input.Props{ID: "room-link", Value: roomURL, ReadOnly: true, Class: "font-mono text-sm"})
-						@button.Button(button.Props{Variant: button.VariantOutline, Attributes: templ.Attributes{"data-copy": "room-link"}}) {
-							@icon.Copy()
-							Copy
-						}
-						@button.Button(button.Props{Href: roomURL, Target: "_blank"}) {
+					<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+						@shownValue("room-link", roomURL)
+						@copyButton("room-link")
+						@button.Button(button.Props{Href: roomURL, Target: "_blank", Class: tap}) {
 							@icon.Video()
 							Open the room
 						}
@@ -318,7 +346,7 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 							No new messages.
 						}
 					</p>
-					@button.Button(button.Props{Href: "/dashboard/voicemail", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4"}) {
+					@button.Button(button.Props{Href: "/dashboard/voicemail", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4 " + tap}) {
 						Listen
 					}
 				}
@@ -328,7 +356,7 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 						Voice menu
 					</h2>
 					<p class="mt-2 text-sm text-muted-foreground">"{ l.Greeting } { l.Menu() }"</p>
-					@button.Button(button.Props{Href: "/dashboard/menu", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4"}) {
+					@button.Button(button.Props{Href: "/dashboard/menu", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4 " + tap}) {
 						Edit the menu
 					}
 				}
@@ -338,12 +366,13 @@ templ Dashboard(email string, l lines.Line, callURL, roomURL string, newVoicemai
 						Phone app
 					</h2>
 					<p class="mt-2 text-sm text-muted-foreground">Open it on your phone, log in, and turn on notifications: your phone then rings even when the app is closed. On iPhone, add it to your home screen first.</p>
-					@button.Button(button.Props{Href: "/app", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4"}) {
+					@button.Button(button.Props{Href: "/app", Variant: button.VariantOutline, Size: button.SizeSm, Class: "mt-4 " + tap}) {
 						Open the phone app
 					}
 				}
 			</div>
 		</div>
+		@copyStatus()
 		@logoCrop()
 		<script src="/assets/js/dashboard.js" defer></script>
 	}

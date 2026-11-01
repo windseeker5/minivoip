@@ -3,6 +3,20 @@ package layouts
 import "minivoip/components"
 
 templ Base(title, description string) {
+	@page(title, description, true) {
+		{ children... }
+	}
+}
+
+// Lean is Base without htmx and the component bundle, for pages whose
+// components need no script (the dashboard pages).
+templ Lean(title, description string) {
+	@page(title, description, false) {
+		{ children... }
+	}
+}
+
+templ page(title, description string, scripts bool) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -40,8 +54,10 @@ templ Base(title, description string) {
 			// their partial updates (pagination, lazy drawers) through hx-*
 			// attributes against templ fragments. Swap in your own layer
 			// (Datastar etc.) by translating those attributes.
-			<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta6/dist/htmx.min.js"></script>
-			@components.Scripts()
+			if scripts {
+				<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta6/dist/htmx.min.js"></script>
+				@components.Scripts()
+			}
 		</head>
 		<body>
 			{ children... }

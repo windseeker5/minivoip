@@ -8,7 +8,7 @@ Keep this short and up to date (status, next action, last update).
 
 - Status: healthy. `main` has everything up to PR #17: calls, owner's app, Android 0.3, Premium video and room, plans, logos, website Call button, limits, call window, the landing page's message, notifications that name the business (#15), the call window's menu wave (#16) and the plain hero with five steps (#17). `hero-motion` (the rejected 3D film) is kept unmerged until Ken says to delete it.
 - Next action: from `docs/plan.md`, the container and home server. Parked: the app's UI redesign (Ken doesn't like it yet), polish of the admin, sign up and button looks; the dashboard and app still say Premium "opens after the beta"; AI call notes (on the landing page as "Soon"). Ken should back up `android/release-keystore.jks` + `android/local.properties`.
-- Last update: 2026-11-01. New hero on `hero-steps`: "Let people call you from your website, in one click.", then five steps (website, they tap Call us, your phone rings, you talk, show your screen · Premium) that light up when the page opens, CSS only (`heroSteps` in `pages/home.templ`, `.lp-steps` in `globals.css`). The hero's voice player is gone (`landing.js`, `voiceWords`). DESIGN.md, PRODUCT.md and `docs/landing-copy.md` updated; `site.mjs` checks the steps.
+- Last update: 2026-11-01. Branch `hero-polish` (not pushed): the hero is centred on a computer, its headline comes in word by word with a line in the logo's colours under "in one click.", the steps sit on a moving voice wave in the logo's colours (canvas in `landing.js`), and the orange band is shorter so the phone stands out of it above and below. DESIGN.md updated; `site.mjs` checks the wave. Earlier today: PRs #15, #16, #17 merged.
 
 ## Rules
 

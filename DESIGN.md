@@ -36,18 +36,21 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
 - **Type:** Funnel Display for headings (`.lp-display`) and Funnel Sans for text, loaded by the page itself (the
   rest of the site keeps Onest). Headlines semibold, tight (`tracking-[-0.04em]`): hero 88px, sections 60px.
 - **Colour:** pure white, ink #0c0c0d, muted #66666c, hairlines #e7e7ea, soft grey panels #f4f4f5 (`.lp` tokens in
-  `globals.css`). Buttons are ink pills. The logo's colours appear in two places only: the line of the hero's
-  steps, and the one gradient field (`.lp-spectrum`, blurred radial blobs from orange #f3840f to blue
+  `globals.css`). Buttons are ink pills. The logo's colours appear in three places only: the line under the
+  hero's "in one click.", the voice wave behind the hero's steps, and the one gradient field (`.lp-spectrum`, blurred radial blobs from orange #f3840f to blue
   #143495). Peach #ffe4d6 highlights `your-business` in the code to paste. One dark moment: the closing band (`lp-ink`). Dark mode:
   #0b0b0c ground, the same band and field.
-- **Hero (`hero`, `heroSteps`):** left-aligned headline (72px on a computer), sub, buttons and price line, then
-  five steps on one line (`.lp-steps`): 64px round icons with a hairline ring, their words under them; Call us is
-  the orange #f46422 circle, Premium an orange outline tag. On a phone the steps stack down the line, right under
-  the headline. Motion (CSS only, 6.5 s, once per page view): each step rises in while the line fills to it in
-  the logo's colours; Call us is pressed with one ripple, the phone icon shakes, "Hi, it's Marie!" pops, a stroke
-  draws on the screen icon, then Premium. With less motion everything simply shows.
-- **Then your own phone rings (`phoneRings`):** a 32px-radius band with the gradient field; ink text on the
-  orange end, the owner's phone (the real app screen, with the line's first ringing choice) and a voicemail alert.
+- **Hero (`hero`, `heroSteps`):** centred on a computer, like the steps and the band under it (Ken, 2026-11-01:
+  a left headline over centred steps looked unaligned); left-aligned on a phone. Headline 84px on a computer, a
+  line in the logo's colours under "in one click.", then sub, buttons and price line, then five steps on one line
+  (`.lp-steps`): 64px round icons with a hairline ring on a 150px voice wave (bars in the logo's colours, drawn on
+  a canvas by `landing.js`, none right around an icon, ends faded), their words under them; Call us is the orange
+  #f46422 circle, Premium an orange outline tag. On a phone the steps stack down the wave, right under the
+  headline.
+- **Then your own phone rings (`phoneRings`):** a 32px-radius band with the gradient field, shorter than the
+  phone: the phone stands out of it by 80px above and below on a computer, below on a phone (Ken, 2026-11-01, for
+  depth). Ink text on the orange end, the owner's phone (the real app screen, with the line's first ringing
+  choice) and a voicemail alert.
 - **Sections:** centred heads (`sectionHead`) for the call grows, plans and questions; plans as one white card
   and one grey card (prices "planned"); the maker's quote large; three steps beside the code to paste
   (`.lp-code`, `your-business` highlighted) and a picture of the orange Call us button it makes.
@@ -169,5 +172,11 @@ white, Funnel, ink, red only for Leave), not a new look.
 
 ## Motion
 
-The landing page moves only when the visitor plays the greeting (the wave and the words follow it). Smooth scrolling to the sections, off under
-`prefers-reduced-motion`.
+The landing page has one authored moment, the hero, about 8 s once per page view: the headline's words come in
+one after the other out of a blur, its line in the logo's colours wipes in under "in one click.", then each step
+rises in while the voice wave colours in up to it (its front edge rises like a voice arriving); Call us is pressed
+with one ripple, the phone icon shakes, "Hi, it's Marie!" comes in, a stroke draws on the screen icon, then
+Premium. The headline and steps are CSS (`globals.css`); the wave is `landing.js`, which takes its time from the
+steps' own animation so they meet, keeps moving gently while on screen and stops when off screen or hidden.
+Smooth ease-outs only, no bounce. With `prefers-reduced-motion` everything simply shows, on a still wave in
+colour. Smooth scrolling to the sections, off under `prefers-reduced-motion`.

@@ -206,10 +206,19 @@ try {
   await visitorSite.setViewportSize({ width: 1280, height: 900 });
   await visitorSite.goto(BASE + "/");
   step = "landing";
-  // The hero's five steps: all shown once their animation is over (6.5 s).
-  await visitorSite.waitForTimeout(7000);
+  // The hero's five steps: all shown once their animation is over (8 s), on
+  // the voice wave in colour.
+  await visitorSite.waitForTimeout(8500);
   const steps = await visitorSite.evaluate(() => [...document.querySelectorAll("[data-hero-steps] .lp-step")].map((s) => getComputedStyle(s).opacity));
   check(steps.length === 5 && steps.every((o) => o === "1"), `the hero's five steps all show (${steps.join(", ")})`);
+  const wave = await visitorSite.evaluate(() => {
+    const c = document.querySelector("[data-hero-wave]");
+    const px = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let coloured = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 200 && px[i] - px[i + 2] > 80) coloured++;
+    return coloured;
+  });
+  check(wave > 1000, `the voice wave behind the steps is drawn in colour (${wave} orange pixels)`);
   await visitorSite.screenshot({ path: `${SHOTS}/landing-hero.png` });
   await visitorSite.goto(BASE + "/dashboard");
   check(new URL(visitorSite.url()).pathname === "/login", "dashboard sends logged-out visitors to log in");

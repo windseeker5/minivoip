@@ -16,13 +16,15 @@ type AccountForm struct {
 }
 
 // accountShell frames sign up, log in and the first-line step: a card on a
-// grey page, with the small footer.
+// grey page, with the small footer. On a computer the logo and card sit in the
+// middle of the screen, a little above centre; on a phone at the top, so the
+// keyboard never covers them.
 templ accountShell(title string) {
 	@layouts.Base(title+" · minivoip", "") {
 		<div class="flex min-h-dvh flex-col bg-muted/40">
-			<main class="flex flex-1 flex-col items-center px-4 py-10">
+			<main class="flex flex-1 flex-col items-center px-4 py-10 sm:justify-center sm:pb-[12vh]">
 				@brand()
-				<div class="mt-8 w-full max-w-md rounded-2xl border bg-background p-7 shadow-[0_24px_60px_-34px_rgb(0_0_0/0.35)] sm:p-8">
+				<div class="mt-6 w-full max-w-md rounded-2xl bg-background p-7 shadow-[0_0_0_1px_var(--border),0_24px_60px_-34px_rgb(0_0_0/0.35)] sm:p-8">
 					{ children... }
 				</div>
 			</main>
@@ -34,7 +36,7 @@ templ accountShell(title string) {
 // smallFooter closes the account and dashboard pages.
 templ smallFooter() {
 	<footer class="border-t bg-background">
-		<div class="mx-auto flex max-w-4xl flex-col items-center justify-between gap-2 px-4 py-5 text-sm text-muted-foreground sm:flex-row">
+		<div class="mx-auto flex max-w-4xl flex-col items-center justify-between gap-2 px-4 py-5 text-center text-sm text-balance text-muted-foreground sm:flex-row sm:text-left">
 			<span>minivoip, part of the mini family with minipass and minicrm.</span>
 			<span>Questions? <a href="mailto:kdresdell@minipass.me" class="underline underline-offset-4 hover:text-foreground">kdresdell@minipass.me</a></span>
 		</div>
@@ -51,6 +53,9 @@ templ formError(msg string) {
 		<p class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{ msg }</p>
 	}
 }
+
+// fieldClass gives the account forms' fields the height of their button.
+const fieldClass = "h-10 px-3"
 
 templ formField(id, text string) {
 	<div class="flex flex-col gap-2">
@@ -69,14 +74,14 @@ templ Signup(f AccountForm) {
 		<form method="post" action="/signup" class="mt-6 flex flex-col gap-4">
 			@formError(f.Error)
 			@formField("email", "Email") {
-				@input.Input(input.Props{ID: "email", Name: "email", Type: "email", Value: f.Email, Required: true, Attributes: templ.Attributes{"autocomplete": "email"}})
+				@input.Input(input.Props{Class: fieldClass, ID: "email", Name: "email", Type: "email", Value: f.Email, Required: true, Attributes: templ.Attributes{"autocomplete": "email"}})
 			}
 			@formField("password", "Password") {
-				@input.Input(input.Props{ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "new-password", "minlength": "8"}})
+				@input.Input(input.Props{Class: fieldClass, ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "new-password", "minlength": "8"}})
 				<p class="text-xs text-muted-foreground">At least 8 characters.</p>
 			}
 			@formField("promo", "Promo code (optional)") {
-				@input.Input(input.Props{ID: "promo", Name: "promo", Value: f.Promo, Attributes: templ.Attributes{"autocomplete": "off"}})
+				@input.Input(input.Props{Class: fieldClass, ID: "promo", Name: "promo", Value: f.Promo, Attributes: templ.Attributes{"autocomplete": "off"}})
 			}
 			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
 				Create my account
@@ -111,14 +116,15 @@ templ SignupLoggedIn(email string) {
 templ Login(f AccountForm) {
 	@accountShell("Log in") {
 		<h1 class="text-2xl font-bold tracking-tight">Log in</h1>
+		<p class="mt-1 text-sm text-muted-foreground">Welcome back.</p>
 		<form method="post" action="/login" class="mt-6 flex flex-col gap-4">
 			@formError(f.Error)
 			<input type="hidden" name="next" value={ f.Next }/>
 			@formField("email", "Email") {
-				@input.Input(input.Props{ID: "email", Name: "email", Type: "email", Value: f.Email, Required: true, Attributes: templ.Attributes{"autocomplete": "email"}})
+				@input.Input(input.Props{Class: fieldClass, ID: "email", Name: "email", Type: "email", Value: f.Email, Required: true, Attributes: templ.Attributes{"autocomplete": "email"}})
 			}
 			@formField("password", "Password") {
-				@input.Input(input.Props{ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "current-password"}})
+				@input.Input(input.Props{Class: fieldClass, ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "current-password"}})
 			}
 			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
 				Log in

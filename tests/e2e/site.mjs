@@ -156,6 +156,29 @@ try {
   const visitorSite = await newPage();
   const pagesOut = await crawl(visitorSite, "/", "logged out");
   check(pagesOut.has("/signup") && pagesOut.has("/login"), "landing page links to sign up and log in");
+  // A dark computer with the site set to light: Chrome drew saved emails and
+  // passwords on dark grey-blue. The fields follow the site's theme, and a
+  // field the browser fills in stays white.
+  {
+    step = "log in";
+    const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 }, colorScheme: "dark" });
+    await ctx.addInitScript(() => localStorage.setItem("theme", "light"));
+    const p = await ctx.newPage();
+    await p.goto(BASE + "/login");
+    await p.fill("#email", "someone@example.com");
+    const cdp = await ctx.newCDPSession(p);
+    await cdp.send("DOM.enable"); await cdp.send("CSS.enable");
+    const { root } = await cdp.send("DOM.getDocument");
+    const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector: "#email" });
+    await cdp.send("CSS.forcePseudoState", { nodeId, forcedPseudoClasses: ["autofill"] });
+    const look = await p.evaluate(() => {
+      const r = document.querySelector("#email").getBoundingClientRect(), card = document.querySelector("main > div").getBoundingClientRect();
+      return { scheme: getComputedStyle(document.documentElement).colorScheme, filled: getComputedStyle(document.querySelector("#email")).boxShadow, mid: (card.top + card.bottom) / 2, h: r.height };
+    });
+    check(look.scheme === "light" && /^oklch\(1 0 0\) 0px 0px 0px 100px inset/.test(look.filled), `the log in fields stay white when the browser fills them in (${look.scheme}, ${look.filled.slice(0, 40)})`);
+    check(look.mid > 350 && look.mid < 550 && look.h === 40, `on a computer the log in card sits in the middle, fields as tall as the button (${Math.round(look.mid)}, ${look.h})`);
+    await ctx.close();
+  }
   step = "landing";
   await visitorSite.goto(BASE + "/");
   await visitorSite.screenshot({ path: `${SHOTS}/landing.png` });

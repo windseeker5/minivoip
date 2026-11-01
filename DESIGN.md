@@ -59,6 +59,15 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
   (`.lp-code`, `your-business` highlighted) and a picture of the orange Call us button it makes.
 - **"Call us now"** calls minivoip's own line, in the hero and the closing band. Tests never press it.
 
+## Sign up and log in (polished 2026-11-01)
+
+`accountShell` in `pages/account.templ` (sign up, log in, and step 2 "your business"): the logo and one white card
+(hairline ring + soft shadow) on the light grey ground, in the middle of the screen a little above centre on a
+computer, at the top on a phone (the keyboard never covers it). Onest, the site's shadcn tokens. Fields are 40px,
+as tall as the ink button. Form fields follow the site's theme, not the computer's (`color-scheme` in
+`globals.css`), and a field the browser fills in (saved email, password) keeps its own white look: Ken saw Chrome
+draw them dark grey-blue on a dark computer with the site set to light.
+
 ## Call window (chosen 2026-10-25: look A "the voice in the middle")
 
 What a visitor sees after "Call us": `/call/<line>` (`pages/call.templ`, `assets/css/callscreen.css`,

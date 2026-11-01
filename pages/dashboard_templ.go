@@ -346,7 +346,7 @@ func NewLine(email string, f LineForm) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = input.Input(input.Props{ID: "business", Name: "business", Value: f.Business, Required: true, Placeholder: "Joe's B&B", Attributes: templ.Attributes{"autofocus": "", "autocomplete": "organization", "data-business": ""}}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = input.Input(input.Props{Class: fieldClass, ID: "business", Name: "business", Value: f.Business, Required: true, Placeholder: "Joe's B&B", Attributes: templ.Attributes{"autofocus": "", "autocomplete": "organization", "data-business": ""}}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -418,7 +418,7 @@ func NewLine(email string, f LineForm) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = input.Input(input.Props{ID: "name", Name: "name", Value: customName(f), Placeholder: "joes-bnb", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "none", "pattern": "[a-z0-9][a-z0-9\\-]{1,28}[a-z0-9]"}}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = input.Input(input.Props{Class: fieldClass, ID: "name", Name: "name", Value: customName(f), Placeholder: "joes-bnb", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "none", "pattern": "[a-z0-9][a-z0-9\\-]{1,28}[a-z0-9]"}}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

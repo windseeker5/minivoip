@@ -75,7 +75,7 @@ templ NewLine(email string, f LineForm) {
 		<form method="post" action="/dashboard/line" enctype="multipart/form-data" class="mt-6 flex flex-col gap-5" data-new-line>
 			@formError(f.Error)
 			@formField("business", "Business name") {
-				@input.Input(input.Props{ID: "business", Name: "business", Value: f.Business, Required: true, Placeholder: "Joe's B&B", Attributes: templ.Attributes{"autofocus": "", "autocomplete": "organization", "data-business": ""}})
+				@input.Input(input.Props{Class: fieldClass, ID: "business", Name: "business", Value: f.Business, Required: true, Placeholder: "Joe's B&B", Attributes: templ.Attributes{"autofocus": "", "autocomplete": "organization", "data-business": ""}})
 			}
 			<div class="rounded-xl border bg-muted/40 p-4">
 				<p class="text-xs font-medium text-muted-foreground">Your call link</p>
@@ -93,7 +93,7 @@ templ NewLine(email string, f LineForm) {
 					data-link-field
 				>
 					@formField("name", "Link name") {
-						@input.Input(input.Props{ID: "name", Name: "name", Value: customName(f), Placeholder: "joes-bnb", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "none", "pattern": "[a-z0-9][a-z0-9\\-]{1,28}[a-z0-9]"}})
+						@input.Input(input.Props{Class: fieldClass, ID: "name", Name: "name", Value: customName(f), Placeholder: "joes-bnb", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "none", "pattern": "[a-z0-9][a-z0-9\\-]{1,28}[a-z0-9]"}})
 						<p class="text-xs text-muted-foreground">3 to 30 lowercase letters, numbers or dashes. It can't change later.</p>
 					}
 				</div>

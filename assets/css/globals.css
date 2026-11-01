@@ -129,6 +129,26 @@
   }
 }
 
+/* Form fields follow the site's theme, not the computer's: on a dark computer
+   with the site set to light, Chrome drew saved emails and passwords on a dark
+   grey-blue. A field the browser fills in keeps its own look (outside a layer,
+   so it wins over the utilities; the focus ring stays). */
+:root {
+  color-scheme: light;
+  --autofill: var(--background);
+}
+.dark {
+  color-scheme: dark;
+  --autofill: color-mix(in oklab, var(--input) 30%, var(--background));
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  box-shadow: 0 0 0 100px var(--autofill) inset, var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000);
+}
+
 /* Landing page: browser surfaces and the demo call's motion. */
 @layer base {
   html {

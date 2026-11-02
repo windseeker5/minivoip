@@ -80,6 +80,21 @@ func (l Line) Rings() bool {
 	return false
 }
 
+// A new line starts with this menu (store.CreateLine): a greeting and one
+// choice that rings.
+const (
+	StarterChoice = "Talk to us"
+	StarterSay    = "Please hold, I'm connecting you."
+)
+
+func StarterGreeting(business string) string { return "Hi, you've reached " + business + "." }
+
+// Starter says whether the owner hasn't touched the starter menu yet.
+func (l Line) Starter() bool {
+	return l.GreetingAudio == "" && l.Greeting == StarterGreeting(l.Business) &&
+		len(l.Options) == 1 && l.Options[0].Label == StarterChoice && l.Options[0].SayAudio == ""
+}
+
 // Menu is the spoken menu: "Press 1 for bookings, press 2 ...".
 func (l Line) Menu() string {
 	if len(l.Options) == 0 {

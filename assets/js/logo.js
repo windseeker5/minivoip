@@ -3,19 +3,20 @@
 // zoom and drag to frame it in a square. The browser then shrinks it to a
 // 512 px WebP (PNG where WebP can't be made; both keep a transparent
 // background) and puts that in the form instead, so a 10 MB photo goes up as
-// a few KB. Without this script the form still sends the file as it is, and
-// the server takes it up to 2 MB.
+// a few KB. Cropper.js loads on the first pick; if it can't, the file goes
+// up as it is, and the server takes it up to 2 MB.
 //
-//   <input type="file" data-logo-input>          the file field (data-logo-submit: send the form right away)
+//   <input type="file" data-logo-input>          the file field, hidden behind a [data-logo-pick] button
+//                                                (dashboard.js); data-logo-submit: send the form right away
 //   <img data-logo-preview hidden>               optional, shows the framed logo
 //   <p data-logo-error hidden>                   says why a file was refused
 //   <dialog data-logo-crop> … </dialog>          the crop window (pages: logoCrop)
 (function () {
-  var SIZE = 512, MAX_IN = 25 << 20;
+  var SIZE = 512, MAX_IN = 25 << 20, VENDOR = "/assets/vendor/cropperjs-1.6.2/";
   var dlg = document.querySelector("[data-logo-crop]");
-  if (!dlg || !window.Cropper || !window.DataTransfer) return;
+  if (!dlg) return;
   var img = dlg.querySelector("[data-logo-crop-img]");
-  var cropper = null, input = null, done = false, url = "";
+  var cropper = null, input = null, done = false, url = "", loading = null;
 
   document.querySelectorAll("[data-logo-input]").forEach(function (el) {
     el.addEventListener("change", function () {
@@ -25,9 +26,31 @@
         refuse(el, f.size > MAX_IN ? "That picture is too big. Pick one under 25 MB." : "That file isn't a picture. Pick a PNG, JPG or WebP.");
         return;
       }
-      open(el, f);
+      loadCropper().then(function () { open(el, f); }, function () {
+        // No crop window: the file goes up as it is (the server takes 2 MB).
+        if (el.hasAttribute("data-logo-submit")) el.form.requestSubmit();
+      });
     });
   });
+
+  // loadCropper fetches Cropper.js the first time a picture is picked, so
+  // the dashboard doesn't load it on every visit.
+  function loadCropper() {
+    if (window.Cropper && window.DataTransfer) return Promise.resolve();
+    if (!window.DataTransfer) return Promise.reject();
+    if (!loading) loading = new Promise(function (ok, fail) {
+      var css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = VENDOR + "cropper.min.css";
+      document.head.appendChild(css);
+      var js = document.createElement("script");
+      js.src = VENDOR + "cropper.min.js";
+      js.onload = function () { ok(); };
+      js.onerror = function () { loading = null; fail(); };
+      document.head.appendChild(js);
+    });
+    return loading;
+  }
 
   function errorBox(el) { return el.form && el.form.querySelector("[data-logo-error]"); }
 

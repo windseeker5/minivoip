@@ -61,7 +61,7 @@ func TestAppRenders(t *testing.T) {
 	d := sampleApp()
 	html := render(t, Phone(d))
 	for _, want := range []string{`data-tab="calls"`, `data-panel="me"`, `data-call-screen`, `data-push-state`,
-		"Call while you were away", "Declined", "Answered", "4:18", "Yesterday", "Opens https://joesbnb.ca", `data-new`,
+		"Missed while you were away", "You declined", "You talked", "New message", `data-tab="messages"`, "Chose “Book a room”", "4:18", "Yesterday", "Opens https://joesbnb.ca", `data-new`,
 		`data-panel="room"`, "https://voip.example.com/room/joesbnb", `data-room-alert`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("app is missing %q", want)

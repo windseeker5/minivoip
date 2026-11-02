@@ -60,7 +60,7 @@ B&B and may become a SaaS.
 
 - `main.go` opens the database and hands everything to `web.Server.Routes`.
 - `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, and a
-  same-site check on form posts; `dashboard.go` has "My line", line creation, the menu editor and the call page;
+  same-site check on form posts, and hands pages the `pages.Viewer` (admin, new messages); `dashboard.go` has Home, Business, line creation, the menu editor and the call page;
   `app.go` the owner's app (`/app`, its call list, the Available switch, call history logging).
 - `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
@@ -83,14 +83,15 @@ B&B and may become a SaaS.
   "room" message on the call socket with who waits (the app's alert and Room tab), and phones a "room" push
   (`RoomKnock`). Linked from the dashboard and the app's Room tab.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
-  `account` (sign up, log in), `dashboard` + `dashboard.js` (My line, menu editor with voice recorder: uploads to
+  `account` (sign up, log in), `dashboard` + `dashboard.js` (a side menu, tabs at the bottom on a phone: Home, Voice menu, Messages, Business; Home's
+  data is `pages.HomeTab` in `pages/dashboard_home.go`, its windows are native dialogs; the menu editor with voice recorder uploads to
   `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
   (the dashboard's list), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
-  (the owner's app `/app`, login required: Calls, Voicemail, Menu, Room and Me tabs on a phone; sidebar and a detail
+  (the owner's app `/app`, login required: Calls, Messages, Voice menu and Room tabs, the account from the round letter; a side menu and a detail
   pane on a computer; the incoming call screen).
-- The owner's app has its own plain CSS, `assets/css/app.css` (look C, warm light, DESIGN.md "Owner app"); the
+- The owner's app has its own plain CSS, `assets/css/app.css` (the dashboard's look, DESIGN.md "Owner app"); the
   visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare
-  layout, `layouts.Plain`. The app never links to the dashboard;
+  layout, `layouts.Plain`. The dashboard pages (`dashShell`) use `layouts.Lean`: Base without htmx and the component bundle, since their components need no script. The app never links to the dashboard;
   logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
 - Checking the app without the server: `node tests/e2e/app.mjs` renders it with sample calls
   (`TestAppPreview` in `pages/app_test.go`) and clicks through it headless with a fake call socket, at phone and
@@ -123,16 +124,16 @@ B&B and may become a SaaS.
 - "Get Premium" on the landing page (no payments yet): an email form, `POST /premium` (`web/premium.go`,
   `store/premium.go`, table `premium_request`), sent by `landing.js`; Ken sees the list on the admin page.
 - Logos: `line.logo`, files in `data/logos/` (`store/logos.go`), served at `/logo/<name>` (`web/logo.go`). Asked on
-  "create your line" (optional), changed on the dashboard (`POST /dashboard/logo`, `/dashboard/logo/remove`).
+  "create your line" (optional), changed on the dashboard's Business tab (`POST /dashboard/logo`, `/dashboard/logo/remove`).
   `faceBadge` in `pages/call.templ` shows it, else the initials; the stage gets it as `logo` (meet.js). The owner
   frames the picture in a crop window first (a round guide; the logo fills its shape everywhere) (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
-  1.6.2 copied into `assets/vendor/`, as in minipass); the browser sends a 512 px WebP, so big photos are fine.
+  1.6.2 copied into `assets/vendor/`, as in minipass, loaded by `logo.js` on the first pick); the browser sends a 512 px WebP, so big photos are fine. The file field is hidden behind one button (`logoPicker`).
 - Limits against robots (`web/limits.go`, `Limits`): calls, room knocks, voicemails, wrong passwords, sign ups and
   "Get Premium" emails,
   counted per visitor address in memory (the hub's `AllowCall`/`AllowVoicemail`, the rooms' `AllowKnock`). The address
   is Caddy's `X-Forwarded-For`; visitors on this machine or the home network aren't limited, so `site.mjs` checks
   the limits with made-up addresses in that header. Past the voicemail limit the call page gets "limited".
-- Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404): users with
+- Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404; linked from the account menu, never a tab): users with
   `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. Promo codes (each gives a plan) and the
   Accounts list, where Ken moves an account between Basic and Premium, and "Asked for Premium" (the landing page's emails).
 - Plans: `account.plan` is `basic` or `premium` (`store.Plan`, `store.Billing`; sign up takes the promo code's plan,
@@ -143,7 +144,7 @@ B&B and may become a SaaS.
   as `window.MinivoipAndroid` in `phone.js`) plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
   call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,
   Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`; its
-  version is in `data/android/version`, and the app's Me tab shows the installed version (`MinivoipAndroid.version()`)
+  version is in `data/android/version`, and the app's account page shows the installed version (`MinivoipAndroid.version()`)
   with "Update to …" when a newer one is published.
 - `relay/`: built-in TURN relay (pion/turn) on 3478 UDP+TCP, voice on 49160-49200 UDP (the ports the router
   forwards; the old coturn used them). Public address: `MINIVOIP_PUBLIC_IP`, else DNS of `MINIVOIP_TURN_HOST`

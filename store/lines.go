@@ -29,13 +29,13 @@ func (s *Store) CreateLine(accountID int64, name, business string) error {
 		return ErrNameTaken
 	}
 	res, err := tx.Exec("INSERT INTO line (account_id, name, business, owner_name, greeting) VALUES (?, ?, ?, ?, ?)",
-		accountID, name, business, owner, "Hi, you've reached "+business+".")
+		accountID, name, business, owner, lines.StarterGreeting(business))
 	if err != nil {
 		return err
 	}
 	lineID, _ := res.LastInsertId()
-	if _, err := tx.Exec("INSERT INTO menu_option (line_id, position, key, label, action, say) VALUES (?, 0, '1', 'Talk to us', 'ring', ?)",
-		lineID, "Please hold, I'm connecting you."); err != nil {
+	if _, err := tx.Exec("INSERT INTO menu_option (line_id, position, key, label, action, say) VALUES (?, 0, '1', ?, 'ring', ?)",
+		lineID, lines.StarterChoice, lines.StarterSay); err != nil {
 		return err
 	}
 	return tx.Commit()

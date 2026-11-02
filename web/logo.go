@@ -36,7 +36,7 @@ func (s *Server) uploadLogo(w http.ResponseWriter, r *http.Request, u store.User
 	b, err := logoFile(r)
 	switch {
 	case errors.Is(err, store.ErrBadLogo) || err == nil && b == nil:
-		http.Redirect(w, r, "/dashboard?logo=bad#logo", http.StatusSeeOther)
+		http.Redirect(w, r, "/dashboard/business?logo=bad", http.StatusSeeOther)
 		return
 	case err != nil:
 		serverError(w, r, err)
@@ -46,7 +46,7 @@ func (s *Server) uploadLogo(w http.ResponseWriter, r *http.Request, u store.User
 		serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/dashboard?logo=saved#logo", http.StatusSeeOther)
+	http.Redirect(w, r, "/dashboard/business?logo=saved", http.StatusSeeOther)
 }
 
 // removeLogo takes the logo off: callers see the initials again.
@@ -55,7 +55,7 @@ func (s *Server) removeLogo(w http.ResponseWriter, r *http.Request, u store.User
 		serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/dashboard?logo=removed#logo", http.StatusSeeOther)
+	http.Redirect(w, r, "/dashboard/business?logo=removed", http.StatusSeeOther)
 }
 
 // logo serves a business's logo to callers' browsers.

@@ -32,7 +32,33 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request, u store.User)
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Dashboard(u.Email, l, baseURL(r)+"/call/"+l.Name, baseURL(r)+"/room/"+l.Name, s.Store.NewVoicemails(u.AccountID), s.planText(u.AccountID), r.URL.Query().Get("logo")))
+	latest, err := s.Store.CallHistory(u.AccountID, 3)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	render(w, r, pages.Dashboard(pages.HomeTab{
+		Email:  u.Email,
+		Line:   l,
+		Host:   baseURL(r),
+		Here:   s.here(l),
+		Phones: s.Store.DeviceCount(u.AccountID),
+		Latest: latest,
+	}))
+}
+
+// businessPage is the Business tab: the logo, the name and the plan.
+func (s *Server) businessPage(w http.ResponseWriter, r *http.Request, u store.User) {
+	l, err := s.Store.LineForAccount(u.AccountID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	render(w, r, pages.Business(u.Email, l, baseURL(r)+"/call/"+l.Name, s.planText(u.AccountID), r.URL.Query().Get("logo")))
 }
 
 func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User) {

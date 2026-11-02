@@ -100,6 +100,17 @@ const browser = await chromium.launch({
 // until retries fn until it gives something truthy, or ms run out.
 const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v; while (Date.now() < end) { v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 200)); } return v; };
 
+// setAvail flips the phone app's Available switch: three buttons on a
+// computer, Change and a menu on a phone.
+async function setAvail(page, mode) {
+  if (await page.isVisible("[data-avail-seg]")) await page.click(`[data-avail-seg] [data-mode="${mode}"]`);
+  else {
+    await page.click("[data-avail-btn]");
+    await page.click(`[data-avail-menu] [data-mode="${mode}"]`);
+  }
+  await page.waitForSelector(`[data-avail-state][data-mode="${mode}"]`);
+}
+
 async function newPage(width = 1280, height = 900) {
   const ctx = await browser.newContext({ viewport: { width, height }, permissions: ["microphone", "camera"] });
   const page = await ctx.newPage();
@@ -156,6 +167,29 @@ try {
   const visitorSite = await newPage();
   const pagesOut = await crawl(visitorSite, "/", "logged out");
   check(pagesOut.has("/signup") && pagesOut.has("/login"), "landing page links to sign up and log in");
+  // A dark computer with the site set to light: Chrome drew saved emails and
+  // passwords on dark grey-blue. The fields follow the site's theme, and a
+  // field the browser fills in stays white.
+  {
+    step = "log in";
+    const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 }, colorScheme: "dark" });
+    await ctx.addInitScript(() => localStorage.setItem("theme", "light"));
+    const p = await ctx.newPage();
+    await p.goto(BASE + "/login");
+    await p.fill("#email", "someone@example.com");
+    const cdp = await ctx.newCDPSession(p);
+    await cdp.send("DOM.enable"); await cdp.send("CSS.enable");
+    const { root } = await cdp.send("DOM.getDocument");
+    const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector: "#email" });
+    await cdp.send("CSS.forcePseudoState", { nodeId, forcedPseudoClasses: ["autofill"] });
+    const look = await p.evaluate(() => {
+      const r = document.querySelector("#email").getBoundingClientRect(), card = document.querySelector("main > div").getBoundingClientRect();
+      return { scheme: getComputedStyle(document.documentElement).colorScheme, filled: getComputedStyle(document.querySelector("#email")).boxShadow, mid: (card.top + card.bottom) / 2, h: r.height };
+    });
+    check(look.scheme === "light" && /^oklch\(1 0 0\) 0px 0px 0px 100px inset/.test(look.filled), `the log in fields stay white when the browser fills them in (${look.scheme}, ${look.filled.slice(0, 40)})`);
+    check(look.mid > 350 && look.mid < 550 && look.h === 40, `on a computer the log in card sits in the middle, fields as tall as the button (${Math.round(look.mid)}, ${look.h})`);
+    await ctx.close();
+  }
   step = "landing";
   await visitorSite.goto(BASE + "/");
   await visitorSite.screenshot({ path: `${SHOTS}/landing.png` });
@@ -337,24 +371,49 @@ try {
   check(gone.status() === 404, `the unused recording is deleted (${gone.status()})`);
 
   const pagesIn = await crawl(owner, "/", "logged in");
-  for (const p of ["/dashboard", "/dashboard/menu", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
+  for (const p of ["/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/business", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
   step = "dashboard";
   await owner.goto(BASE + "/dashboard");
   await owner.screenshot({ path: `${SHOTS}/dashboard.png`, fullPage: true });
-  // A new account without a promo code is Basic: no meeting room.
-  check((await owner.textContent("[data-plan]")).includes("Plan: Basic"), "a new account is on Basic");
   const loaded = (p, sel) => p.evaluate((s) => [...document.querySelectorAll(s)].filter((i) => i.complete && i.naturalWidth > 0).length, sel);
-  check(await loaded(owner, "[data-logo-badge] img") === 2, "the dashboard shows the logo given at sign up");
+  check(await loaded(owner, "[data-logo-badge] img") === 1, "the dashboard shows the logo given at sign up");
+  // Get set up ticks what the line really has: a menu of its own and a logo, but no phone yet.
+  const band = (await owner.textContent("[data-setup-band]")).trim();
+  check(band.startsWith("One step left: make your phone ring."), `the setup band shows the one step left: a menu of its own and a logo are done, the phone isn't (${band.slice(0, 60)})`);
+  check((await owner.getAttribute("[data-line-status]", "data-on")) === null && (await owner.textContent("[data-line-status]")).includes("until your phone is set up"), "the line's status says calls go to messages until the phone is set up");
+  await owner.click('[data-setup-band] [data-open="dlg-phone"]');
+  check(await owner.isVisible("#dlg-phone") && (await owner.getAttribute("#app-link", "data-value")).endsWith("/app"), "Set up my phone opens the steps with the phone app's address");
+  await owner.click('#dlg-phone button[aria-label="Close"]');
+  check(!(await owner.isVisible("#dlg-phone")), "Close shuts the window");
+  // The website code shows only when asked for.
+  check(!(await owner.isVisible("#button-code")), "the website code is hidden until asked for");
+  await owner.click('[data-open="dlg-website"]');
+  check(await owner.isVisible("#button-code"), "Add a Call button opens the code to paste");
+  await owner.mouse.click(5, 5);
+  check(!(await owner.isVisible("#dlg-website")), "a click outside closes the window");
+  // A new account without a promo code is Basic: no meeting room.
+  await owner.click('[data-open="dlg-room"]');
   check(await owner.isVisible("[data-room-locked]") && (await owner.locator("#room-link").count()) === 0, "a Basic dashboard says the meeting room comes with Premium");
+  await owner.keyboard.press("Escape");
+  await owner.goto(BASE + "/dashboard/business");
+  check((await owner.textContent("[data-plan]")).includes("Plan: Basic"), "a new account is on Basic");
   check((await owner.request.get(BASE + `/room/${LINE}`)).status() === 404, "a Basic line has no meeting room page");
   const phoneSize = await newPage(390, 844);
   await phoneSize.context().addCookies(await owner.context().cookies());
-  for (const p of ["/", "/dashboard", "/dashboard/menu", "/app", `/call/${LINE}`]) {
+  for (const p of ["/", "/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/business", "/app", `/call/${LINE}`]) {
     step = `phone width ${p}`;
     await phoneSize.goto(BASE + p);
     const wide = await phoneSize.evaluate(() => document.documentElement.scrollWidth);
     check(wide <= 390, `phone width: ${p} doesn't scroll sideways (${wide}px)`);
   }
+  await phoneSize.goto(BASE + "/dashboard");
+  check(await phoneSize.isVisible("[data-setup-band] >> text=One step left: make your phone ring."), "on a phone the next setup step sits at the top");
+  const tabs = await phoneSize.$$eval('nav[aria-label="Dashboard"]', (ns) => ns.filter((n) => n.offsetWidth).map((n) => { const r = n.getBoundingClientRect(); return [n.children.length, Math.round(r.bottom), getComputedStyle(n).position]; }));
+  check(JSON.stringify(tabs) === '[[4,844,"fixed"]]', `on a phone the four tabs sit at the bottom of the screen (${JSON.stringify(tabs)})`);
+  await phoneSize.click('[data-open="dlg-website"]');
+  const sheet = await phoneSize.locator("#dlg-website").boundingBox();
+  check(sheet && sheet.width === 390 && Math.round(sheet.y + sheet.height) === 844, `on a phone the windows rise from the bottom (${JSON.stringify(sheet)})`);
+  await phoneSize.screenshot({ path: `${SHOTS}/dashboard-website-phone.png` });
   await phoneSize.goto(BASE + "/dashboard/menu");
   await phoneSize.screenshot({ path: `${SHOTS}/menu-phone.png`, fullPage: true });
 
@@ -545,7 +604,7 @@ try {
   check(afterDecline.includes("missed") && afterDecline.includes("voicemail"), `declining sends "Missed call", the message sends "New voicemail" (${afterDecline.join(", ")})`);
   await owner.waitForSelector("[data-voicemail]", { timeout: 10000 });
   check(true, "the phone app shows the new message without reloading");
-  check(await owner.isVisible("[data-vm-dot]"), "the Voicemail tab shows a dot for the new message");
+  check((await owner.textContent("[data-vm-count]")).trim() === "1", "the Messages tab counts the new message");
 
   step = "voicemail choice";
   await caller.click('[data-action="call"]:visible');
@@ -559,7 +618,8 @@ try {
 
   step = "voicemail page";
   await owner.goto(BASE + "/dashboard");
-  check(await owner.isVisible("text=2 new messages"), "the dashboard counts 2 new messages");
+  check((await owner.textContent("[data-tab-count]")).startsWith("2"), "the Messages tab counts 2 new messages");
+  check((await owner.textContent("[data-latest]")).includes("Message"), "Latest calls lists the messages");
   await owner.click('a[href="/dashboard/voicemail"] >> nth=0');
   await owner.waitForSelector("[data-voicemail]");
   const items = owner.locator("[data-voicemail]");
@@ -581,9 +641,7 @@ try {
   step = "away";
   await owner.goto(BASE + "/app");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="off"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="off"]');
+  await setAvail(owner, "off");
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
@@ -597,9 +655,7 @@ try {
   callDB.close();
   check(outcomes.includes("answered") && outcomes.includes("declined") && outcomes[outcomes.length - 1] === "away",
     `the call history has every call (${outcomes.join(", ")})`);
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="on"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="on"]');
+  await setAvail(owner, "on");
   check(true, "the Available switch turns back on");
 
   // The Call button on a business's own website (w.js), pasted from the dashboard ----
@@ -623,9 +679,7 @@ try {
   check(await until(async () => (await btnState(biz)) === "true") && (await biz.locator(".btn").textContent()).includes("Talk to us now"),
     'the button on the website says "Talk to us now" while the owner is available');
   await biz.screenshot({ path: `${SHOTS}/button-here.png` });
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="off"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="off"]');
+  await setAvail(owner, "off");
   await biz.reload();
   check(await until(async () => (await btnState(biz)) === "false") && (await biz.locator(".btn").textContent()).includes("Leave us a message"),
     'the button says "Leave us a message" while the owner is off');
@@ -634,9 +688,7 @@ try {
   await awayPage.goto(BASE + `/call/${LINE}`);
   check(await awayPage.isVisible("text=Away right now") && await awayPage.isVisible("text=Hear our menu"), "the call page says the owner is away, and the menu still answers");
   await awayPage.screenshot({ path: `${SHOTS}/call-away.png` });
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="on"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="on"]');
+  await setAvail(owner, "on");
   check(await until(async () => (await awayPage.evaluate(() => document.querySelector("[data-call]").dataset.here)) === "true", 40000),
     "an open call page sees the owner come back, without a reload");
   await awayPage.context().close();
@@ -707,9 +759,12 @@ try {
 
   // Meeting room ----------------------------------------------------------
   step = "meeting room links";
-  await owner.goto(BASE + "/dashboard");
+  await owner.goto(BASE + "/dashboard/business");
   check((await owner.textContent("[data-plan]")).includes("Plan: Premium"), "the dashboard says the account is on Premium");
-  check((await owner.inputValue("#room-link")).endsWith(`/room/${LINE}`), "the dashboard shows the meeting room link");
+  await owner.goto(BASE + "/dashboard");
+  await owner.click('[data-open="dlg-room"]');
+  check(await owner.isVisible("#room-link") && (await owner.getAttribute("#room-link", "data-value")).endsWith(`/room/${LINE}`), "the dashboard shows the meeting room link");
+  await owner.keyboard.press("Escape");
   await owner.goto(BASE + "/app");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await owner.click('[data-tab="room"]');
@@ -790,13 +845,15 @@ try {
   // Promo codes (admin) -----------------------------------------------------
   step = "admin only";
   await owner.goto(BASE + "/dashboard");
-  check(!(await owner.isVisible('a[href="/admin/promo"]')), "a normal user has no Admin link");
+  check((await owner.locator('a[href="/admin/promo"]').count()) === 0, "a normal user has no Admin link");
   check((await owner.request.get(BASE + "/admin/promo")).status() === 404, "a normal user can't open the admin page");
   const adminDB = new DatabaseSync(DB);
   adminDB.prepare("UPDATE user SET is_admin = 1 WHERE email = ?").run(EMAIL);
   adminDB.close();
   await owner.reload();
-  await owner.click('a[href="/admin/promo"]');
+  check(!(await owner.isVisible('a[href="/admin/promo"]')), "minivoip's admin isn't among a customer's tabs");
+  await owner.click("[data-account-button]:visible");
+  await owner.click('#account-menu a[href="/admin/promo"]');
   await owner.waitForSelector("#code");
   check(true, "an admin reaches the promo code page from the dashboard");
 
@@ -825,9 +882,9 @@ try {
   await friend.fill("#business", `e2e ${stamp} friend`);
   await friend.click("form[data-new-line] button[type=submit]");
   await friend.waitForSelector("[data-add-choice]");
-  await friend.goto(BASE + "/dashboard");
+  await friend.goto(BASE + "/dashboard/business");
   check((await friend.textContent("[data-plan]")).includes(`Plan: Premium, free forever with the code ${CODE}`), "a friend who used the code gets its plan, Premium, free forever");
-  check(await friend.isVisible("#room-link"), "the friend's Premium dashboard has a meeting room");
+  check((await (await friend.request.get(BASE + "/dashboard")).text()).includes('id="room-link"'), "the friend's Premium dashboard has a meeting room");
 
   step = "code used up";
   const late = await newPage();
@@ -860,7 +917,7 @@ try {
   await owner.waitForSelector(`text=${FRIEND} is on Basic now.`);
   check(await owner.isVisible(`${row} [data-plan-badge="basic"]`), "Move to Basic switches the friend's plan");
   await friend.reload();
-  check((await friend.textContent("[data-plan]")).includes("Plan: Basic") && await friend.isVisible("[data-room-locked]"), "the friend's dashboard is Basic now: no meeting room");
+  check((await friend.textContent("[data-plan]")).includes("Plan: Basic") && (await (await friend.request.get(BASE + "/dashboard")).text()).includes("data-room-locked"), "the friend's dashboard is Basic now: no meeting room");
   await owner.click(`${row} button[type=submit]`);
   await owner.waitForSelector(`text=${FRIEND} is on Premium now.`);
   check(await owner.isVisible(`${row} [data-plan-badge="premium"]`), "and Move to Premium switches it back");
@@ -885,15 +942,46 @@ try {
   await phoneOnly.click("text=Log out");
   await phoneOnly.waitForSelector("[data-app-login]");
   check(true, "logging out of the phone app returns to the app's log in");
-  step = "logo";
+  step = "dashboard";
   await owner.goto(BASE + "/dashboard");
+  {
+    // Only the page's own scripts: no htmx, component bundle or crop tool until a logo is picked.
+    const extra = await owner.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name).filter((n) => /htmx|shadcn-templ-|cropper/.test(n)));
+    check(extra.length === 0, `the dashboard loads no scripts it doesn't use (${extra.join(", ")})`);
+    // The link and the code to paste show whole, and Copy says it worked.
+    await owner.click('[data-open="dlg-website"]');
+    const whole = await owner.evaluate(() => ["call-link", "button-code"].map((id) => { const e = document.getElementById(id); return e.dataset.value.endsWith(e.textContent.trim()) && e.scrollWidth <= e.clientWidth; }));
+    check(whole.every(Boolean), `the call link and the code to paste show whole (${whole})`);
+    await owner.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: BASE });
+    await owner.click('[data-copy="button-code"]');
+    await owner.waitForFunction(() => document.querySelector("[data-copy-status]").textContent === "Copied", null, { timeout: 3000 }).catch(() => {});
+    const copied = await owner.evaluate(async () => [document.querySelector("[data-copy-status]").textContent, !document.querySelector('[data-copy="button-code"] [data-copied-icon]').hidden, await navigator.clipboard.readText()]);
+    check(copied[0] === "Copied" && copied[1] && copied[2].includes("/w.js") && copied[2].includes(`data-line="${LINE}"`), `Copy puts the code on the clipboard, shows a check and tells screen readers (${copied[0]}, ${copied[1]})`);
+    await owner.keyboard.press("Escape");
+    // The keyboard's place: a 2px outline, drawn inside the menu's scrolling strip.
+    await owner.focus('aside nav a[href="/dashboard/menu"]');
+    await owner.keyboard.press("Shift+Tab"); await owner.keyboard.press("Tab");
+    const ring = await owner.evaluate(() => { const c = getComputedStyle(document.activeElement); return [document.activeElement.getAttribute("href"), c.outlineStyle, c.outlineWidth, c.outlineOffset]; });
+    check(ring.join() === "/dashboard/menu,solid,2px,-2px", `the keyboard's place shows as a clear outline in the menu (${ring})`);
+    // Thumb-sized buttons on a phone.
+    await owner.setViewportSize({ width: 390, height: 844 });
+    await owner.waitForFunction(() => innerWidth === 390);
+    await owner.waitForTimeout(400); // the buttons' height animates (transition-all)
+    const short = await owner.evaluate(() => [...document.querySelectorAll("main [data-slot=button], header button, nav a")].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 44).map((e) => e.textContent.trim()));
+    check(short.length === 0, `on a phone the dashboard's buttons are 44px tall (${short.join(", ")})`);
+    await owner.screenshot({ path: `${SHOTS}/dashboard-phone.png`, fullPage: true });
+    await owner.setViewportSize({ width: 1280, height: 900 });
+  }
+  step = "logo";
+  await owner.goto(BASE + "/dashboard/business");
   await owner.click('form[action="/dashboard/logo/remove"] button');
   await owner.waitForSelector("text=Callers see your initials instead");
   check((await owner.locator("[data-logo-badge]").count()) === 0, "Remove the logo goes back to the initials");
-  await owner.click('form[data-logo-form] button[type=submit]');
-  check(await owner.evaluate(() => !document.querySelector("#logo-file").validity.valid), "Add my logo asks for a file first");
+  const pickBox = await owner.locator("#logo-file").boundingBox();
+  check(pickBox.width <= 1 && (await owner.textContent("[data-logo-pick]")).includes("Add my logo"), `the logo is one Add my logo button, without the browser's file box (${pickBox.width}px)`);
   // Cancel in the crop window: nothing is sent.
-  await owner.setInputFiles("#logo-file", "assets/brand/apple-touch-icon.png");
+  const [chooser] = await Promise.all([owner.waitForEvent("filechooser"), owner.click("[data-logo-pick]")]);
+  await chooser.setFiles("assets/brand/apple-touch-icon.png");
   await owner.waitForSelector("[data-logo-crop] .cropper-crop-box", { timeout: 10000 });
   await owner.click('[data-crop="cancel"]');
   const afterCancel = [await owner.inputValue("#logo-file"), await owner.locator("[data-logo-badge]").count(), owner.url()];
@@ -904,7 +992,7 @@ try {
   await owner.click('[data-crop="fit"]');
   await owner.click('[data-crop="use"]');
   await owner.waitForSelector("text=Callers see your new logo right away");
-  check(await loaded(owner, "[data-logo-badge] img") === 2, "Add my logo puts a new one on the dashboard");
+  check(await loaded(owner, "[data-logo-badge] img") === 1, "Add my logo puts a new one on the dashboard");
   await owner.screenshot({ path: `${SHOTS}/dashboard-logo.png` });
   await owner.click('form[action="/dashboard/logo/remove"] button');
   await owner.waitForSelector("text=Callers see your initials instead");
@@ -987,7 +1075,8 @@ try {
 
   step = "log out";
   await owner.goto(BASE + "/dashboard");
-  await owner.click("header button[type=submit]");
+  await owner.click("[data-account-button]:visible");
+  await owner.click("#account-menu button[type=submit]");
   await owner.waitForSelector('nav a[href="/login"]');
   check(true, "log out returns to the landing page, logged out");
 } catch (err) {

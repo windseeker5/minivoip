@@ -129,6 +129,42 @@
   }
 }
 
+/* Form fields follow the site's theme, not the computer's: on a dark computer
+   with the site set to light, Chrome drew saved emails and passwords on a dark
+   grey-blue. A field the browser fills in keeps its own look (outside a layer,
+   so it wins over the utilities; the focus ring stays). */
+:root {
+  color-scheme: light;
+  --autofill: var(--background);
+}
+.dark {
+  color-scheme: dark;
+  --autofill: color-mix(in oklab, var(--input) 30%, var(--background));
+}
+/* Where the keyboard is: one clear outline in the ink colour on every page
+   (outside a layer, so it wins over the components' faint grey ring). Inside
+   a scrolling strip, like the dashboard's menu, it is drawn inside the item
+   so the strip doesn't cut it. A dark band sets --focus to its light ink. */
+:focus-visible {
+  outline: 2px solid var(--focus, var(--foreground));
+  outline-offset: 2px;
+  --tw-ring-color: transparent;
+}
+.focus-inset:focus-visible {
+  outline-offset: -2px;
+}
+.lp-ink {
+  --focus: var(--ink-fg);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  box-shadow: 0 0 0 100px var(--autofill) inset, var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000);
+}
+
 /* Landing page: browser surfaces and the demo call's motion. */
 @layer base {
   html {
@@ -145,8 +181,10 @@
 /* The landing page (pages/home.templ, DESIGN.md "Landing page"): look
    "Voice". Pure white, ink type in Funnel; the hero says it in one line and
    five steps; the logo's colours as one field behind the phone. It sets the shadcn tokens for
-   its own subtree, so the components follow. */
-.lp {
+   its own subtree, so the components follow. The dashboard pages (.dash, DESIGN.md
+   "Dashboard") share its tokens and type. */
+.lp,
+.dash {
   --background: #ffffff;
   --foreground: #0c0c0d;
   --card: #ffffff;
@@ -171,7 +209,8 @@
   --ink-rule: #2e2e33;
   font-family: "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
 }
-.dark .lp {
+.dark .lp,
+.dark .dash {
   --background: #0b0b0c;
   --foreground: #f4f4f5;
   --card: #141416;
@@ -200,14 +239,27 @@ body:has(> .lp) {
 .dark body:has(> .lp) {
   background: #0b0b0c;
 }
-.lp .lp-display {
+/* The dashboard: white cards on light grey. */
+body:has(> .dash),
+.dash {
+  background: #f6f6f7;
+}
+.dark body:has(> .dash),
+.dark .dash {
+  background: #0b0b0c;
+}
+.lp .lp-display,
+.dash h1,
+.dash h2,
+.dash .lp-display {
   font-family: "Funnel Display", "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
 }
 .lp p,
 .lp li {
   text-wrap: pretty;
 }
-.lp ::selection {
+.lp ::selection,
+.dash ::selection {
   background: #ffd9c6;
   color: #0c0c0d;
 }

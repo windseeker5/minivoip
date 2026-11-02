@@ -31,11 +31,13 @@ func pad(n int64) string {
 }
 
 templ VoicemailPage(email string, list []store.Voicemail) {
-	@dashShell("Voicemail", email, "/dashboard/voicemail") {
-		<h1 class="text-3xl font-bold tracking-tight">Voicemail</h1>
-		<p class="mt-2 text-muted-foreground">Messages callers left when nobody answered, or when they picked a voicemail choice.</p>
-		<div class="mt-8">
-			@VoicemailList(list, "/dashboard/voicemail")
+	@dashShell("Messages", email, "/dashboard/voicemail") {
+		<div class="max-w-3xl">
+			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Messages</h1>
+			<p class="mt-2 text-muted-foreground">Voicemails callers left when nobody answered, or when they picked a voicemail choice.</p>
+			<div class="mt-8">
+				@VoicemailList(list, "/dashboard/voicemail")
+			</div>
 		</div>
 		<script src="/assets/js/voicemail.js" defer></script>
 	}

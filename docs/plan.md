@@ -5,7 +5,7 @@ Last update: 2026-10-28 · Design: [architecture.md](architecture.md) · Goal: [
 ## Where we are (2026-10-24)
 - **Works end to end:** a visitor clicks "Call us", hears the owner's voice menu, and talks to the owner or leaves a
   voicemail. Real calls over HTTPS through the built-in relay (https://voip.dresdell.com while `task dev` runs).
-- **Owner's app** (look C): call history, voicemails, Available / Pause / Off, menu editor. On a computer it rings
+- **Owner's app** (the dashboard's look): call history, voicemails, Available / Pause / Off, menu editor. On a computer it rings
   and fills the window; on Android the minivoip app rings like a real phone call, even locked (Ken's Pixel 9).
 - **Visitor's call window** (2026-10-25, look A, `DESIGN.md` "Call window"): white like the landing page, the menu's
   words written out as they're said, choices as big buttons, a clear ending. The business's logo since 2026-10-27;
@@ -119,7 +119,7 @@ but silently, so Android got its own app (Phase 3b). iPhone not tried yet.
 
 ## Phase 3b: phone apps that ring like a call
 Android done 2026-10-24: `android/` (Kotlin), the same `/app` pages in a web view plus a real ring through Firebase
-(ringtone until answered, call screen over the lock screen). Downloaded from the landing page and the app's Me tab
+(ringtone until answered, call screen over the lock screen). Downloaded from the landing page and the app's account page
 (`/download/minivoip.apk`). Next: iPhone, the same way.
 
 ## Phase 4: real calls (web → phone app)

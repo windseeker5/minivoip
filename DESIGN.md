@@ -20,6 +20,7 @@ key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
   - the logo's bar colours (orange #f3840f to blue #143495) for the live call path and played voice waves only;
   - orange #f46422 for the caller's chosen option;
   - green for Answer and check marks, red for Decline, recording and hang up.
+- **Focus:** a 2px ink outline, 2px out, on everything the keyboard reaches (the owner app already did this).
 - **Shape:** cards 14 to 20px radius with a 1px hairline ring (`shadow-[0_0_0_1px_var(--border)]`), a soft
   offset shadow only on the hero picture; buttons 10 to 12px radius (pills on the landing page). One elevation per element (ring + shadow, never border + shadow).
 - **Layout:** `max-w-6xl` content, `px-4` gutter. Lists use hairline rows (`border-t`), not grids of icon cards.
@@ -58,6 +59,42 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
   and one grey card (prices "planned"); the maker's quote large; three steps beside the code to paste
   (`.lp-code`, `your-business` highlighted) and a picture of the orange Call us button it makes.
 - **"Call us now"** calls minivoip's own line, in the hero and the closing band. Tests never press it.
+
+## Sign up and log in (polished 2026-11-01)
+
+`accountShell` in `pages/account.templ` (sign up, log in, and step 2 "your business"): the logo and one white card
+(hairline ring + soft shadow) on the light grey ground, in the middle of the screen a little above centre on a
+computer, at the top on a phone (the keyboard never covers it). Onest, the site's shadcn tokens. Fields are 40px,
+as tall as the ink button. Form fields follow the site's theme, not the computer's (`color-scheme` in
+`globals.css`), and a field the browser fills in (saved email, password) keeps its own white look: Ken saw Chrome
+draw them dark grey-blue on a dark computer with the site set to light.
+
+## Dashboard (redesigned 2026-11-01: proposition 2, "menu on the side")
+
+For owners with no tech skills: is my line on, what's my link, where do I put it. Ken picked proposition 2 of three
+(https://claude.ai/artifact/9hfo7Bd3dq6488ZtSBcJrF), held to Stripe, but in the site's own type: `.dash` shares
+`.lp`'s tokens in `globals.css` (ink, Funnel Sans, headings in Funnel Display); the page is light grey #f6f6f7 (dark
+#0b0b0c) with white cards (`card`: 16px radius, a 1px ring, `bg-card`).
+
+- **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, Voice menu, Messages
+  (orange count of new voicemails), Business, the open one shaded; at its foot a "Phone app" card and the account
+  button (letter, "Your account", email). Its menu (a native popover) holds the email, the phone app, Log out, and
+  "minivoip admin" for staff only: minivoip's own admin is never a tab. On a phone a top bar (logo, account) and
+  the four tabs fixed at the bottom, like an app. A "Questions?" line closes each page.
+- **Home** (`Dashboard`): the title, then a peach band (#fff4ec) with the next setup step and its button, ticked from
+  real data (a menu of its own, a phone that gets notifications, a logo; gone when all are done); a card with the
+  business's badge, name and status (green dot: calls ring you; amber: away, or messages until the phone is set up)
+  over the call link with Copy link (ink) and Try it; then "Share your line" (website, emails, video meetings, each
+  row opening a window) beside "Latest calls".
+- **Windows** (`sheet`, a native dialog): centred on a computer, rising from the bottom on a phone; Esc, Close or a
+  click outside close them. The website code lives only there, with "1. Copy this code, 2. Paste it" and where to
+  paste it on Wix, Squarespace, WordPress and Shopify.
+- **Business** (`Business`): one card of label and value rows for the logo, the name, the call link and the plan.
+- Buttons on Home are pills; the menu editor and the messages list keep their white cards.
+- **Links and code to copy show whole** (`shownValue`), the code to paste highlights the line name on peach
+  (`--now`). **Copy** (`copyButton`) shows a check and "Copied"; screen readers hear it (`copyStatus`).
+- **On a phone** every button, tab and menu item is 44px tall (`tap`). **Keyboard focus, every page:** a 2px outline
+  in the ink colour, 2px out (`:focus-visible` in `globals.css`), inside the menus (`.focus-inset`).
 
 ## Call window (chosen 2026-10-25: look A "the voice in the middle")
 
@@ -117,30 +154,49 @@ styles and ours never mix; system fonts (the site's page doesn't load ours).
 - **The call page** says it too: under the name a green "<Owner> is here" or a grey "Away right now", and the big
   button reads "Hear our menu" (white, ink ring) when away.
 
-## Owner app (chosen 2026-10-24: look C)
+## Owner app (redesigned 2026-11-01: the dashboard's look)
 
 One installable web app for the owner, on the phone and the computer (Chrome "Install", or "Add to Home Screen" on
-iPhone). Ken picked look C from three mocks (`.impeccable/mocks/decision/app-looks/index.html`,
-https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app.templ`, `assets/css/app.css`,
-`assets/js/phone.js`; the app's log in screen uses it too.
+iPhone): `pages/app.templ`, `assets/css/app.css`, `assets/js/phone.js`; the app's log in screen uses it too. Ken
+first picked look C (warm beige, Onest, 2026-10-24), then disliked it; on 2026-11-01 he picked proposition 1 of three
+(https://claude.ai/artifact/QUHgeBgYVQ15wUVRSnvCCw: 1 like Stripe, the dashboard's look; 2 Spotify-like dark; 3 a
+calm white page), "exactly like proposed", so the app and the dashboard read as one product.
 
-- **Look:** warm light. Ground #f6f5f1, white rounded groups (16px radius, 1px ring #e9e7e1), ink #1a1a17,
-  muted #6b6a64, Onest. Green for Answer, red for missed and Decline, orange for the caller's chosen option.
-- **Phone:** tabs at the bottom (Calls, Voicemail, Menu, Me); "Available" pill top right; calls grouped by day
-  (Today, Yesterday), each row says which choice the caller pressed.
-- **Call coming in (Android, full screen):** says it in words ("Someone wants to book a room"), shows what else
-  rings and when voicemail starts, one big Answer button, then Decline and To voicemail.
-- **Computer** (900 px and wider): a wide window like Google Chat: tabs and the Available switch on the left, the
-  list in the middle, the open voicemail on the right (otherwise a "Calls ring here" note). An incoming call covers the whole window
-  (Ken, 2026-10-24: a corner card was too easy to miss); if the window is behind others, the app also shows an
-  "Incoming call: <business>" alert that brings it to the front, and flashes the tab title.
+- **Look:** the dashboard's: light grey ground #f6f6f7, white cards (16px radius, a 1px ring #e7e7ea), ink #0c0c0d,
+  muted #66666c, Funnel Display for titles and Funnel Sans for text, pill buttons. Peach #ffe4d6 for a new message
+  and the caller's choice; orange #f46422 for the count of new messages; green for Available and Answer, amber for a
+  pause, red for missed calls, Decline and Hang up. Always light.
+- **Plain words on every call:** "New message · 0:42" (then "Message" once played), "You talked · 4:18", "You
+  declined", "Missed while you were away", "Missed call"; the second line "Chose “Book a room” · 9:36 PM". The
+  dashboard's Latest calls uses the same words (`entryTitle`).
+- **Four tabs:** Calls, Messages (orange count of new ones), Voice menu, Room ("Meeting room" on a computer). The
+  account (ringing and notifications, install, Log out) opens from the round letter: top right on a phone, the
+  business name and email at the foot of the menu on a computer. `#voicemail` still opens Messages.
+- **Does my phone ring?** A band on top of Calls (`Availability`): green "You're available. Calls ring on this
+  computer and on your phone." ("on this phone" on a phone), amber "Paused until 3:04 PM. Callers can leave a
+  message.", white "You're off. Every call goes to a message." On a computer three buttons in the band (Available
+  with a check, Pause 1 hour, Off; the current one filled); on a phone "Change" and a menu. While away, calls go
+  straight to voicemail.
+- **Lists:** one white card, the days (Today, Yesterday) inside it; round icons (peach for a new message, green for
+  talked, red for missed); an ink play button on messages.
+- **Computer** (900 px and wider): a white menu on the left (248px), then the title and band across the page, the
+  list (420px) and on the right the open message or a "Calls ring here" note. The message: when, "New message ·
+  0:42", "The caller chose [Book a room]" on peach, a big player with the message's real voice drawn as bars that
+  light up in the logo's colours as it plays (click to jump), Delete, and "Callers are asked to say their name and
+  phone number in the message." Voice menu, Room and the account take the page (680px max).
+- **Call coming in** (the whole phone screen, the whole window on a computer): white; "Incoming call from your
+  website", the business's face (logo or initials) with two faint rings that pulse, "Someone wants to talk to
+  you", "They chose [Book a room]", a bar draining to voicemail with "Goes to voicemail in 0:29", a big green
+  Answer pill, a white Decline pill, "If you decline, they can leave a message." On the line: "Talking with a
+  website caller", Mute, Camera, Screen, Whiteboard and a red Hang up. If the window is behind others, the app
+  also shows an "Incoming call: <business>" alert that brings it to the front, and flashes the tab title (Ken,
+  2026-10-24: a corner card was too easy to miss).
 - **Notifications** (computer and phone): the title names the business ("Incoming call: Joe's B&B", "Missed call:
   …", "New voicemail: …"), the text is plain ("Someone on your website wants to talk to you."; not the menu
   choice, whose label reads oddly to the owner), and the picture is the business's logo cut into a circle on white
   (the minivoip mark without one), so it stays round where the desktop draws pictures square (Omarchy's mako).
   The browser adds the site's address under the title; a page can't remove it.
-- **Available switch:** Available / Pause for 1 hour / Off. Green, amber, grey dot. While away, calls go straight
-  to voicemail.
+- The Android app's own ring screen (`RingActivity`, native) still has look C.
 
 ## The stage: cameras, screens, whiteboard (2026-10-25)
 

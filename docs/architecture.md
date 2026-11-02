@@ -70,14 +70,14 @@ flowchart LR
 3. **Record the menu** in the dashboard (microphone or file upload). Example: "Press 1 for bookings, 2 for anything else." Optional: opening hours.
 4. **Install the phone app** on each phone that should ring (see below).
 5. **Add the button** to the website (see below).
-6. **Test** with the "Make a test call" button in the dashboard.
+6. **Test** with the "Try it" button on the dashboard's Home tab.
 
 ## Installing the phone app
-The phone app is a web app that installs from the browser (a PWA, or "progressive web app"). On Android, the minivoip app (`android/`, downloaded from the Me tab at `/download/minivoip.apk`) shows the same pages and rings like a real phone call; see `docs/vision.md`.
+The phone app is a web app that installs from the browser (a PWA, or "progressive web app"). On Android, the minivoip app (`android/`, downloaded from the app's account page at `/download/minivoip.apk`) shows the same pages and rings like a real phone call; see `docs/vision.md`.
 
 | Joe's device | Steps | How ringing works |
 |---|---|---|
-| **Android** (the minivoip app) | Open `minivoip.example/app` in Chrome, Me tab, "Get the Android app", install it, log in, allow notifications and microphone | Rings like a phone call (ringtone until answered, call screen over the lock screen), through Firebase. |
+| **Android** (the minivoip app) | Open `minivoip.example/app` in Chrome, the account (round letter), "Get the Android app", install it, log in, allow notifications and microphone | Rings like a phone call (ringtone until answered, call screen over the lock screen), through Firebase. |
 | **Android** (Chrome only) | Open `minivoip.example/app`, log in, tap "Install", allow notifications and microphone | Weak: a silent notification (Ken's Pixel 9 test, 2026-10-24). |
 | **iPhone** (iOS 16.4 or newer) | Open `minivoip.example/app` in **Safari**, tap Share, then "Add to Home Screen". Open it **from the home-screen icon**, log in, allow notifications and microphone | Weaker. A single notification sound, no ringtone, no full-screen call screen. Joe taps it, the app opens in a few seconds, and Joe answers. |
 | **Computer** (Chrome, Edge, Firefox) | Open `minivoip.example/app`, log in, allow notifications and microphone | Good while the browser is running |

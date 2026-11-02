@@ -9,9 +9,9 @@ import (
 type roomData struct {
 	Line     string `json:"line"`
 	Business string `json:"business"`
-	Owner    string `json:"owner"`    // who opens the room
-	IsOwner  bool   `json:"isOwner"`  // this visitor is the line's owner
-	Initials string `json:"initials"` // the owner's, for their face on the stage
+	Owner    string `json:"owner"`          // who opens the room
+	IsOwner  bool   `json:"isOwner"`        // this visitor is the line's owner
+	Initials string `json:"initials"`       // the owner's, for their face on the stage
 	Logo     string `json:"logo,omitempty"` // the business's logo: the owner's face instead
 	URL      string `json:"url"`
 }

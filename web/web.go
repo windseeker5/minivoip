@@ -83,6 +83,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /dashboard", s.auth(s.dashboard))
 	mux.Handle("POST /dashboard/line", s.auth(s.createLine))
 	mux.Handle("GET /dashboard/menu", s.auth(s.menuPage))
+	mux.Handle("GET /dashboard/business", s.auth(s.businessPage))
 	mux.Handle("POST /dashboard/menu", s.auth(s.saveMenu))
 	mux.Handle("GET /app", s.auth(s.phoneApp))
 	mux.Handle("GET /app/voicemails", s.auth(s.voicemailFragment))
@@ -148,7 +149,10 @@ func (s *Server) auth(next func(http.ResponseWriter, *http.Request, store.User))
 			http.Error(w, "This form came from another site.", http.StatusForbidden)
 			return
 		}
-		ctx := pages.WithAdmin(context.WithValue(r.Context(), ctxKey{}, u), u.IsAdmin)
+		ctx := pages.WithViewer(context.WithValue(r.Context(), ctxKey{}, u), pages.Viewer{
+			Admin:       u.IsAdmin,
+			NewMessages: func() int { return s.Store.NewVoicemails(u.AccountID) },
+		})
 		next(w, r.WithContext(ctx), u)
 	})
 }

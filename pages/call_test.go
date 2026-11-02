@@ -114,14 +114,17 @@ func TestLogoShows(t *testing.T) {
 	if strings.Count(host, src) != 3 || !strings.Contains(host, `"logo":"/logo/`) {
 		t.Errorf("room page: %d logos", strings.Count(host, src))
 	}
-	dash := render(t, Dashboard("marie@example.com", l, "https://x/call/auberge", "https://x/room/auberge", 0, "Plan: Premium", "saved"))
+	if home := render(t, Dashboard(HomeTab{Email: "marie@example.com", Line: l, Host: "https://x"})); !strings.Contains(home, src) {
+		t.Error("the dashboard's Home tab doesn't show the logo")
+	}
+	dash := render(t, Business("marie@example.com", l, "https://x/call/auberge", "Plan: Premium", "saved"))
 	for _, want := range []string{src, "Change logo", "Remove the logo", "Callers see your new logo right away", `enctype="multipart/form-data"`} {
 		if !strings.Contains(dash, want) {
 			t.Errorf("dashboard is missing %q", want)
 		}
 	}
 	l.Logo = ""
-	dash = render(t, Dashboard("marie@example.com", l, "https://x/call/auberge", "https://x/room/auberge", 0, "Plan: Premium", "bad"))
+	dash = render(t, Business("marie@example.com", l, "https://x/call/auberge", "Plan: Premium", "bad"))
 	for _, want := range []string{"Add my logo", "That file", ">AP<"} {
 		if !strings.Contains(dash, want) {
 			t.Errorf("dashboard without a logo is missing %q", want)
@@ -147,7 +150,7 @@ func TestCallAway(t *testing.T) {
 	if !strings.Contains(render(t, Call(sampleCallLine(), 30, true)), `data-here="true"`) {
 		t.Error("a call page with the owner here says so")
 	}
-	dash := render(t, Dashboard("marie@example.com", sampleCallLine(), "https://voip.example.com/call/auberge", "https://voip.example.com/room/auberge", 0, "", ""))
+	dash := render(t, Dashboard(HomeTab{Email: "marie@example.com", Line: sampleCallLine(), Host: "https://voip.example.com"}))
 	if !strings.Contains(dash, `value="&lt;script src=&#34;https://voip.example.com/w.js&#34; data-line=&#34;auberge&#34; async&gt;&lt;/script&gt;"`) {
 		t.Error("the dashboard doesn't give the Call button's line to paste")
 	}

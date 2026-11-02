@@ -181,8 +181,10 @@ input:-webkit-autofill:focus {
 /* The landing page (pages/home.templ, DESIGN.md "Landing page"): look
    "Voice". Pure white, ink type in Funnel; the hero says it in one line and
    five steps; the logo's colours as one field behind the phone. It sets the shadcn tokens for
-   its own subtree, so the components follow. */
-.lp {
+   its own subtree, so the components follow. The dashboard pages (.dash, DESIGN.md
+   "Dashboard") share its tokens and type. */
+.lp,
+.dash {
   --background: #ffffff;
   --foreground: #0c0c0d;
   --card: #ffffff;
@@ -207,7 +209,8 @@ input:-webkit-autofill:focus {
   --ink-rule: #2e2e33;
   font-family: "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
 }
-.dark .lp {
+.dark .lp,
+.dark .dash {
   --background: #0b0b0c;
   --foreground: #f4f4f5;
   --card: #141416;
@@ -230,20 +233,26 @@ input:-webkit-autofill:focus {
   --ink-muted: #a1a1a8;
   --ink-rule: #2e2e33;
 }
-body:has(> .lp) {
+body:has(> .lp),
+body:has(> .dash) {
   background: #ffffff;
 }
-.dark body:has(> .lp) {
+.dark body:has(> .lp),
+.dark body:has(> .dash) {
   background: #0b0b0c;
 }
-.lp .lp-display {
+.lp .lp-display,
+.dash h1,
+.dash h2,
+.dash .lp-display {
   font-family: "Funnel Display", "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
 }
 .lp p,
 .lp li {
   text-wrap: pretty;
 }
-.lp ::selection {
+.lp ::selection,
+.dash ::selection {
   background: #ffd9c6;
   color: #0c0c0d;
 }

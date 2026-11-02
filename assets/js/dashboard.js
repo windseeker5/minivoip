@@ -1,10 +1,20 @@
-// Dashboard: copy the call link, the logo button, and the menu editor's
-// add/remove choice rows, web-address field and "Hear it" preview.
+// Dashboard: the Home tab's windows, copy buttons, the logo button, and the
+// menu editor's add/remove choice rows, web-address field and "Hear it" preview.
+
+// The Home tab's windows (website code, email line, meeting room, phone set
+// up) open from data-open; a click on the dimmed page around one closes it.
+document.querySelectorAll("[data-open]").forEach(function (btn) {
+  btn.addEventListener("click", function () { document.getElementById(btn.dataset.open).showModal(); });
+});
+document.querySelectorAll("dialog[data-sheet]").forEach(function (d) {
+  d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
+});
 
 // Copy shows a check mark for a moment, and the status line tells screen
 // readers. If the browser refuses, the text is selected to copy by hand.
 document.querySelectorAll("[data-copy]").forEach(function (btn) {
   var timer;
+  var label = btn.querySelector("[data-copy-label]").textContent;
   btn.addEventListener("click", function () {
     var field = document.getElementById(btn.dataset.copy);
     var status = document.querySelector("[data-copy-status]");
@@ -18,7 +28,7 @@ document.querySelectorAll("[data-copy]").forEach(function (btn) {
   function show(done) {
     btn.querySelector("[data-copy-icon]").toggleAttribute("hidden", done);
     btn.querySelector("[data-copied-icon]").toggleAttribute("hidden", !done);
-    btn.querySelector("[data-copy-label]").textContent = done ? "Copied" : "Copy";
+    btn.querySelector("[data-copy-label]").textContent = done ? "Copied" : label;
   }
 });
 

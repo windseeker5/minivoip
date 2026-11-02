@@ -277,7 +277,7 @@ func PromoPage(email string, list []store.PromoCode, accounts []store.Account, a
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h1 class=\"text-3xl font-bold tracking-tight\">Promo codes and plans</h1><p class=\"mt-2 text-muted-foreground\">A code makes a line free forever, on the plan you pick. Give it to family and friends; revoke it whenever you want. Basic has calls, the voice menu and voicemail; Premium adds video, screen sharing, the whiteboard and the meeting room.</p><div class=\"mt-8 flex flex-col gap-6\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h1 class=\"text-3xl font-semibold tracking-[-0.03em]\">Promo codes and plans</h1><p class=\"mt-2 text-muted-foreground\">A code makes a line free forever, on the plan you pick. Give it to family and friends; revoke it whenever you want. Basic has calls, the voice menu and voicemail; Premium adds video, screen sharing, the whiteboard and the meeting room.</p><div class=\"mt-8 flex flex-col gap-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

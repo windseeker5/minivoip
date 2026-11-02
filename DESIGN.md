@@ -69,18 +69,32 @@ as tall as the ink button. Form fields follow the site's theme, not the computer
 `globals.css`), and a field the browser fills in (saved email, password) keeps its own white look: Ken saw Chrome
 draw them dark grey-blue on a dark computer with the site set to light.
 
-## Dashboard (polished 2026-11-01)
+## Dashboard (redesigned 2026-11-01: proposition 1, "tabs on top")
 
-`dashShell` and "My line" in `pages/dashboard.templ`; still the plain shadcn look (a redesign is parked). An audit
-(https://claude.ai/artifact/H7KDsfBXFfmxfYhhXjTZeK, Ken said apply all) set these:
+For owners with no tech skills: is my line on, what's my link, where do I put it. Chosen by Ken from three
+propositions (https://claude.ai/artifact/9hfo7Bd3dq6488ZtSBcJrF), held to Calendly. Same tokens and type as the
+landing page (`.dash` shares `.lp`'s in `globals.css`: white, ink, Funnel Sans, headings in Funnel Display).
 
-- **Links and code to copy show whole** (`shownValue`): a grey block in the mono font that wraps, never a one-line
-  box that hides the end. The code to paste highlights the line name on peach #ffe4d6, like the landing page.
-- **Copy** (`copyButton`): a check mark and "Copied" for a moment; screen readers hear it (`copyStatus`).
-- **Logo:** one "Add my logo" button (`logoPicker`); the browser's file box stays hidden.
-- **On a phone** every button and menu item on these pages is 44px tall (`tap`).
-- **Keyboard focus, every page:** a 2px outline in the ink colour, 2px out (`:focus-visible` in `globals.css`),
-  drawn inside scrolling strips (`.focus-inset`, the dashboard menu); light on the landing page's dark band.
+- **Frame** (`dashShell`): a sticky white bar with the logo, four tabs (Home, Voice menu, Messages with an orange count
+  of new voicemails, Business; icons on a computer, a line under the open tab) and, on the right, "Phone app" and a
+  round account button. Its menu (a native popover) holds the email, the phone app, Log out, and "minivoip admin"
+  for staff only: minivoip's own admin is never a tab. On a phone the tabs move to a second row.
+- **Home** (`Dashboard`): the business's badge and name, a status line with a green dot (calls ring you) or amber
+  (away, or messages until the phone is set up); the call link large in a grey card with Copy link (ink) and Try it;
+  "Where do you want people to call from?" as rows (website, emails, video meetings), each opening a window; on the
+  right "Get set up" (three steps ticked from real data: a menu of its own, a phone that gets notifications, a logo;
+  a bar in the logo's colours; only the next step gets an ink button; gone when all are done) and "Latest calls".
+- **On a phone** the next setup step sits at the top in a peach band (#fff4ec) with one full-width button, and the
+  "Get set up" box is hidden.
+- **Windows** (`sheet`, a native dialog): centred on a computer, rising from the bottom on a phone; Esc, Close or a
+  click outside close them. The website code lives only there, with "1. Copy this code, 2. Paste it" and where to
+  paste it on Wix, Squarespace, WordPress and Shopify.
+- **Business** (`Business`): label and value rows for the logo, the name, the call link and the plan.
+- Buttons on Home are pills; the menu editor and the messages list keep their cards.
+- **Links and code to copy show whole** (`shownValue`), the code to paste highlights the line name on peach
+  (`--now`). **Copy** (`copyButton`) shows a check and "Copied"; screen readers hear it (`copyStatus`).
+- **On a phone** every button and menu item is 44px tall (`tap`). **Keyboard focus, every page:** a 2px outline in
+  the ink colour, 2px out (`:focus-visible` in `globals.css`), inside the tab strip (`.focus-inset`).
 
 ## Call window (chosen 2026-10-25: look A "the voice in the middle")
 

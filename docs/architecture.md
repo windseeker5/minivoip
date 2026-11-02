@@ -70,7 +70,7 @@ flowchart LR
 3. **Record the menu** in the dashboard (microphone or file upload). Example: "Press 1 for bookings, 2 for anything else." Optional: opening hours.
 4. **Install the phone app** on each phone that should ring (see below).
 5. **Add the button** to the website (see below).
-6. **Test** with the "Make a test call" button in the dashboard.
+6. **Test** with the "Try it" button on the dashboard's Home tab.
 
 ## Installing the phone app
 The phone app is a web app that installs from the browser (a PWA, or "progressive web app"). On Android, the minivoip app (`android/`, downloaded from the Me tab at `/download/minivoip.apk`) shows the same pages and rings like a real phone call; see `docs/vision.md`.

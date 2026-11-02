@@ -154,30 +154,49 @@ styles and ours never mix; system fonts (the site's page doesn't load ours).
 - **The call page** says it too: under the name a green "<Owner> is here" or a grey "Away right now", and the big
   button reads "Hear our menu" (white, ink ring) when away.
 
-## Owner app (chosen 2026-10-24: look C)
+## Owner app (redesigned 2026-11-01: the dashboard's look)
 
 One installable web app for the owner, on the phone and the computer (Chrome "Install", or "Add to Home Screen" on
-iPhone). Ken picked look C from three mocks (`.impeccable/mocks/decision/app-looks/index.html`,
-https://claude.ai/artifact/UWo6GNqvbGgihPSJEDXbab). Built 2026-10-24: `pages/app.templ`, `assets/css/app.css`,
-`assets/js/phone.js`; the app's log in screen uses it too.
+iPhone): `pages/app.templ`, `assets/css/app.css`, `assets/js/phone.js`; the app's log in screen uses it too. Ken
+first picked look C (warm beige, Onest, 2026-10-24), then disliked it; on 2026-11-01 he picked proposition 1 of three
+(https://claude.ai/artifact/QUHgeBgYVQ15wUVRSnvCCw: 1 like Stripe, the dashboard's look; 2 Spotify-like dark; 3 a
+calm white page), "exactly like proposed", so the app and the dashboard read as one product.
 
-- **Look:** warm light. Ground #f6f5f1, white rounded groups (16px radius, 1px ring #e9e7e1), ink #1a1a17,
-  muted #6b6a64, Onest. Green for Answer, red for missed and Decline, orange for the caller's chosen option.
-- **Phone:** tabs at the bottom (Calls, Voicemail, Menu, Me); "Available" pill top right; calls grouped by day
-  (Today, Yesterday), each row says which choice the caller pressed.
-- **Call coming in (Android, full screen):** says it in words ("Someone wants to book a room"), shows what else
-  rings and when voicemail starts, one big Answer button, then Decline and To voicemail.
-- **Computer** (900 px and wider): a wide window like Google Chat: tabs and the Available switch on the left, the
-  list in the middle, the open voicemail on the right (otherwise a "Calls ring here" note). An incoming call covers the whole window
-  (Ken, 2026-10-24: a corner card was too easy to miss); if the window is behind others, the app also shows an
-  "Incoming call: <business>" alert that brings it to the front, and flashes the tab title.
+- **Look:** the dashboard's: light grey ground #f6f6f7, white cards (16px radius, a 1px ring #e7e7ea), ink #0c0c0d,
+  muted #66666c, Funnel Display for titles and Funnel Sans for text, pill buttons. Peach #ffe4d6 for a new message
+  and the caller's choice; orange #f46422 for the count of new messages; green for Available and Answer, amber for a
+  pause, red for missed calls, Decline and Hang up. Always light.
+- **Plain words on every call:** "New message · 0:42" (then "Message" once played), "You talked · 4:18", "You
+  declined", "Missed while you were away", "Missed call"; the second line "Chose “Book a room” · 9:36 PM". The
+  dashboard's Latest calls uses the same words (`entryTitle`).
+- **Four tabs:** Calls, Messages (orange count of new ones), Voice menu, Room ("Meeting room" on a computer). The
+  account (ringing and notifications, install, Log out) opens from the round letter: top right on a phone, the
+  business name and email at the foot of the menu on a computer. `#voicemail` still opens Messages.
+- **Does my phone ring?** A band on top of Calls (`Availability`): green "You're available. Calls ring on this
+  computer and on your phone." ("on this phone" on a phone), amber "Paused until 3:04 PM. Callers can leave a
+  message.", white "You're off. Every call goes to a message." On a computer three buttons in the band (Available
+  with a check, Pause 1 hour, Off; the current one filled); on a phone "Change" and a menu. While away, calls go
+  straight to voicemail.
+- **Lists:** one white card, the days (Today, Yesterday) inside it; round icons (peach for a new message, green for
+  talked, red for missed); an ink play button on messages.
+- **Computer** (900 px and wider): a white menu on the left (248px), then the title and band across the page, the
+  list (420px) and on the right the open message or a "Calls ring here" note. The message: when, "New message ·
+  0:42", "The caller chose [Book a room]" on peach, a big player with the message's real voice drawn as bars that
+  light up in the logo's colours as it plays (click to jump), Delete, and "Callers are asked to say their name and
+  phone number in the message." Voice menu, Room and the account take the page (680px max).
+- **Call coming in** (the whole phone screen, the whole window on a computer): white; "Incoming call from your
+  website", the business's face (logo or initials) with two faint rings that pulse, "Someone wants to talk to
+  you", "They chose [Book a room]", a bar draining to voicemail with "Goes to voicemail in 0:29", a big green
+  Answer pill, a white Decline pill, "If you decline, they can leave a message." On the line: "Talking with a
+  website caller", Mute, Camera, Screen, Whiteboard and a red Hang up. If the window is behind others, the app
+  also shows an "Incoming call: <business>" alert that brings it to the front, and flashes the tab title (Ken,
+  2026-10-24: a corner card was too easy to miss).
 - **Notifications** (computer and phone): the title names the business ("Incoming call: Joe's B&B", "Missed call:
   …", "New voicemail: …"), the text is plain ("Someone on your website wants to talk to you."; not the menu
   choice, whose label reads oddly to the owner), and the picture is the business's logo cut into a circle on white
   (the minivoip mark without one), so it stays round where the desktop draws pictures square (Omarchy's mako).
   The browser adds the site's address under the title; a page can't remove it.
-- **Available switch:** Available / Pause for 1 hour / Off. Green, amber, grey dot. While away, calls go straight
-  to voicemail.
+- The Android app's own ring screen (`RingActivity`, native) still has look C.
 
 ## The stage: cameras, screens, whiteboard (2026-10-25)
 

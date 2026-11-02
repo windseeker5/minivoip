@@ -87,9 +87,9 @@ B&B and may become a SaaS.
   data is `pages.HomeTab` in `pages/dashboard_home.go`, its windows are native dialogs; the menu editor with voice recorder uploads to
   `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
   (the dashboard's list), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
-  (the owner's app `/app`, login required: Calls, Voicemail, Menu, Room and Me tabs on a phone; sidebar and a detail
+  (the owner's app `/app`, login required: Calls, Messages, Voice menu and Room tabs, the account from the round letter; a side menu and a detail
   pane on a computer; the incoming call screen).
-- The owner's app has its own plain CSS, `assets/css/app.css` (look C, warm light, DESIGN.md "Owner app"); the
+- The owner's app has its own plain CSS, `assets/css/app.css` (the dashboard's look, DESIGN.md "Owner app"); the
   visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare
   layout, `layouts.Plain`. The dashboard pages (`dashShell`) use `layouts.Lean`: Base without htmx and the component bundle, since their components need no script. The app never links to the dashboard;
   logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
@@ -144,7 +144,7 @@ B&B and may become a SaaS.
   as `window.MinivoipAndroid` in `phone.js`) plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
   call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,
   Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`; its
-  version is in `data/android/version`, and the app's Me tab shows the installed version (`MinivoipAndroid.version()`)
+  version is in `data/android/version`, and the app's account page shows the installed version (`MinivoipAndroid.version()`)
   with "Update to …" when a newer one is published.
 - `relay/`: built-in TURN relay (pion/turn) on 3478 UDP+TCP, voice on 49160-49200 UDP (the ports the router
   forwards; the old coturn used them). Public address: `MINIVOIP_PUBLIC_IP`, else DNS of `MINIVOIP_TURN_HOST`

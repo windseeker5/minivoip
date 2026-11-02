@@ -99,19 +99,29 @@ func entryKind(e store.HistoryEntry) string {
 	}
 }
 
+// entryTitle says what happened in plain words. A voicemail row says
+// "New message" or "Message" itself (historyRow).
 func entryTitle(e store.HistoryEntry) string {
 	switch {
 	case e.Voicemail != nil:
-		return "Voicemail"
+		return "Message"
 	case e.Outcome == "answered":
-		return "Answered"
+		return "You talked"
 	case e.Outcome == "declined":
-		return "Declined"
+		return "You declined"
 	case e.Outcome == "away":
-		return "Call while you were away"
+		return "Missed while you were away"
 	default:
 		return "Missed call"
 	}
+}
+
+// chose is the start of a row's second line: "Chose “Book a room” · ".
+func chose(option string) string {
+	if option == "" {
+		return ""
+	}
+	return "Chose “" + option + "” · "
 }
 
 // entryLength is the voicemail's or the conversation's length.
@@ -203,8 +213,16 @@ templ icPhone() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>
 }
 
+templ icIncoming() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2v6h6M22 2l-6 6"></path><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>
+}
+
 templ icMissed() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 2l6 6M22 2l-6 6"></path><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>
+}
+
+templ icMoon() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
 }
 
 templ icVoicemail() {
@@ -215,8 +233,8 @@ templ icMic() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10a7 7 0 0 0 14 0M12 17v5"></path></svg>
 }
 
-templ icUser() {
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+templ icMenu() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
 }
 
 templ icPlay() {
@@ -240,8 +258,12 @@ templ icChevron() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
 }
 
+templ icCheck() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+}
+
 templ icTrash() {
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
 }
 
 templ icHangup() {
@@ -250,14 +272,48 @@ templ icHangup() {
 
 // ----------------------------------------------------------------- pieces
 
-// Availability is the Available switch's state, also sent back when the
-// owner changes it (POST /app/available).
+// Availability is the band on top of the call list that says whether calls
+// ring, with the switch: three buttons on a computer, Change and a menu on a
+// phone. POST /app/available sends it back when the owner changes it; the
+// words for every state are there and app.css shows the one for data-mode.
 templ Availability(until string) {
 	{{ label, on := availability(until) }}
-	<span class="ap-avail-state" data-avail-state data-mode={ availMode(until) } data-on={ strconv.FormatBool(on) } data-until={ pauseEnd(until) }>
-		<i class="ap-dot"></i>
-		<span>{ label }</span>
-	</span>
+	{{ mode := availMode(until) }}
+	<div class="ap-status" data-avail-state data-mode={ mode } data-on={ strconv.FormatBool(on) } data-until={ pauseEnd(until) }>
+		<i class="ap-dot" aria-hidden="true"></i>
+		<p class="ap-status-text" role="status">
+			<span data-for="on"><b>You're available<span class="ap-wide">.</span></b> <span class="ap-wide">Calls ring on this computer and on your phone.</span><span class="ap-narrow">Calls ring on this phone.</span></span>
+			<span data-for="pause">
+				<b>
+					if mode == "pause" {
+						{ label }<span class="ap-wide">.</span>
+					} else {
+						Paused
+					}
+				</b> Callers can leave a message.
+			</span>
+			<span data-for="off"><b>You're off<span class="ap-wide">.</span></b> Every call goes to a message.</span>
+		</p>
+		<div class="ap-seg" role="group" aria-label="Do calls ring?" data-avail-seg>
+			<button type="button" data-mode="on" aria-pressed={ strconv.FormatBool(mode == "on") }>
+				@icCheck()
+				Available
+			</button>
+			<button type="button" data-mode="pause" aria-pressed={ strconv.FormatBool(mode == "pause") }>Pause 1 hour</button>
+			<button type="button" data-mode="off" aria-pressed={ strconv.FormatBool(mode == "off") }>Off</button>
+		</div>
+		<div class="ap-avail">
+			<button type="button" class="ap-avail-btn" data-avail-btn aria-haspopup="true" aria-expanded="false" aria-label="Change whether calls ring">
+				Change
+				@icChevron()
+			</button>
+			<div class="ap-avail-menu" data-avail-menu hidden>
+				<button type="button" data-mode="on"><b>Available</b><span>Calls ring on your devices</span></button>
+				<button type="button" data-mode="pause"><b>Pause for 1 hour</b><span>Callers can leave a message</span></button>
+				<button type="button" data-mode="off"><b>Off</b><span>Every call goes to a message</span></button>
+			</div>
+		</div>
+	</div>
 }
 
 templ playButton(v store.Voicemail, label string) {
@@ -267,37 +323,42 @@ templ playButton(v store.Voicemail, label string) {
 	<audio preload="none" src={ "/voicemail/" + idStr(v.ID) + "/audio" }></audio>
 }
 
+// messageTitle is "New message · 0:42" until it's played, then "Message ·
+// 0:42": phone.js removes [data-new] when it plays.
+templ messageTitle(v store.Voicemail) {
+	<span class="ap-row-title">
+		if !v.Listened {
+			<span class="ap-title-new" data-new>New message</span>
+		}
+		<span class="ap-title-old">Message</span>
+		<span class="ap-row-len">· { length(v) }</span>
+	</span>
+}
+
 // historyRow is one call in the list. Voicemail rows play in place on the
 // phone and open on the right on a computer.
 templ historyRow(e store.HistoryEntry) {
 	if e.Voicemail != nil {
-		<li class="ap-row" data-kind="voicemail" data-voicemail={ idStr(e.Voicemail.ID) } data-title={ "Voicemail · " + entryLength(e) } data-option={ e.Option } data-when={ when(e.At) }>
+		<li class="ap-row" data-kind="voicemail" data-voicemail={ idStr(e.Voicemail.ID) } data-len={ entryLength(e) } data-option={ e.Option } data-when={ when(e.At) }>
 			<span class="ap-ico">
 				@icVoicemail()
 			</span>
 			<button type="button" class="ap-row-main" data-open>
-				<span class="ap-row-title">
-					Voicemail <span class="ap-row-len">· { entryLength(e) }</span>
-					if !e.Voicemail.Listened {
-						<span class="ap-new" data-new>New</span>
-					}
-				</span>
-				<span class="ap-row-sub">
-					if e.Option != "" {
-						“{ e.Option }” ·
-					}
-					{ clock(e.At) }
-				</span>
+				@messageTitle(*e.Voicemail)
+				<span class="ap-row-sub">{ chose(e.Option) }{ clock(e.At) }</span>
 			</button>
-			@playButton(*e.Voicemail, "Play voicemail")
+			@playButton(*e.Voicemail, "Play message")
 		</li>
 	} else {
 		<li class="ap-row" data-kind={ entryKind(e) }>
 			<span class="ap-ico">
-				if entryKind(e) == "answered" {
-					@icPhone()
-				} else {
-					@icMissed()
+				switch {
+					case e.Outcome == "answered":
+						@icIncoming()
+					case e.Outcome == "away":
+						@icMoon()
+					default:
+						@icMissed()
 				}
 			</span>
 			<span class="ap-row-main">
@@ -307,12 +368,7 @@ templ historyRow(e store.HistoryEntry) {
 						<span class="ap-row-len">· { l }</span>
 					}
 				</span>
-				<span class="ap-row-sub">
-					if e.Option != "" {
-						“{ e.Option }” ·
-					}
-					{ clock(e.At) }
-				</span>
+				<span class="ap-row-sub">{ chose(e.Option) }{ clock(e.At) }</span>
 			</span>
 		</li>
 	}
@@ -330,19 +386,21 @@ templ AppCalls(list []store.HistoryEntry) {
 				<p>When someone calls from your website, the call shows up here.</p>
 			</div>
 		} else {
-			for _, g := range byDay(list) {
-				<h2 class="ap-day">{ g.Label }</h2>
-				<ul class="ap-group">
-					for _, e := range g.Entries {
-						@historyRow(e)
-					}
-				</ul>
-			}
+			<div class="ap-list">
+				for _, g := range byDay(list) {
+					<h2 class="ap-day">{ g.Label }</h2>
+					<ul class="ap-group">
+						for _, e := range g.Entries {
+							@historyRow(e)
+						}
+					</ul>
+				}
+			</div>
 		}
 	</div>
 }
 
-// AppVoicemails is the voicemail list (also GET /app/voicemails).
+// AppVoicemails is the list of messages (also GET /app/voicemails).
 templ AppVoicemails(list []store.Voicemail) {
 	<div data-voicemails>
 		if len(list) == 0 {
@@ -354,74 +412,73 @@ templ AppVoicemails(list []store.Voicemail) {
 				<p>When nobody answers, callers can leave a message. It shows up here.</p>
 			</div>
 		} else {
-			<ul class="ap-group">
-				for _, v := range list {
-					<li class="ap-row" data-kind="voicemail" data-voicemail={ idStr(v.ID) } data-title={ "Voicemail · " + length(v) } data-option={ v.Option } data-when={ when(v.CreatedAt) }>
-						<span class="ap-ico">
-							@icVoicemail()
-						</span>
-						<button type="button" class="ap-row-main" data-open>
-							<span class="ap-row-title">
-								Voicemail <span class="ap-row-len">· { length(v) }</span>
-								if !v.Listened {
-									<span class="ap-new" data-new>New</span>
-								}
+			<div class="ap-list">
+				<ul class="ap-group">
+					for _, v := range list {
+						<li class="ap-row" data-kind="voicemail" data-voicemail={ idStr(v.ID) } data-len={ length(v) } data-option={ v.Option } data-when={ when(v.CreatedAt) }>
+							<span class="ap-ico">
+								@icVoicemail()
 							</span>
-							<span class="ap-row-sub">
-								if v.Option != "" {
-									“{ v.Option }” ·
-								}
-								{ when(v.CreatedAt) }
-							</span>
-						</button>
-						<form method="post" action={ templ.SafeURL("/voicemail/" + idStr(v.ID) + "/delete") } class="ap-row-del">
-							<input type="hidden" name="back" value="/app#voicemail"/>
-							<button type="submit" class="ap-iconbtn" aria-label="Delete this message">
-								@icTrash()
+							<button type="button" class="ap-row-main" data-open>
+								@messageTitle(v)
+								<span class="ap-row-sub">{ chose(v.Option) }{ when(v.CreatedAt) }</span>
 							</button>
-						</form>
-						@playButton(v, "Play voicemail")
-					</li>
-				}
-			</ul>
+							<form method="post" action={ templ.SafeURL("/voicemail/" + idStr(v.ID) + "/delete") } class="ap-row-del">
+								<input type="hidden" name="back" value="/app#messages"/>
+								<button type="submit" class="ap-iconbtn" aria-label="Delete this message">
+									@icTrash()
+								</button>
+							</form>
+							@playButton(v, "Play message")
+						</li>
+					}
+				</ul>
+			</div>
 		}
 	</div>
 }
 
-templ tab(name, label string) {
+// tab is one of the app's four places: in the menu on the left on a
+// computer, at the bottom on a phone.
+templ tab(name, label, short string) {
 	<button type="button" class="ap-tab" role="tab" data-tab={ name } aria-controls={ "panel-" + name } aria-selected={ strconv.FormatBool(name == "calls") }>
 		<span class="ap-tab-ico">
 			switch name {
 				case "calls":
 					@icPhone()
-				case "voicemail":
+				case "messages":
 					@icVoicemail()
 				case "menu":
-					@icMic()
-				case "room":
-					@icCamera()
+					@icMenu()
 				default:
-					@icUser()
-			}
-			if name == "voicemail" {
-				<i class="ap-tab-dot" data-vm-dot hidden></i>
+					@icCamera()
 			}
 		</span>
-		<span>{ label }</span>
+		if short != "" {
+			<span class="ap-wide">{ label }</span>
+			<span class="ap-narrow">{ short }</span>
+		} else {
+			<span>{ label }</span>
+		}
+		if name == "messages" {
+			<span class="ap-count" data-vm-count hidden></span>
+		}
 	</button>
 }
 
-// Phone is the owner's app: /app, on the phone and the computer. Tabs for
-// calls, voicemail, the menu and settings; on a computer the tabs sit on the
-// left and a voicemail opens on the right. An incoming call takes the whole
-// screen (the whole window on a computer). phone.js runs it;
-// data-show lists the call states each part appears in. Look: DESIGN.md
-// "Owner app".
+// Phone is the owner's app: /app, on the phone and the computer. Four tabs
+// (Calls, Messages, Voice menu, Room) in a menu on the left on a computer, at
+// the bottom on a phone; the account (ringing, install, log out) opens from
+// the round letter. On a computer a message opens on the right. An incoming
+// call takes the whole screen (the whole window on a computer). phone.js runs
+// it; data-show lists the call states each part appears in. Look: DESIGN.md
+// "Owner app" (the dashboard's look).
 templ Phone(d AppData) {
-	@layouts.Base("minivoip", "") {
+	@layouts.Lean("minivoip", "") {
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
 		<link rel="stylesheet" href="/assets/css/app.css"/>
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
-		<div class="ap" data-phone data-android-latest={ d.Android } data-line={ d.Line.Name } data-business={ d.Line.Business } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) } data-me-logo={ logoURL(d.Line) }>
+		<div class="ap" data-phone data-view="calls" data-android-latest={ d.Android } data-line={ d.Line.Name } data-business={ d.Line.Business } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) } data-me-logo={ logoURL(d.Line) }>
 			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
 			if d.Line.Premium {
 				<a class="ap-room-alert" href={ templ.SafeURL(d.RoomURL) } target="_blank" data-room-alert hidden={ len(d.RoomWaiting) == 0 } role="status">
@@ -430,47 +487,49 @@ templ Phone(d AppData) {
 					<b>Join</b>
 				</a>
 			}
-			<img class="ap-logo" src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="110" height="20"/>
-			<div class="ap-avail">
-				<button type="button" class="ap-avail-btn" data-avail-btn aria-haspopup="true" aria-expanded="false" aria-label="Change whether calls ring">
-					@Availability(d.Line.AwayUntil)
-					@icChevron()
+			<header class="ap-top">
+				<img src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="121" height="22"/>
+				<button type="button" class="ap-avatar" data-tab="me" aria-label="Your account">{ firstLetter(d.Email) }</button>
+			</header>
+			<aside class="ap-side">
+				<img class="ap-logo" src="/assets/brand/logo-minivoip.svg" alt="minivoip" width="132" height="24"/>
+				<nav class="ap-tabs" role="tablist" aria-label="minivoip">
+					@tab("calls", "Calls", "")
+					@tab("messages", "Messages", "")
+					@tab("menu", "Voice menu", "")
+					@tab("room", "Meeting room", "Room")
+				</nav>
+				<button type="button" class="ap-acct" data-tab="me">
+					<span class="ap-avatar" aria-hidden="true">{ firstLetter(d.Email) }</span>
+					<span class="ap-acct-who">
+						<b>{ d.Line.Business }</b>
+						<small>{ d.Email }</small>
+					</span>
+					<span class="ap-sr">Your account</span>
 				</button>
-				<div class="ap-avail-menu" data-avail-menu hidden>
-					<button type="button" data-mode="on"><b>Available</b><span>Calls ring on your devices</span></button>
-					<button type="button" data-mode="pause"><b>Pause for 1 hour</b><span>Callers can leave a voicemail</span></button>
-					<button type="button" data-mode="off"><b>Off</b><span>Every call goes to voicemail</span></button>
-				</div>
-			</div>
-			<nav class="ap-tabs" role="tablist" aria-label="minivoip">
-				@tab("calls", "Calls")
-				@tab("voicemail", "Voicemail")
-				@tab("menu", "Menu")
-				@tab("room", "Room")
-				@tab("me", "Me")
-			</nav>
+			</aside>
 			<main class="ap-main">
-				<section class="ap-panel" id="panel-calls" role="tabpanel" data-panel="calls">
+				<section class="ap-panel is-split" id="panel-calls" role="tabpanel" data-panel="calls">
 					<header class="ap-head">
 						<h1>Calls</h1>
-						<p>{ d.Line.Business } · calls from your website</p>
 					</header>
-					<div data-calls-box>
+					@Availability(d.Line.AwayUntil)
+					<div class="ap-box" data-calls-box>
 						@AppCalls(d.History)
 					</div>
 				</section>
-				<section class="ap-panel" id="panel-voicemail" role="tabpanel" data-panel="voicemail" hidden>
+				<section class="ap-panel is-split" id="panel-messages" role="tabpanel" data-panel="messages" hidden>
 					<header class="ap-head">
-						<h1>Voicemail</h1>
-						<p>Messages callers left when nobody answered.</p>
+						<h1>Messages</h1>
+						<p>What callers left when nobody answered.</p>
 					</header>
-					<div data-voicemail-box>
+					<div class="ap-box" data-voicemail-box>
 						@AppVoicemails(d.Voicemails)
 					</div>
 				</section>
 				<section class="ap-panel" id="panel-menu" role="tabpanel" data-panel="menu" hidden>
 					<header class="ap-head">
-						<h1>Menu</h1>
+						<h1>Voice menu</h1>
 						<p>What callers hear before your phone rings.</p>
 					</header>
 					<h2 class="ap-day">Your call link</h2>
@@ -533,10 +592,10 @@ templ Phone(d AppData) {
 						</div>
 					}
 				</section>
-				<section class="ap-panel" id="panel-me" role="tabpanel" data-panel="me" hidden>
+				<section class="ap-panel" id="panel-me" role="region" aria-label="Your account" data-panel="me" hidden>
 					<header class="ap-head">
-						<h1>Me</h1>
-						<p>{ d.Email }</p>
+						<h1>Your account</h1>
+						<p>{ d.Line.Business } · { d.Email }</p>
 					</header>
 					<h2 class="ap-day">Ringing</h2>
 					<div class="ap-card ap-setting" data-push>
@@ -565,53 +624,65 @@ templ Phone(d AppData) {
 						<button type="submit" class="ap-btn">Log out</button>
 					</form>
 				</section>
-			</main>
-			<aside class="ap-detail" aria-label="Details">
-				<div class="ap-detail-idle" data-detail-idle>
-					<span class="ap-empty-ico">
-						@icPhone()
-					</span>
-					<h2>Calls ring here</h2>
-					<p>Keep this window open, even behind your other work. A call fills this window with a ringtone, and an alert brings it to the front.</p>
-					<dl class="ap-facts">
-						<div><dt>Your call link</dt><dd>{ d.CallURL }</dd></div>
-						<div><dt>Ringing</dt><dd>{ strconv.Itoa(d.RingSeconds) } s, then voicemail</dd></div>
-					</dl>
-				</div>
-				<div class="ap-vm" data-detail-vm hidden>
-					<p class="ap-muted" data-vm-when></p>
-					<h2 data-vm-title></h2>
-					<p class="ap-vm-option" data-vm-option></p>
-					<div class="ap-player">
-						<button type="button" class="ap-play is-big" data-vm-play aria-label="Play voicemail">
-							@icPlay()
-						</button>
-						<div class="ap-progress"><i data-vm-bar></i></div>
-						<span class="ap-time" data-vm-time>0:00</span>
+				<aside class="ap-detail" aria-label="Details">
+					<div class="ap-detail-idle" data-detail-idle>
+						<span class="ap-empty-ico">
+							@icPhone()
+						</span>
+						<h2>Calls ring here</h2>
+						<p>Keep this window open, even behind your other work. A call fills this window with a ringtone, and an alert brings it to the front.</p>
+						<dl class="ap-facts">
+							<div><dt>Your call link</dt><dd>{ d.CallURL }</dd></div>
+							<div><dt>Ringing</dt><dd>{ strconv.Itoa(d.RingSeconds) } s, then a message</dd></div>
+						</dl>
 					</div>
-					<form method="post" class="ap-actions" data-vm-delete>
-						<input type="hidden" name="back" value="/app#voicemail"/>
-						<button type="submit" class="ap-btn is-red">Delete</button>
-					</form>
-				</div>
-			</aside>
+					<div class="ap-vm" data-detail-vm hidden>
+						<p class="ap-vm-when" data-vm-when></p>
+						<h2 data-vm-title></h2>
+						<p class="ap-vm-option" data-vm-option></p>
+						<div class="ap-player">
+							<button type="button" class="ap-play is-big" data-vm-play aria-label="Play message">
+								@icPlay()
+							</button>
+							<div class="ap-wave" data-vm-wave aria-hidden="true"></div>
+							<span class="ap-time"><span data-vm-time>0:00</span> / <span data-vm-len></span></span>
+							<i class="ap-progress" data-vm-bar hidden></i>
+						</div>
+						<form method="post" class="ap-actions" data-vm-delete>
+							<input type="hidden" name="back" value="/app#messages"/>
+							<button type="submit" class="ap-btn is-red">
+								@icTrash()
+								Delete
+							</button>
+						</form>
+						<p class="ap-vm-hint">Callers are asked to say their name and phone number in the message.</p>
+					</div>
+				</aside>
+			</main>
 			<div class="ap-call" data-call-screen data-show="incoming connecting talking" hidden>
 				<div class="ap-call-in">
 					<p class="ap-call-state">
 						<i class="ap-dot"></i>
-						<span data-status role="status" aria-live="assertive">Incoming call</span>
+						<span data-status role="status" aria-live="assertive">Incoming call from your website</span>
 						<span data-timer></span>
 					</p>
-					<h2 class="ap-call-title" data-call-title>Someone is calling</h2>
-					<p class="ap-call-sub" data-call-sub>A visitor on your website is calling you.</p>
-					<p class="ap-call-fact" data-show="incoming" hidden>If nobody answers: <b data-countdown>voicemail</b></p>
+					<div class="ap-face">
+						<i></i><i></i>
+						@faceBadge(d.Line, ownerName(d.Line), "ap-face-badge")
+					</div>
+					<h2 class="ap-call-title" data-call-title>Someone wants to talk to you</h2>
+					<p class="ap-call-sub" data-call-sub>A visitor on your website is calling.</p>
+					<div class="ap-countdown" data-show="incoming" hidden>
+						<div class="ap-countdown-bar"><i data-countdown-bar></i></div>
+						<p data-countdown>Goes to voicemail</p>
+					</div>
 					<div class="ap-call-bar" data-show="incoming" hidden>
 						<button type="button" class="ap-answer" data-action="accept">
 							@icPhone()
 							<span>Answer</span>
 						</button>
 						<button type="button" class="ap-decline" data-action="decline">Decline</button>
-						<p class="ap-call-note">Declined callers can leave a voicemail.</p>
+						<p class="ap-call-note">If you decline, they can leave a message.</p>
 					</div>
 					<div class="ap-stage" data-stage></div>
 					<p class="ap-meet-note" data-meet-note role="status" hidden></p>

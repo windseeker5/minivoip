@@ -77,15 +77,17 @@
     fetch(url).then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
       if (!html || box.querySelector(".ap-play.is-playing")) return;
       box.innerHTML = html;
-      newDot();
+      newCount();
     });
   }
   function refreshCalls() { refresh("/app/calls", $("[data-calls-box]")); }
   function refreshVoicemail() { refresh("/app/voicemails", $("[data-voicemail-box]")); }
 
-  // The red dot on the Voicemail tab: messages not played yet.
-  function newDot() {
-    $("[data-vm-dot]").hidden = !$("[data-voicemail-box] [data-new]");
+  // The count on the Messages tab: messages not played yet.
+  function newCount() {
+    var n = root.querySelectorAll("[data-voicemail-box] [data-new]").length, c = $("[data-vm-count]");
+    c.textContent = n;
+    c.hidden = !n;
   }
 
   // Play buttons: one message at a time; the audio element sits next to its
@@ -111,41 +113,89 @@
     var row = audio.closest("[data-voicemail]");
     if (on && row) {
       root.querySelectorAll('[data-voicemail="' + row.dataset.voicemail + '"] [data-new]').forEach(function (b) { b.remove(); });
-      newDot();
+      newCount();
+      if (row === vmRow) $("[data-vm-title]").textContent = vmTitle(row);
     }
   }
 
-  // On a computer, a voicemail opens on the right with a bigger player.
-  var vmAudio = null;
+  // On a computer, a message opens on the right with a bigger player and its
+  // voice drawn as a wave, played part in the logo's colours.
+  var vmAudio = null, vmRow = null;
+  function vmTitle(row) {
+    return (row.querySelector("[data-new]") ? "New message" : "Message") + " · " + row.dataset.len;
+  }
   function openVoicemail(row) {
     root.querySelectorAll(".ap-row.is-open").forEach(function (r) { r.classList.remove("is-open"); });
     row.classList.add("is-open");
     if (vmAudio) vmAudio.pause();
+    vmRow = row;
     vmAudio = row.querySelector("audio");
     $("[data-detail-idle]").hidden = true;
     $("[data-detail-vm]").hidden = false;
     $("[data-vm-when]").textContent = row.dataset.when;
-    $("[data-vm-title]").textContent = row.dataset.title;
+    $("[data-vm-title]").textContent = vmTitle(row);
+    $("[data-vm-len]").textContent = row.dataset.len;
     var opt = $("[data-vm-option]");
     opt.textContent = "";
     if (row.dataset.option) {
       opt.append("The caller chose ");
-      var em = document.createElement("em");
-      em.textContent = "“" + row.dataset.option + "”";
-      opt.append(em);
+      var mk = document.createElement("mark");
+      mk.textContent = row.dataset.option;
+      opt.append(mk);
     } else {
       opt.textContent = "Left from your website";
     }
     $("[data-vm-delete]").action = "/voicemail/" + row.dataset.voicemail + "/delete";
+    drawWave(row.dataset.voicemail, vmAudio.getAttribute("src"));
     vmTime();
   }
   function vmTime() {
     if (!vmAudio) return;
-    var d = vmAudio.duration, t = vmAudio.currentTime || 0;
-    $("[data-vm-bar]").style.width = d > 0 && isFinite(d) ? (100 * t / d) + "%" : "0";
+    var d = vmAudio.duration, t = vmAudio.currentTime || 0, f = d > 0 && isFinite(d) ? t / d : 0;
+    $("[data-vm-bar]").style.width = (100 * f) + "%";
     $("[data-vm-time]").textContent = mmss(t);
+    var bars = $("[data-vm-wave]").children;
+    for (var i = 0; i < bars.length; i++) bars[i].classList.toggle("is-played", (i + 0.5) / bars.length <= f);
   }
   root.addEventListener("timeupdate", function (e) { if (e.target === vmAudio) vmTime(); }, true);
+  root.addEventListener("ended", function (e) { if (e.target === vmAudio) { vmAudio.currentTime = 0; vmTime(); } }, true);
+
+  // The wave is the message's real loudness, read once per message; flat bars
+  // until it's read (or if this browser can't read it).
+  var waves = {};
+  var SPECTRUM = ["#f3840f", "#ef5b2a", "#e0336b", "#9b2f9a", "#5b34a8", "#143495"];
+  function peaks(id, url, n) {
+    var key = id + ":" + n;
+    if (!waves[key]) waves[key] = fetch(url).then(function (r) { return r.arrayBuffer(); }).then(function (buf) {
+      var C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      return new Promise(function (ok, fail) { new C(1, 2, 44100).decodeAudioData(buf, ok, fail); });
+    }).then(function (audio) {
+      var data = audio.getChannelData(0), step = Math.max(1, Math.floor(data.length / n)), out = [], top = 0;
+      for (var i = 0; i < n; i++) {
+        var m = 0;
+        for (var j = i * step, end = Math.min(data.length, j + step); j < end; j += 4) m = Math.max(m, Math.abs(data[j]));
+        out.push(m);
+        top = Math.max(top, m);
+      }
+      return out.map(function (m) { return top ? m / top : 0; });
+    });
+    return waves[key];
+  }
+  function drawWave(id, url) {
+    var box = $("[data-vm-wave]"), n = Math.max(12, Math.floor(box.clientWidth / 6));
+    function bars(h) {
+      box.textContent = "";
+      for (var i = 0; i < n; i++) {
+        var b = document.createElement("i");
+        b.style.height = Math.round(Math.max(0.12, h[i]) * 100) + "%";
+        b.style.setProperty("--c", SPECTRUM[Math.round(i / (n - 1) * (SPECTRUM.length - 1))]);
+        box.append(b);
+      }
+      vmTime();
+    }
+    bars(new Array(n).fill(0.3));
+    peaks(id, url, n).then(function (h) { if (vmRow && vmRow.dataset.voicemail === id) bars(h); }, function () {});
+  }
 
   function mmss(s) {
     s = Math.floor(s);
@@ -154,10 +204,15 @@
 
   // ----------------------------------------------------------- tabs
 
-  var tabs = ["calls", "voicemail", "menu", "room", "me"];
+  // Four tabs, and the account ("me", from the round letter). Old links
+  // (#voicemail) open Messages.
+  var tabs = ["calls", "messages", "menu", "room", "me"];
   function openTab(name) {
+    if (name === "voicemail") name = "messages";
     if (tabs.indexOf(name) === -1) name = "calls";
-    root.querySelectorAll("[data-tab]").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === name)); });
+    root.dataset.view = name;
+    root.querySelectorAll('[role="tab"][data-tab]').forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === name)); });
+    root.querySelectorAll('[data-tab="me"]').forEach(function (b) { b.setAttribute("aria-current", String(name === "me")); });
     root.querySelectorAll("[data-panel]").forEach(function (p) { p.hidden = p.dataset.panel !== name; });
     if (history.replaceState) history.replaceState(null, "", name === "calls" ? location.pathname + location.search : "#" + name);
     if (!wide.matches) window.scrollTo(0, 0);
@@ -166,13 +221,15 @@
 
   // ----------------------------------------------------------- available
 
-  var availBtn = $("[data-avail-btn]"), availMenu = $("[data-avail-menu]");
+  // The band on top of the calls: three buttons on a computer, Change and a
+  // menu on a phone. The server sends the whole band back after a change.
   function availOpen(on) {
-    availMenu.hidden = !on;
-    availBtn.setAttribute("aria-expanded", String(on));
+    var menu = $("[data-avail-menu]");
+    menu.hidden = !on;
+    $("[data-avail-btn]").setAttribute("aria-expanded", String(on));
     if (on) {
       var mode = $("[data-avail-state]").dataset.mode;
-      availMenu.querySelectorAll("[data-mode]").forEach(function (b) { b.setAttribute("aria-current", String(b.dataset.mode === mode)); });
+      menu.querySelectorAll("[data-mode]").forEach(function (b) { b.setAttribute("aria-current", String(b.dataset.mode === mode)); });
     }
   }
   function setAvailable(mode) {
@@ -192,15 +249,15 @@
     pauseT = setTimeout(function () {
       el.dataset.mode = "on";
       el.dataset.until = "";
-      el.querySelector("span").textContent = "Available";
+      el.querySelectorAll("[data-avail-seg] [data-mode]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === "on")); });
     }, Math.max(0, end - Date.now()) + 1000);
   }
   pauseTimer();
   document.addEventListener("click", function (e) {
-    if (!availMenu.hidden && !e.target.closest(".ap-avail")) availOpen(false);
+    if (!$("[data-avail-menu]").hidden && !e.target.closest(".ap-avail")) availOpen(false);
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !availMenu.hidden) { availOpen(false); availBtn.focus(); }
+    if (e.key === "Escape" && !$("[data-avail-menu]").hidden) { availOpen(false); $("[data-avail-btn]").focus(); }
   });
 
   // ----------------------------------------------------------- ringing
@@ -249,17 +306,17 @@
     if (ringStop) { ringStop(); ringStop = null; }
   }
 
-  // The call screen says what the caller chose: "Someone chose “Book a room”".
+  // The call screen says what the caller chose: "They chose [Book a room]".
   function callText(title, option, sub) {
-    var h = $("[data-call-title]");
-    h.textContent = title;
+    $("[data-call-title]").textContent = title;
+    var p = $("[data-call-sub]");
+    p.textContent = "";
     if (option) {
-      h.append(" ");
-      var em = document.createElement("em");
-      em.textContent = "“" + option + "”";
-      h.append(em);
-    }
-    $("[data-call-sub]").textContent = sub;
+      p.append("They chose ");
+      var mk = document.createElement("mark");
+      mk.textContent = option;
+      p.append(mk);
+    } else p.textContent = sub;
   }
 
   var callOption = "";
@@ -268,14 +325,14 @@
     ringingId = m.id;
     callOption = m.option || "";
     show("incoming");
-    $("[data-status]").textContent = "Incoming call";
-    if (m.option) callText("Someone chose", m.option, "A visitor on your website heard your greeting and picked this choice.");
-    else callText("Someone is calling", "", "A visitor on your website is calling you.");
+    $("[data-status]").textContent = "Incoming call from your website";
+    $("[data-timer]").textContent = "";
+    callText("Someone wants to talk to you", m.option, "A visitor on your website is calling.");
     var start = Date.now(), ring = +root.dataset.ring || 30;
     function tick() {
       var s = Math.floor((Date.now() - start) / 1000), left = Math.max(0, ring - s);
-      $("[data-timer]").textContent = mmss(s);
-      $("[data-countdown]").textContent = left > 0 ? "voicemail in " + mmss(left) : "going to voicemail…";
+      $("[data-countdown]").textContent = left > 0 ? "Goes to voicemail in " + mmss(left) : "Going to voicemail…";
+      $("[data-countdown-bar]").style.width = (100 * left / ring) + "%";
     }
     stopRinging();
     tick();
@@ -386,7 +443,7 @@
   function talking() {
     show("talking");
     $("[data-status]").textContent = "On the line";
-    callText("Talking with a website caller", "", callOption ? "They chose “" + callOption + "”." : "");
+    callText("Talking with a website caller", callOption, "A visitor on your website.");
     var start = Date.now();
     clearInterval(timerIv);
     $("[data-timer]").textContent = "0:00";
@@ -430,9 +487,15 @@
     var t = e.target;
     var tabBtn = t.closest("[data-tab]");
     if (tabBtn) return openTab(tabBtn.dataset.tab);
-    if (t.closest("[data-avail-btn]")) return availOpen(availMenu.hidden);
-    var mode = t.closest("[data-avail-menu] [data-mode]");
+    if (t.closest("[data-avail-btn]")) return availOpen($("[data-avail-menu]").hidden);
+    var mode = t.closest("[data-avail-menu] [data-mode], [data-avail-seg] [data-mode]");
     if (mode) return setAvailable(mode.dataset.mode);
+    var wave = t.closest("[data-vm-wave]");
+    if (wave && vmAudio && vmAudio.duration > 0 && isFinite(vmAudio.duration)) {
+      var r = wave.getBoundingClientRect();
+      vmAudio.currentTime = vmAudio.duration * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      return vmTime();
+    }
     var play = t.closest("[data-play]");
     if (play) return playPause(play, play.nextElementSibling);
     if (t.closest("[data-vm-play]")) return vmAudio && playPause($("[data-vm-play]"), vmAudio);
@@ -661,6 +724,6 @@
     if (reg && reg.getNotifications) reg.getNotifications().then(function (l) { l.forEach(function (n) { n.close(); }); });
   }
 
-  newDot();
+  newCount();
   connectWs();
 })();

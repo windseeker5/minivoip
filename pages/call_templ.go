@@ -1107,7 +1107,7 @@ func AppLogin(f AccountForm) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<link rel=\"stylesheet\" href=\"/assets/css/app.css\"><div class=\"ap ap-login\" data-app-login><main class=\"ap-login-in\"><img src=\"/assets/brand/logo-minivoip.svg\" alt=\"minivoip\" width=\"121\" height=\"22\"><h1>Log in to your app</h1><p class=\"ap-muted\">Answer your website's calls on this phone or computer.</p><form method=\"post\" action=\"/login\" class=\"ap-card ap-form\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap\"><link rel=\"stylesheet\" href=\"/assets/css/app.css\"><div class=\"ap ap-login\" data-app-login><main class=\"ap-login-in\"><img src=\"/assets/brand/logo-minivoip.svg\" alt=\"minivoip\" width=\"121\" height=\"22\"><h1>Log in to your app</h1><p class=\"ap-muted\">Answer your website's calls on this phone or computer.</p><form method=\"post\" action=\"/login\" class=\"ap-card ap-form\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1119,7 +1119,7 @@ func AppLogin(f AccountForm) templ.Component {
 				var templ_7745c5c3_Var44 string
 				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(f.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 395, Col: 46}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 396, Col: 46}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 				if templ_7745c5c3_Err != nil {
@@ -1137,7 +1137,7 @@ func AppLogin(f AccountForm) templ.Component {
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Next)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 397, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 398, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 			if templ_7745c5c3_Err != nil {
@@ -1150,7 +1150,7 @@ func AppLogin(f AccountForm) templ.Component {
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Email)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 399, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/call.templ`, Line: 400, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 			if templ_7745c5c3_Err != nil {
@@ -1162,7 +1162,7 @@ func AppLogin(f AccountForm) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layouts.Base("minivoip", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var43), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layouts.Lean("minivoip", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var43), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

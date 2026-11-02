@@ -94,8 +94,9 @@ const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - 
 {
   const { page, sock } = await open(390, 844);
   check(await overflow(page) <= 0, "phone: no sideways scroll");
-  check(await page.isVisible("text=Call while you were away") && await page.isVisible("text=Yesterday"), "phone: calls grouped by day");
-  check(await page.isVisible("[data-vm-dot]"), "phone: red dot on Voicemail tab for a new message");
+  check(await page.isVisible("text=Missed while you were away") && await page.isVisible("text=Yesterday"), "phone: calls grouped by day, in plain words");
+  check((await page.textContent("[data-vm-count]")).trim() === "1", "phone: the Messages tab counts 1 new message");
+  check(/You're available/.test(await page.innerText("[data-avail-state]")) && await page.isVisible("[data-avail-btn]") && await page.isHidden("[data-avail-seg]"), "phone: the green band says calls ring, with Change");
   await page.screenshot({ path: `${SHOTS}/app-phone-calls.png` });
 
   // Play the new voicemail from the call list.
@@ -104,15 +105,15 @@ const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - 
   check(true, "phone: a voicemail plays in place");
   await page.waitForTimeout(400);
   check(hits.includes("POST /voicemail/3/listened"), "phone: playing marks it listened");
-  check(await page.locator('[data-voicemail="3"] [data-new]').count() === 0 && await page.isHidden("[data-vm-dot]"), "phone: New badge and tab dot clear");
+  check(await page.locator('[data-voicemail="3"] [data-new]').count() === 0 && await page.isHidden("[data-vm-count]"), "phone: “New message” and the tab's count clear");
   await page.click('[data-panel="calls"] [data-voicemail="3"] [data-play]');
 
-  for (const tab of ["voicemail", "menu", "room", "me"]) {
-    await page.click(`[data-tab="${tab}"]`);
+  for (const tab of ["messages", "menu", "room", "me"]) {
+    await page.click(tab === "me" ? '.ap-top [data-tab="me"]' : `[role="tab"][data-tab="${tab}"]`);
     check(await page.isVisible(`[data-panel="${tab}"]`) && (await page.evaluate(() => location.hash)) === "#" + tab, `phone: ${tab} tab opens`);
     await page.screenshot({ path: `${SHOTS}/app-phone-${tab}.png`, fullPage: true });
   }
-  check(await page.isVisible("text=Log out"), "phone: Me has Log out");
+  check(await page.isVisible("text=Log out"), "phone: the account (round letter) has Log out");
   check(await page.getAttribute('[data-panel="room"] [data-room-open]', "href") === "https://voip.example.com/room/joesbnb", "phone: the Room tab opens the meeting room");
 
   // Someone waits in the meeting room: an alert with Join, on every tab.
@@ -130,14 +131,14 @@ const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - 
   await page.reload();
   await page.waitForFunction(() => document.querySelector("[data-phone]").dataset.online === "true");
   check(await page.isVisible('[data-panel="me"]'), "phone: the tab survives a reload (#me)");
-  await page.click('[data-tab="calls"]');
+  await page.click('[role="tab"][data-tab="calls"]');
 
   // Available switch.
   await page.click("[data-avail-btn]");
   await page.screenshot({ path: `${SHOTS}/app-phone-available-menu.png` });
   await page.click('[data-avail-menu] [data-mode="pause"]');
   await page.waitForSelector('[data-avail-state][data-mode="pause"]');
-  check(/Paused until/.test(await page.textContent("[data-avail-btn]")), "phone: Pause for 1 hour shows until when");
+  check(/Paused until/.test(await page.innerText("[data-avail-state]")), "phone: Pause for 1 hour shows until when");
   check(await overflow(page) <= 0, "phone: paused label fits");
   await page.screenshot({ path: `${SHOTS}/app-phone-paused.png` });
   await page.click("[data-avail-btn]");
@@ -148,9 +149,9 @@ const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - 
   sock.ws.send(JSON.stringify({ type: "incoming", id: "c1", option: "Book a room" }));
   await page.waitForSelector('[data-action="accept"]:visible');
   await page.waitForTimeout(1200);
-  check(/Someone chose\s*“Book a room”/.test(await page.textContent("[data-call-title]")), "phone: ringing says what the caller chose");
+  check(/Someone wants to talk to you/.test(await page.textContent("[data-call-title]")) && /They chose\s*Book a room/.test(await page.textContent("[data-call-sub]")), "phone: ringing says what the caller chose");
   const cd = await page.textContent("[data-countdown]");
-  check(/voicemail in 0:2\d/.test(cd), `phone: countdown to voicemail (${cd})`);
+  check(/Goes to voicemail in 0:2\d/.test(cd), `phone: countdown to voicemail (${cd})`);
   await page.screenshot({ path: `${SHOTS}/app-phone-ringing.png` });
   await page.click('[data-action="decline"]');
   await page.waitForTimeout(200);
@@ -159,7 +160,7 @@ const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - 
   // Incoming call with no choice, answered, then the caller hangs up.
   sock.ws.send(JSON.stringify({ type: "incoming", id: "c2" }));
   await page.waitForSelector('[data-action="accept"]:visible');
-  check(/Someone is calling/.test(await page.textContent("[data-call-title]")), "phone: ringing without a choice");
+  check(/A visitor on your website is calling/.test(await page.textContent("[data-call-sub]")), "phone: ringing without a choice");
   await page.click('[data-action="accept"]');
   await page.waitForFunction(() => document.querySelector('[data-action="hangup"]').offsetParent !== null);
   check(sock.sent.some((m) => m.type === "accept" && m.id === "c2"), "phone: Answer tells the server");
@@ -207,12 +208,22 @@ for (const [w, h, name] of [[390, 844, "phone"], [1280, 800, "desk"]]) {
   const { page, sock } = await open(1280, 800);
   check(await overflow(page) <= 0, "computer: no sideways scroll");
   check(await page.isVisible("text=Calls ring here"), "computer: the right side explains ringing");
+  check(await page.isVisible("[data-avail-seg]") && await page.isHidden("[data-avail-btn]"), "computer: the band has Available, Pause 1 hour and Off");
   await page.screenshot({ path: `${SHOTS}/app-desk-calls.png` });
+  await page.click('[data-avail-seg] [data-mode="pause"]');
+  await page.waitForSelector('[data-avail-state][data-mode="pause"]');
+  check(/Paused until/.test(await page.innerText("[data-avail-state]")) && (await page.getAttribute('[data-avail-seg] [data-mode="pause"]', "aria-pressed")) === "true", "computer: Pause 1 hour turns the band amber and says until when");
+  await page.screenshot({ path: `${SHOTS}/app-desk-paused.png` });
+  await page.click('[data-avail-seg] [data-mode="on"]');
+  await page.waitForSelector('[data-avail-state][data-mode="on"]');
   await page.click('[data-panel="calls"] [data-voicemail="3"] [data-open]');
-  check(await page.isVisible("[data-detail-vm]") && /Voicemail · 0:42/.test(await page.textContent("[data-vm-title]")), "computer: a voicemail opens on the right");
+  check(await page.isVisible("[data-detail-vm]") && /New message · 0:42/.test(await page.textContent("[data-vm-title]")), "computer: a message opens on the right");
+  check(/The caller chose\s*Book a room/.test(await page.textContent("[data-vm-option]")), "computer: it says what the caller chose");
   await page.click("[data-vm-play]");
   await page.waitForTimeout(1300);
   check(await page.evaluate(() => parseFloat(document.querySelector("[data-vm-bar]").style.width) > 0), "computer: the big player plays and shows progress");
+  check(await page.evaluate(() => document.querySelectorAll("[data-vm-wave] i").length > 20 && document.querySelectorAll("[data-vm-wave] i.is-played").length > 0), "computer: the wave lights up as it plays");
+  check(/^Message · 0:42/.test(await page.textContent("[data-vm-title]")), "computer: once played, it's no longer new");
   await page.screenshot({ path: `${SHOTS}/app-desk-voicemail.png` });
   await page.click("[data-vm-play]");
   sock.ws.send(JSON.stringify({ type: "incoming", id: "c3", option: "Book a room" }));
@@ -232,10 +243,15 @@ for (const [w, h, name] of [[390, 844, "phone"], [1280, 800, "desk"]]) {
   await page.screenshot({ path: `${SHOTS}/app-desk-talking.png` });
   await page.click('[data-action="hangup"]');
   check(sock.sent.some((m) => m.type === "hangup"), "computer: Hang up tells the server");
-  await page.click('[data-tab="me"]');
+  await page.click('[role="tab"][data-tab="messages"]');
+  check(await page.isVisible('[data-panel="messages"]') && await page.isVisible(".ap-detail"), "computer: Messages keeps the detail on the right");
+  await page.screenshot({ path: `${SHOTS}/app-desk-messages.png` });
+  await page.click('[role="tab"][data-tab="menu"]');
+  check(await page.isHidden(".ap-detail"), "computer: the voice menu takes the page");
+  await page.screenshot({ path: `${SHOTS}/app-desk-menu.png` });
+  await page.click(".ap-acct");
+  check(await page.isVisible('[data-panel="me"]') && await page.isVisible("text=Log out"), "computer: the account opens from the bottom of the menu");
   await page.screenshot({ path: `${SHOTS}/app-desk-me.png` });
-  await page.click("[data-avail-btn]");
-  await page.screenshot({ path: `${SHOTS}/app-desk-available-menu.png` });
   await page.context().close();
 }
 
@@ -252,7 +268,7 @@ for (const [mine, want, update] of [["0.3", "minivoip for Android 0.3, the lates
   await page.goto(BASE + "/app#me");
   const text = await page.textContent("[data-install-text]");
   check(text.includes(want) && (await page.isVisible("[data-android-update]")) === update,
-    `android ${mine || "0.2"}: the Me tab says “${text.trim()}”${update ? " with Update to 0.3" : ""}`);
+    `android ${mine || "0.2"}: the account page says “${text.trim()}”${update ? " with Update to 0.3" : ""}`);
   if (update) await page.screenshot({ path: `${SHOTS}/app-phone-update.png` });
   await ctx.close();
 }

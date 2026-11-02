@@ -383,7 +383,8 @@ templ Call(l lines.Line, ringSeconds int, here bool) {
 // AppLogin is the app's own log in screen (the app never shows the
 // website's pages). Same look as the app (app.css).
 templ AppLogin(f AccountForm) {
-	@layouts.Base("minivoip", "") {
+	@layouts.Lean("minivoip", "") {
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
 		<link rel="stylesheet" href="/assets/css/app.css"/>
 		<div class="ap ap-login" data-app-login>
 			<main class="ap-login-in">

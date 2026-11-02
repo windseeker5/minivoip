@@ -100,6 +100,17 @@ const browser = await chromium.launch({
 // until retries fn until it gives something truthy, or ms run out.
 const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v; while (Date.now() < end) { v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 200)); } return v; };
 
+// setAvail flips the phone app's Available switch: three buttons on a
+// computer, Change and a menu on a phone.
+async function setAvail(page, mode) {
+  if (await page.isVisible("[data-avail-seg]")) await page.click(`[data-avail-seg] [data-mode="${mode}"]`);
+  else {
+    await page.click("[data-avail-btn]");
+    await page.click(`[data-avail-menu] [data-mode="${mode}"]`);
+  }
+  await page.waitForSelector(`[data-avail-state][data-mode="${mode}"]`);
+}
+
 async function newPage(width = 1280, height = 900) {
   const ctx = await browser.newContext({ viewport: { width, height }, permissions: ["microphone", "camera"] });
   const page = await ctx.newPage();
@@ -593,7 +604,7 @@ try {
   check(afterDecline.includes("missed") && afterDecline.includes("voicemail"), `declining sends "Missed call", the message sends "New voicemail" (${afterDecline.join(", ")})`);
   await owner.waitForSelector("[data-voicemail]", { timeout: 10000 });
   check(true, "the phone app shows the new message without reloading");
-  check(await owner.isVisible("[data-vm-dot]"), "the Voicemail tab shows a dot for the new message");
+  check((await owner.textContent("[data-vm-count]")).trim() === "1", "the Messages tab counts the new message");
 
   step = "voicemail choice";
   await caller.click('[data-action="call"]:visible');
@@ -608,7 +619,7 @@ try {
   step = "voicemail page";
   await owner.goto(BASE + "/dashboard");
   check((await owner.textContent("[data-tab-count]")).startsWith("2"), "the Messages tab counts 2 new messages");
-  check((await owner.textContent("[data-latest]")).includes("Voicemail"), "Latest calls lists the voicemails");
+  check((await owner.textContent("[data-latest]")).includes("Message"), "Latest calls lists the messages");
   await owner.click('a[href="/dashboard/voicemail"] >> nth=0');
   await owner.waitForSelector("[data-voicemail]");
   const items = owner.locator("[data-voicemail]");
@@ -630,9 +641,7 @@ try {
   step = "away";
   await owner.goto(BASE + "/app");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="off"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="off"]');
+  await setAvail(owner, "off");
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
@@ -646,9 +655,7 @@ try {
   callDB.close();
   check(outcomes.includes("answered") && outcomes.includes("declined") && outcomes[outcomes.length - 1] === "away",
     `the call history has every call (${outcomes.join(", ")})`);
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="on"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="on"]');
+  await setAvail(owner, "on");
   check(true, "the Available switch turns back on");
 
   // The Call button on a business's own website (w.js), pasted from the dashboard ----
@@ -672,9 +679,7 @@ try {
   check(await until(async () => (await btnState(biz)) === "true") && (await biz.locator(".btn").textContent()).includes("Talk to us now"),
     'the button on the website says "Talk to us now" while the owner is available');
   await biz.screenshot({ path: `${SHOTS}/button-here.png` });
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="off"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="off"]');
+  await setAvail(owner, "off");
   await biz.reload();
   check(await until(async () => (await btnState(biz)) === "false") && (await biz.locator(".btn").textContent()).includes("Leave us a message"),
     'the button says "Leave us a message" while the owner is off');
@@ -683,9 +688,7 @@ try {
   await awayPage.goto(BASE + `/call/${LINE}`);
   check(await awayPage.isVisible("text=Away right now") && await awayPage.isVisible("text=Hear our menu"), "the call page says the owner is away, and the menu still answers");
   await awayPage.screenshot({ path: `${SHOTS}/call-away.png` });
-  await owner.click("[data-avail-btn]");
-  await owner.click('[data-avail-menu] [data-mode="on"]');
-  await owner.waitForSelector('[data-avail-state][data-mode="on"]');
+  await setAvail(owner, "on");
   check(await until(async () => (await awayPage.evaluate(() => document.querySelector("[data-call]").dataset.here)) === "true", 40000),
     "an open call page sees the owner come back, without a reload");
   await awayPage.context().close();

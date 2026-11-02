@@ -83,7 +83,7 @@ B&B and may become a SaaS.
   "room" message on the call socket with who waits (the app's alert and Room tab), and phones a "room" push
   (`RoomKnock`). Linked from the dashboard and the app's Room tab.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
-  `account` (sign up, log in), `dashboard` + `dashboard.js` (the tabs Home, Voice menu, Messages, Business: Home's
+  `account` (sign up, log in), `dashboard` + `dashboard.js` (a side menu, tabs at the bottom on a phone: Home, Voice menu, Messages, Business; Home's
   data is `pages.HomeTab` in `pages/dashboard_home.go`, its windows are native dialogs; the menu editor with voice recorder uploads to
   `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
   (the dashboard's list), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`

@@ -88,20 +88,6 @@ func stepsLeftText(left int, next setupStep) string {
 	return strconv.Itoa(left) + " steps left. Next: " + string(t) + "."
 }
 
-// progressWidth fills the "Get set up" bar.
-func progressWidth(steps []setupStep) string {
-	left, _ := nextStep(steps)
-	switch len(steps) - left {
-	case 0:
-		return "w-0"
-	case 1:
-		return "w-1/3"
-	case 2:
-		return "w-2/3"
-	}
-	return "w-full"
-}
-
 // latestWhen is the time for a call today, else its day.
 func latestWhen(utc string) string {
 	if d := dayLabel(utc, time.Now()); d != "Today" {

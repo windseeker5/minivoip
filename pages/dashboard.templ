@@ -21,77 +21,139 @@ type LineForm struct {
 	Error    string
 }
 
-// dashShell is the logged-in frame (DESIGN.md "Dashboard"): the logo, four
-// tabs, the phone app and a round account button. Its pages need no
-// component scripts (layouts.Lean); the account menu is a native popover.
+// dashShell is the logged-in frame (DESIGN.md "Dashboard"): a menu on the
+// left with the phone app and the account at its foot; on a phone a top bar
+// and tabs at the bottom, like an app. Pages sit on light grey in white
+// cards. They need no component scripts (layouts.Lean); the account menu is
+// a native popover.
 templ dashShell(title, email, current string) {
 	@layouts.Lean(title+" · minivoip", "") {
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
-		<div class="dash flex min-h-dvh flex-col">
-			<header class="sticky top-0 z-40 border-b bg-background">
-				<div class="flex flex-wrap items-center gap-x-8 px-4 sm:px-8">
-					<div class="flex h-14 items-center md:h-16">
-						@brand()
-					</div>
-					<nav aria-label="Dashboard" class="order-last -mx-4 flex w-[calc(100%+2rem)] overflow-x-auto border-t px-2 sm:-mx-8 sm:w-[calc(100%+4rem)] sm:px-6 md:order-none md:mx-0 md:w-auto md:border-0 md:px-0">
-						@dashTab("/dashboard", "Home", current, 0) {
-							@icon.House(icon.Props{Class: "size-4"})
-						}
-						@dashTab("/dashboard/menu", "Voice menu", current, 0) {
-							@icon.ListTree(icon.Props{Class: "size-4"})
-						}
-						@dashTab("/dashboard/voicemail", "Messages", current, newMessages(ctx)) {
-							@icon.Voicemail(icon.Props{Class: "size-4"})
-						}
-						@dashTab("/dashboard/business", "Business", current, 0) {
-							@icon.Store(icon.Props{Class: "size-4"})
-						}
-					</nav>
-					<div class="ml-auto flex items-center gap-3">
-						<a href="/app" class="hidden items-center gap-2 rounded-full px-3 py-2 text-[15px] font-medium text-muted-foreground hover:text-foreground md:flex">
-							@icon.Smartphone(icon.Props{Class: "size-4"})
-							Phone app
-						</a>
-						@accountMenu(email)
-					</div>
-				</div>
+		<div class="dash min-h-dvh md:grid md:grid-cols-[248px_minmax(0,1fr)]">
+			<header class="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-background pr-2 pl-4 md:hidden">
+				@brand()
+				<button type="button" popovertarget="account-menu" class="grid size-11 place-items-center rounded-full" aria-label="Your account" data-account-button>
+					@avatar(email)
+				</button>
 			</header>
-			<main class="mx-auto w-full max-w-[1120px] flex-1 px-4 pt-7 pb-16 sm:px-8 sm:pt-11">
-				{ children... }
-			</main>
-			@smallFooter()
+			<aside class="sticky top-0 hidden h-dvh flex-col border-r bg-background px-3.5 pt-5 pb-4 md:flex">
+				<div class="px-2.5">
+					@brand()
+				</div>
+				<nav aria-label="Dashboard" class="mt-5 flex flex-col gap-0.5">
+					@sideTab("/dashboard", "Home", current, 0) {
+						@icon.House(icon.Props{Class: "size-[18px]"})
+					}
+					@sideTab("/dashboard/menu", "Voice menu", current, 0) {
+						@icon.ListTree(icon.Props{Class: "size-[18px]"})
+					}
+					@sideTab("/dashboard/voicemail", "Messages", current, newMessages(ctx)) {
+						@icon.Voicemail(icon.Props{Class: "size-[18px]"})
+					}
+					@sideTab("/dashboard/business", "Business", current, 0) {
+						@icon.Store(icon.Props{Class: "size-[18px]"})
+					}
+				</nav>
+				<div class="mt-auto flex flex-col gap-1.5">
+					<a href="/app" class="focus-inset flex items-center gap-3 rounded-xl p-2.5 shadow-[inset_0_0_0_1px_var(--border)] hover:bg-muted">
+						<span class="grid size-9 flex-none place-items-center rounded-[10px] bg-muted">
+							@icon.Smartphone(icon.Props{Class: "size-[18px]"})
+						</span>
+						<span class="min-w-0">
+							<span class="block font-medium">Phone app</span>
+							<span class="block text-xs text-muted-foreground">Answer calls on your phone</span>
+						</span>
+					</a>
+					<button type="button" popovertarget="account-menu" class="focus-inset flex items-center gap-2.5 rounded-xl p-2.5 text-left hover:bg-muted" data-account-button>
+						@avatar(email)
+						<span class="min-w-0 flex-1">
+							<span class="block text-[13px] font-semibold">Your account</span>
+							<span class="block truncate text-xs text-muted-foreground">{ email }</span>
+						</span>
+						@icon.ChevronsUpDown(icon.Props{Class: "size-4 flex-none text-muted-foreground"})
+					</button>
+				</div>
+			</aside>
+			<div class="flex min-w-0 flex-col">
+				<main class="mx-auto w-full max-w-[1060px] flex-1 px-4 pt-5 pb-10 sm:px-6 md:px-10 md:pt-9">
+					{ children... }
+				</main>
+				<footer class="mx-auto w-full max-w-[1060px] px-4 pb-28 text-sm text-muted-foreground sm:px-6 md:px-10 md:pb-8">
+					Questions? <a href="mailto:kdresdell@minipass.me" class="underline underline-offset-4 hover:text-foreground">kdresdell@minipass.me</a>
+				</footer>
+			</div>
+			<nav aria-label="Dashboard" class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t bg-background px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+				@bottomTab("/dashboard", "Home", current, 0) {
+					@icon.House(icon.Props{Class: "size-[22px]"})
+				}
+				@bottomTab("/dashboard/menu", "Menu", current, 0) {
+					@icon.ListTree(icon.Props{Class: "size-[22px]"})
+				}
+				@bottomTab("/dashboard/voicemail", "Messages", current, newMessages(ctx)) {
+					@icon.Voicemail(icon.Props{Class: "size-[22px]"})
+				}
+				@bottomTab("/dashboard/business", "Business", current, 0) {
+					@icon.Store(icon.Props{Class: "size-[22px]"})
+				}
+			</nav>
+			@accountMenu(email)
 		</div>
 	}
 }
 
-// dashTab is one of the four tabs: a line under the open one. The icon
-// shows on a computer only; count is the orange number (new messages).
-templ dashTab(href, text, current string, count int) {
+// sideTab is one line of the left menu; the open page is shaded.
+templ sideTab(href, text, current string, count int) {
 	<a
 		href={ templ.SafeURL(href) }
-		class={ "focus-inset relative flex h-12 shrink-0 items-center gap-2 px-3 text-[15px] font-medium whitespace-nowrap after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full md:h-16",
-			templ.KV("text-foreground after:bg-foreground", href == current),
-			templ.KV("text-muted-foreground hover:text-foreground", href != current) }
+		class={ "focus-inset flex items-center gap-3 rounded-[10px] px-2.5 py-2.5 font-medium",
+			templ.KV("bg-muted text-foreground", href == current),
+			templ.KV("text-muted-foreground hover:bg-muted hover:text-foreground", href != current) }
 		if href == current {
 			aria-current="page"
 		}
 	>
-		<span class="hidden md:contents">
-			{ children... }
-		</span>
+		{ children... }
 		{ text }
 		if count > 0 {
-			<span class="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#c2410c] px-1.5 text-[11px] font-semibold text-white tabular-nums" data-tab-count>{ strconv.Itoa(count) }<span class="sr-only">new</span></span>
+			@countBadge(count, "ml-auto")
 		}
 	</a>
 }
 
-// accountMenu is the round button at the top right: who is logged in, the
-// phone app, minivoip's own admin for staff, and Log out. A native popover:
-// Esc or a click outside closes it.
+// bottomTab is one of the phone's tabs at the bottom of the screen.
+templ bottomTab(href, text, current string, count int) {
+	<a
+		href={ templ.SafeURL(href) }
+		class={ "focus-inset relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[11.5px] font-medium",
+			templ.KV("text-foreground", href == current),
+			templ.KV("text-muted-foreground", href != current) }
+		if href == current {
+			aria-current="page"
+		}
+	>
+		{ children... }
+		{ text }
+		if count > 0 {
+			@countBadge(count, "absolute top-0 left-[calc(50%+4px)]")
+		}
+	</a>
+}
+
+// countBadge is the orange number of new messages.
+templ countBadge(count int, class string) {
+	<span class={ "grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#c2410c] px-1.5 text-[11px] font-semibold text-white tabular-nums", class } data-tab-count>{ strconv.Itoa(count) }<span class="sr-only">new</span></span>
+}
+
+// avatar is the account's round letter.
+templ avatar(email string) {
+	<span class="grid size-9 flex-none place-items-center rounded-full bg-foreground text-sm font-semibold text-background" aria-hidden="true">{ firstLetter(email) }</span>
+}
+
+// accountMenu opens from the account button: who is logged in, the phone
+// app, minivoip's own admin for staff, and Log out. Esc or a click outside
+// closes it. It sits under the phone's top bar, or above the left menu's foot.
 templ accountMenu(email string) {
-	<button type="button" popovertarget="account-menu" class="grid size-9 place-items-center rounded-full bg-foreground text-sm font-semibold text-background max-sm:size-11" aria-label="Your account" data-account>{ firstLetter(email) }</button>
-	<div id="account-menu" popover class="fixed inset-auto top-[3.25rem] right-4 m-0 w-72 max-w-[calc(100vw-2rem)] rounded-xl border-0 bg-background p-1.5 text-[15px] text-foreground shadow-[0_0_0_1px_var(--border),0_18px_50px_-20px_rgb(0_0_0/0.35)] sm:right-8 md:top-[3.75rem]">
+	<div id="account-menu" popover class="fixed inset-auto m-0 w-72 max-w-[calc(100vw-2rem)] rounded-xl border-0 bg-background p-1.5 text-[15px] text-foreground shadow-[0_0_0_1px_var(--border),0_18px_50px_-20px_rgb(0_0_0/0.35)] max-md:top-[3.25rem] max-md:right-4 md:bottom-[4.75rem] md:left-3.5">
 		<div class="px-3 pt-2 pb-3">
 			<p class="text-[13px] text-muted-foreground">Logged in as</p>
 			<p class="truncate font-medium" data-account-email>{ email }</p>
@@ -318,54 +380,57 @@ func logoNote(msg string) (text string, bad bool) {
 // pill makes the Home tab's buttons round, as in DESIGN.md "Dashboard".
 const pill = "rounded-full px-4 " + tap
 
-// Dashboard is the Home tab: is the line on, the call link, where to put
-// it, what's left to set up and the latest calls. Anything technical (the
+// card is a white card on the dashboard's grey.
+const card = "rounded-2xl bg-card p-5 shadow-[0_0_0_1px_var(--border)] sm:p-6"
+
+// Dashboard is the Home tab: the next setup step, the line (is it on, its
+// link), where to put it and the latest calls. Anything technical (the
 // website code) opens in a window only when the owner picks it.
 templ Dashboard(h HomeTab) {
 	{{ l := h.Line }}
-	{{ steps := h.steps() }}
-	{{ left, next := nextStep(steps) }}
+	{{ left, next := nextStep(h.steps()) }}
 	@dashShell("Home", h.Email, "/dashboard") {
+		<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Home</h1>
 		if left > 0 {
 			@setupBand(left, next)
 		}
-		<div class="grid gap-11 lg:grid-cols-[minmax(0,1fr)_340px]">
-			<div class="min-w-0">
-				<div class="flex items-center gap-4">
+		<div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+			<section class={ card + " lg:col-span-2" } aria-label="Your line">
+				<div class="flex items-center gap-3.5">
 					@dashBadge(l, "size-14 text-lg")
 					<div class="min-w-0">
-						<h1 class="text-[28px] leading-tight font-semibold tracking-[-0.03em] text-balance sm:text-4xl">{ l.Business }</h1>
+						<p class="lp-display text-xl leading-tight font-semibold tracking-[-0.02em] text-balance">{ l.Business }</p>
 						@lineStatus(h)
 					</div>
 				</div>
-				<section class="mt-7 rounded-[18px] bg-muted p-5 sm:p-6" aria-label="Your call link">
-					<p class="text-[13px] font-medium text-muted-foreground">Your call link</p>
-					<p id="call-link" data-value={ h.callURL() } class="lp-display mt-1 text-[22px] leading-snug font-medium tracking-[-0.02em] [overflow-wrap:anywhere]"><span class="text-muted-foreground">{ h.hostName() }/call/</span>{ l.Name }</p>
-					<div class="mt-4 flex gap-2.5 max-sm:[&>*]:flex-1">
+				<div class="mt-5 flex flex-col gap-4 border-t pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+					<div class="min-w-0">
+						<p class="text-[13px] font-medium text-muted-foreground">Your call link</p>
+						<p id="call-link" data-value={ h.callURL() } class="lp-display mt-0.5 text-xl leading-snug font-medium tracking-[-0.02em] [overflow-wrap:anywhere]"><span class="text-muted-foreground">{ h.hostName() }/call/</span>{ l.Name }</p>
+					</div>
+					<div class="flex gap-2.5 sm:flex-none max-sm:[&>*]:flex-1">
 						@copyButton("call-link", "Copy link", pill, true)
-						@button.Button(button.Props{Href: h.callURL(), Target: "_blank", Variant: button.VariantOutline, Class: pill + " bg-background"}) {
+						@button.Button(button.Props{Href: h.callURL(), Target: "_blank", Variant: button.VariantOutline, Class: pill}) {
 							@icon.Phone()
 							Try it
 						}
 					</div>
-				</section>
-				<section class="mt-10" aria-labelledby="share-title">
-					<h2 id="share-title" class="text-[17px] font-semibold tracking-[-0.015em]">Where do you want people to call from?</h2>
-					<ul class="mt-3 border-b">
-						@shareRow("dlg-website", "Your website", "A Call button in the corner of every page", "Add a Call button", icon.Globe(icon.Props{Class: "size-[18px]"}))
-						@shareRow("dlg-email", "Your emails", "A \"Call us\" line for your signature", "Get the line", icon.Mail(icon.Props{Class: "size-[18px]"}))
-						if l.Premium {
-							@shareRow("dlg-room", "Video meetings", "Your own meeting room, with a link to send", "Open the room", icon.Video(icon.Props{Class: "size-[18px]"}))
-						} else {
-							@shareRow("dlg-room", "Video meetings", "Your own meeting room comes with Premium", "See what it does", icon.Video(icon.Props{Class: "size-[18px]"}))
-						}
-					</ul>
-				</section>
-			</div>
-			<div class="flex flex-col gap-10">
-				if left > 0 {
-					@setupBox(steps, left, next)
-				}
+				</div>
+			</section>
+			<section class={ card } aria-labelledby="share-title">
+				<h2 id="share-title" class="text-[17px] font-semibold tracking-[-0.015em]">Share your line</h2>
+				<p class="text-sm text-muted-foreground">Where do you want people to call you from?</p>
+				<ul class="mt-3 -mb-2">
+					@shareRow("dlg-website", "On your website", "A Call button in the corner of every page", "Set it up", icon.Globe(icon.Props{Class: "size-[18px]"}))
+					@shareRow("dlg-email", "In your emails", "A \"Call us\" line for your signature", "Get the line", icon.Mail(icon.Props{Class: "size-[18px]"}))
+					if l.Premium {
+						@shareRow("dlg-room", "Video meetings", "Your own meeting room, with a link to send", "Open", icon.Video(icon.Props{Class: "size-[18px]"}))
+					} else {
+						@shareRow("dlg-room", "Video meetings", "Your own meeting room comes with Premium", "See what it does", icon.Video(icon.Props{Class: "size-[18px]"}))
+					}
+				</ul>
+			</section>
+			<div class={ card }>
 				@latestCalls(h.Latest)
 			</div>
 		</div>
@@ -429,52 +494,17 @@ templ stepButton(s setupStep, class string) {
 	}
 }
 
-// setupBand is the next setup step at the top of Home on a phone, where the
-// "Get set up" box would sit far below.
+// setupBand is the next setup step, in peach at the top of Home, ticked from
+// what the line really has (a menu of its own, a phone that gets
+// notifications, a logo). It goes away once all three are done.
 templ setupBand(left int, next setupStep) {
-	<div class="mb-7 rounded-2xl bg-[#fff4ec] p-4 shadow-[inset_0_0_0_1px_#ffd9c4] sm:hidden dark:bg-[#2a1a12] dark:shadow-[inset_0_0_0_1px_#4a2a1c]" data-setup-band>
-		<p class="font-semibold">{ stepsLeftText(left, next) }</p>
-		<p class="mt-0.5 text-sm text-muted-foreground">{ next.Hint }</p>
-		@stepButton(next, "mt-3 w-full "+pill)
-	</div>
-}
-
-// setupBox is "Get set up": three steps, ticked from what the line really
-// has (a menu of its own, a phone that gets notifications, a logo). It goes
-// away once all three are done.
-templ setupBox(steps []setupStep, left int, next setupStep) {
-	<section class="rounded-[18px] p-5 shadow-[inset_0_0_0_1px_var(--border)] max-sm:hidden" aria-labelledby="setup-title" data-setup>
-		<h2 id="setup-title" class="text-[17px] font-semibold tracking-[-0.015em]">Get set up</h2>
-		<p class="text-[13px] text-muted-foreground">{ strconv.Itoa(len(steps) - left) } of { strconv.Itoa(len(steps)) } done</p>
-		<div class="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-			<div class={ "h-full rounded-full bg-[linear-gradient(90deg,#f3840f,#e0406b_45%,#143495)]", progressWidth(steps) }></div>
+	<div class="mt-4 flex flex-col gap-3 rounded-2xl bg-[#fff4ec] p-4 shadow-[inset_0_0_0_1px_#ffd9c4] sm:flex-row sm:items-center sm:gap-5 sm:px-5 dark:bg-[#2a1a12] dark:shadow-[inset_0_0_0_1px_#4a2a1c]" data-setup-band>
+		<div class="min-w-0 flex-1">
+			<p class="font-semibold">{ stepsLeftText(left, next) }</p>
+			<p class="mt-0.5 text-sm text-muted-foreground">{ next.Hint }</p>
 		</div>
-		<ol class="mt-2">
-			for _, s := range steps {
-				<li class="flex gap-3 border-t py-3.5 first:border-t-0" data-step={ s.Title } data-done?={ s.Done }>
-					if s.Done {
-						<span class="grid size-6 flex-none place-items-center rounded-full bg-foreground text-background">
-							@icon.Check(icon.Props{Class: "size-3.5"})
-						</span>
-						<p class="text-muted-foreground">{ s.Title }<span class="sr-only">, done</span></p>
-					} else {
-						<span class="size-6 flex-none rounded-full shadow-[inset_0_0_0_1.5px_var(--border)]"></span>
-						<div class="min-w-0">
-							<p class="font-semibold">{ s.Title }</p>
-							<p class="text-[13px] text-muted-foreground">{ s.Hint }</p>
-							if s.Title == next.Title {
-								@stepButton(s, "mt-2.5 h-9 rounded-full px-4")
-							} else if s.Open != "" {
-								<button type="button" data-open={ s.Open } class="mt-1 text-[13px] font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">{ s.Action }</button>
-							} else {
-								<a href={ templ.SafeURL(s.Href) } class="mt-1 inline-block text-[13px] font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">{ s.Action }</a>
-							}
-						</div>
-					}
-				</li>
-			}
-		</ol>
-	</section>
+		@stepButton(next, pill+" sm:flex-none max-sm:w-full")
+	</div>
 }
 
 // latestCalls is the last three calls and voicemails (the phone app's list).
@@ -630,7 +660,7 @@ templ phoneSheet(h HomeTab) {
 templ Business(email string, l lines.Line, callURL, plan, logoMsg string) {
 	@dashShell("Business", email, "/dashboard/business") {
 		<div class="max-w-3xl">
-			<h1 class="text-3xl font-semibold tracking-[-0.03em]">Your business</h1>
+			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Your business</h1>
 			<p class="mt-2 text-muted-foreground">What your callers see.</p>
 			if text, bad := logoNote(logoMsg); bad {
 				<div class="mt-6">
@@ -639,8 +669,8 @@ templ Business(email string, l lines.Line, callURL, plan, logoMsg string) {
 			} else if text != "" {
 				<p class="mt-6 rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400" role="status">{ text }</p>
 			}
-			<dl class="mt-8 border-b">
-				<div id="logo" class="grid gap-x-4 gap-y-3 border-t py-6 sm:grid-cols-[11rem_minmax(0,1fr)]">
+			<dl class={ card + " mt-6 py-0 sm:py-0" }>
+				<div id="logo" class="grid gap-x-4 gap-y-3 py-6 sm:grid-cols-[11rem_minmax(0,1fr)]">
 					<dt class="font-semibold">Logo</dt>
 					<dd class="flex flex-col gap-4 sm:flex-row sm:items-start">
 						@dashBadge(l, "size-20 text-2xl")
@@ -697,7 +727,7 @@ templ Business(email string, l lines.Line, callURL, plan, logoMsg string) {
 templ MenuEditor(email string, l lines.Line, saved bool, errMsg string) {
 	@dashShell("Voice menu", email, "/dashboard/menu") {
 		<div class="max-w-3xl">
-			<h1 class="text-3xl font-semibold tracking-[-0.03em]">Voice menu</h1>
+			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Voice menu</h1>
 			<p class="mt-2 text-muted-foreground">What your receptionist says, and where each choice sends the caller. Type it for a computer voice to read, or record it in your own voice.</p>
 			<form method="post" action="/dashboard/menu" class="mt-8 flex flex-col gap-6" data-menu-form>
 				@formError(errMsg)

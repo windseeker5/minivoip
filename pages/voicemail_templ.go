@@ -71,7 +71,7 @@ func VoicemailPage(email string, list []store.Voicemail) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-3xl\"><h1 class=\"text-3xl font-semibold tracking-[-0.03em]\">Messages</h1><p class=\"mt-2 text-muted-foreground\">Voicemails callers left when nobody answered, or when they picked a voicemail choice.</p><div class=\"mt-8\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-3xl\"><h1 class=\"text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]\">Messages</h1><p class=\"mt-2 text-muted-foreground\">Voicemails callers left when nobody answered, or when they picked a voicemail choice.</p><div class=\"mt-8\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

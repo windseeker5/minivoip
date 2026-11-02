@@ -69,32 +69,32 @@ as tall as the ink button. Form fields follow the site's theme, not the computer
 `globals.css`), and a field the browser fills in (saved email, password) keeps its own white look: Ken saw Chrome
 draw them dark grey-blue on a dark computer with the site set to light.
 
-## Dashboard (redesigned 2026-11-01: proposition 1, "tabs on top")
+## Dashboard (redesigned 2026-11-01: proposition 2, "menu on the side")
 
-For owners with no tech skills: is my line on, what's my link, where do I put it. Chosen by Ken from three
-propositions (https://claude.ai/artifact/9hfo7Bd3dq6488ZtSBcJrF), held to Calendly. Same tokens and type as the
-landing page (`.dash` shares `.lp`'s in `globals.css`: white, ink, Funnel Sans, headings in Funnel Display).
+For owners with no tech skills: is my line on, what's my link, where do I put it. Ken picked proposition 2 of three
+(https://claude.ai/artifact/9hfo7Bd3dq6488ZtSBcJrF), held to Stripe, but in the site's own type: `.dash` shares
+`.lp`'s tokens in `globals.css` (ink, Funnel Sans, headings in Funnel Display); the page is light grey #f6f6f7 (dark
+#0b0b0c) with white cards (`card`: 16px radius, a 1px ring, `bg-card`).
 
-- **Frame** (`dashShell`): a sticky white bar with the logo, four tabs (Home, Voice menu, Messages with an orange count
-  of new voicemails, Business; icons on a computer, a line under the open tab) and, on the right, "Phone app" and a
-  round account button. Its menu (a native popover) holds the email, the phone app, Log out, and "minivoip admin"
-  for staff only: minivoip's own admin is never a tab. On a phone the tabs move to a second row.
-- **Home** (`Dashboard`): the business's badge and name, a status line with a green dot (calls ring you) or amber
-  (away, or messages until the phone is set up); the call link large in a grey card with Copy link (ink) and Try it;
-  "Where do you want people to call from?" as rows (website, emails, video meetings), each opening a window; on the
-  right "Get set up" (three steps ticked from real data: a menu of its own, a phone that gets notifications, a logo;
-  a bar in the logo's colours; only the next step gets an ink button; gone when all are done) and "Latest calls".
-- **On a phone** the next setup step sits at the top in a peach band (#fff4ec) with one full-width button, and the
-  "Get set up" box is hidden.
+- **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, Voice menu, Messages
+  (orange count of new voicemails), Business, the open one shaded; at its foot a "Phone app" card and the account
+  button (letter, "Your account", email). Its menu (a native popover) holds the email, the phone app, Log out, and
+  "minivoip admin" for staff only: minivoip's own admin is never a tab. On a phone a top bar (logo, account) and
+  the four tabs fixed at the bottom, like an app. A "Questions?" line closes each page.
+- **Home** (`Dashboard`): the title, then a peach band (#fff4ec) with the next setup step and its button, ticked from
+  real data (a menu of its own, a phone that gets notifications, a logo; gone when all are done); a card with the
+  business's badge, name and status (green dot: calls ring you; amber: away, or messages until the phone is set up)
+  over the call link with Copy link (ink) and Try it; then "Share your line" (website, emails, video meetings, each
+  row opening a window) beside "Latest calls".
 - **Windows** (`sheet`, a native dialog): centred on a computer, rising from the bottom on a phone; Esc, Close or a
   click outside close them. The website code lives only there, with "1. Copy this code, 2. Paste it" and where to
   paste it on Wix, Squarespace, WordPress and Shopify.
-- **Business** (`Business`): label and value rows for the logo, the name, the call link and the plan.
-- Buttons on Home are pills; the menu editor and the messages list keep their cards.
+- **Business** (`Business`): one card of label and value rows for the logo, the name, the call link and the plan.
+- Buttons on Home are pills; the menu editor and the messages list keep their white cards.
 - **Links and code to copy show whole** (`shownValue`), the code to paste highlights the line name on peach
   (`--now`). **Copy** (`copyButton`) shows a check and "Copied"; screen readers hear it (`copyStatus`).
-- **On a phone** every button and menu item is 44px tall (`tap`). **Keyboard focus, every page:** a 2px outline in
-  the ink colour, 2px out (`:focus-visible` in `globals.css`), inside the tab strip (`.focus-inset`).
+- **On a phone** every button, tab and menu item is 44px tall (`tap`). **Keyboard focus, every page:** a 2px outline
+  in the ink colour, 2px out (`:focus-visible` in `globals.css`), inside the menus (`.focus-inset`).
 
 ## Call window (chosen 2026-10-25: look A "the voice in the middle")
 

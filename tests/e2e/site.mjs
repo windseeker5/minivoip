@@ -367,10 +367,10 @@ try {
   const loaded = (p, sel) => p.evaluate((s) => [...document.querySelectorAll(s)].filter((i) => i.complete && i.naturalWidth > 0).length, sel);
   check(await loaded(owner, "[data-logo-badge] img") === 1, "the dashboard shows the logo given at sign up");
   // Get set up ticks what the line really has: a menu of its own and a logo, but no phone yet.
-  const stepsDone = await owner.$$eval("[data-setup] [data-step]", (ls) => ls.map((l) => `${l.dataset.step}:${l.hasAttribute("data-done")}`));
-  check(stepsDone.join() === "Your voice menu:true,Make your phone ring:false,Your logo:true", `Get set up shows what's left (${stepsDone})`);
+  const band = (await owner.textContent("[data-setup-band]")).trim();
+  check(band.startsWith("One step left: make your phone ring."), `the setup band shows the one step left: a menu of its own and a logo are done, the phone isn't (${band.slice(0, 60)})`);
   check((await owner.getAttribute("[data-line-status]", "data-on")) === null && (await owner.textContent("[data-line-status]")).includes("until your phone is set up"), "the line's status says calls go to messages until the phone is set up");
-  await owner.click('[data-setup] [data-open="dlg-phone"]');
+  await owner.click('[data-setup-band] [data-open="dlg-phone"]');
   check(await owner.isVisible("#dlg-phone") && (await owner.getAttribute("#app-link", "data-value")).endsWith("/app"), "Set up my phone opens the steps with the phone app's address");
   await owner.click('#dlg-phone button[aria-label="Close"]');
   check(!(await owner.isVisible("#dlg-phone")), "Close shuts the window");
@@ -396,7 +396,9 @@ try {
     check(wide <= 390, `phone width: ${p} doesn't scroll sideways (${wide}px)`);
   }
   await phoneSize.goto(BASE + "/dashboard");
-  check(await phoneSize.isVisible("[data-setup-band] >> text=One step left: make your phone ring.") && !(await phoneSize.isVisible("[data-setup]")), "on a phone the next setup step sits at the top");
+  check(await phoneSize.isVisible("[data-setup-band] >> text=One step left: make your phone ring."), "on a phone the next setup step sits at the top");
+  const tabs = await phoneSize.$$eval('nav[aria-label="Dashboard"]', (ns) => ns.filter((n) => n.offsetWidth).map((n) => { const r = n.getBoundingClientRect(); return [n.children.length, Math.round(r.bottom), getComputedStyle(n).position]; }));
+  check(JSON.stringify(tabs) === '[[4,844,"fixed"]]', `on a phone the four tabs sit at the bottom of the screen (${JSON.stringify(tabs)})`);
   await phoneSize.click('[data-open="dlg-website"]');
   const sheet = await phoneSize.locator("#dlg-website").boundingBox();
   check(sheet && sheet.width === 390 && Math.round(sheet.y + sheet.height) === 844, `on a phone the windows rise from the bottom (${JSON.stringify(sheet)})`);
@@ -847,7 +849,7 @@ try {
   adminDB.close();
   await owner.reload();
   check(!(await owner.isVisible('a[href="/admin/promo"]')), "minivoip's admin isn't among a customer's tabs");
-  await owner.click("[data-account]");
+  await owner.click("[data-account-button]:visible");
   await owner.click('#account-menu a[href="/admin/promo"]');
   await owner.waitForSelector("#code");
   check(true, "an admin reaches the promo code page from the dashboard");
@@ -954,7 +956,7 @@ try {
     check(copied[0] === "Copied" && copied[1] && copied[2].includes("/w.js") && copied[2].includes(`data-line="${LINE}"`), `Copy puts the code on the clipboard, shows a check and tells screen readers (${copied[0]}, ${copied[1]})`);
     await owner.keyboard.press("Escape");
     // The keyboard's place: a 2px outline, drawn inside the menu's scrolling strip.
-    await owner.focus('header nav a[href="/dashboard/menu"]');
+    await owner.focus('aside nav a[href="/dashboard/menu"]');
     await owner.keyboard.press("Shift+Tab"); await owner.keyboard.press("Tab");
     const ring = await owner.evaluate(() => { const c = getComputedStyle(document.activeElement); return [document.activeElement.getAttribute("href"), c.outlineStyle, c.outlineWidth, c.outlineOffset]; });
     check(ring.join() === "/dashboard/menu,solid,2px,-2px", `the keyboard's place shows as a clear outline in the menu (${ring})`);
@@ -962,7 +964,7 @@ try {
     await owner.setViewportSize({ width: 390, height: 844 });
     await owner.waitForFunction(() => innerWidth === 390);
     await owner.waitForTimeout(400); // the buttons' height animates (transition-all)
-    const short = await owner.evaluate(() => [...document.querySelectorAll("main [data-slot=button], header button, header nav a")].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 44).map((e) => e.textContent.trim()));
+    const short = await owner.evaluate(() => [...document.querySelectorAll("main [data-slot=button], header button, nav a")].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 44).map((e) => e.textContent.trim()));
     check(short.length === 0, `on a phone the dashboard's buttons are 44px tall (${short.join(", ")})`);
     await owner.screenshot({ path: `${SHOTS}/dashboard-phone.png`, fullPage: true });
     await owner.setViewportSize({ width: 1280, height: 900 });
@@ -1070,7 +1072,7 @@ try {
 
   step = "log out";
   await owner.goto(BASE + "/dashboard");
-  await owner.click("[data-account]");
+  await owner.click("[data-account-button]:visible");
   await owner.click("#account-menu button[type=submit]");
   await owner.waitForSelector('nav a[href="/login"]');
   check(true, "log out returns to the landing page, logged out");

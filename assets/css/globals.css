@@ -233,12 +233,19 @@ input:-webkit-autofill:focus {
   --ink-muted: #a1a1a8;
   --ink-rule: #2e2e33;
 }
-body:has(> .lp),
-body:has(> .dash) {
+body:has(> .lp) {
   background: #ffffff;
 }
-.dark body:has(> .lp),
-.dark body:has(> .dash) {
+.dark body:has(> .lp) {
+  background: #0b0b0c;
+}
+/* The dashboard: white cards on light grey. */
+body:has(> .dash),
+.dash {
+  background: #f6f6f7;
+}
+.dark body:has(> .dash),
+.dark .dash {
   background: #0b0b0c;
 }
 .lp .lp-display,

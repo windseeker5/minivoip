@@ -56,8 +56,8 @@ type setupStep struct {
 
 func (h HomeTab) steps() []setupStep {
 	return []setupStep{
-		{Title: "Your voice menu", Hint: "Say hello in your own words and choose what each key does.",
-			Action: "Edit my menu", Href: "/dashboard/menu", Done: !h.Line.Starter()},
+		{Title: "Your welcome and choices", Hint: "Say hello in your own words and choose what each key does.",
+			Action: "Set it up", Href: "/dashboard/menu", Done: !h.Line.Starter()},
 		{Title: "Make your phone ring", Hint: "Open the phone app on your phone and turn on notifications.",
 			Action: "Set up my phone", Open: "dlg-phone", Done: h.Phones > 0},
 		{Title: "Your logo", Hint: "Callers see it on their screen, so they know it's you.",

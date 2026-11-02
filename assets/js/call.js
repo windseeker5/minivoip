@@ -340,8 +340,7 @@
       else if (m.type === "accepted") connect(s);
       else if (m.type === "answer" && pc) pc.setRemoteDescription({ type: "answer", sdp: m.sdp });
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
-      else if (m.type === "no-answer") voicemail(s, m.token, line.owner + " can't answer right now. After the tone, please say your name and phone number.");
-      else if (m.type === "voicemail") voicemail(s, m.token, "After the tone, please say your name and phone number.");
+      else if (m.type === "no-answer" || m.type === "voicemail") voicemail(s, m.token);
       else if (m.type === "limited") limited();
       else if (m.type === "busy") end("ended", line.owner + " is on another call", "Please try again in a few minutes.");
       else if (m.type === "hangup") end("ended", "Call ended", "Thanks for calling " + line.business + ".");
@@ -384,7 +383,7 @@
       ws.onopen = function () { send({ type: "voicemail", option: o.label }); };
       ws.onmessage = function (e) {
         var m = JSON.parse(e.data);
-        if (s === seq && m.type === "voicemail") voicemail(s, m.token, o.say || "After the tone, please say your name and phone number.", o.sayAudio);
+        if (s === seq && m.type === "voicemail") voicemail(s, m.token);
         else if (s === seq && m.type === "limited") limited();
       };
     }, function () {
@@ -398,8 +397,10 @@
     end("ended", "Please try again later", "We can't take another message right now.");
   }
 
-  // voicemail plays the prompt, beeps, then records up to two minutes.
-  function voicemail(s, token, prompt, recording) {
+  // voicemail plays the owner's voicemail greeting, beeps, then records up to
+  // two minutes.
+  function voicemail(s, token) {
+    var prompt = line.voicemail;
     if (stopRing) { stopRing(); stopRing = null; }
     clearInterval(countIv);
     if (ws) { ws.onclose = null; ws.close(); ws = null; }
@@ -412,7 +413,7 @@
     buttons(false);
     status(prompt);
     var lit = writeOut($("[data-vm-words]"), prompt);
-    say(prompt, recording, function (p) { if (s === seq) lit(p); }).then(function () {
+    say(prompt, line.voicemailAudio, function (p) { if (s === seq) lit(p); }).then(function () {
       if (s === seq) record(s);
     });
   }

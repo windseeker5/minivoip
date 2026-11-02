@@ -206,6 +206,10 @@ The owner records each prompt. Every option points to one action:
 
 Web visitors choose by clicking buttons on screen.
 
+The owner edits all of it on "What callers hear" (dashboard and phone app): the welcome, the choices and the voicemail
+greeting. One voicemail greeting serves a missed call, a call while away and a `voicemail` choice. A recorded welcome
+replaces the spoken list, so the page writes out the words to say.
+
 ## Data stored
 Exact columns: [data-dictionary.md](data-dictionary.md). Built so far: `account`, `user`, `session`, `line`, `menu_option`, `promo_code`.
 

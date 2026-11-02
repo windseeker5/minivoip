@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    Use every tool it takes:
    - `go vet ./...` and `go test ./...`;
    - the browser test `node tests/e2e/site.mjs` against Ken's running server (it clicks through the real site:
-     every link, sign up, line, menu editor, a real call between two browsers, log out; then deletes its test
+     every link, sign up, line, "What callers hear", a real call between two browsers, log out; then deletes its test
      account), and extend it whenever you add a page or a flow;
    - screenshots you actually look at (desktop and phone width).
 
@@ -60,7 +60,7 @@ B&B and may become a SaaS.
 
 - `main.go` opens the database and hands everything to `web.Server.Routes`.
 - `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, and a
-  same-site check on form posts, and hands pages the `pages.Viewer` (admin, new messages); `dashboard.go` has Home, Business, line creation, the menu editor and the call page;
+  same-site check on form posts, and hands pages the `pages.Viewer` (admin, new messages); `dashboard.go` has Home, Business, line creation, saving "What callers hear" and the call page;
   `app.go` the owner's app (`/app`, its call list, the Available switch, call history logging).
 - `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
@@ -83,11 +83,11 @@ B&B and may become a SaaS.
   "room" message on the call socket with who waits (the app's alert and Room tab), and phones a "room" push
   (`RoomKnock`). Linked from the dashboard and the app's Room tab.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
-  `account` (sign up, log in), `dashboard` + `dashboard.js` (a side menu, tabs at the bottom on a phone: Home, Voice menu, Messages, Business; Home's
-  data is `pages.HomeTab` in `pages/dashboard_home.go`, its windows are native dialogs; the menu editor with voice recorder uploads to
-  `POST /dashboard/prompt`, `store/prompts.go`), `voicemail` + `voicemail.js`
+  `account` (sign up, log in), `dashboard` + `dashboard.js` (a side menu, tabs at the bottom on a phone: Home, What callers hear, Messages, Business; Home's
+  data is `pages.HomeTab` in `pages/dashboard_home.go`, its windows are native dialogs), `hear` + `menu.js` + `assets/css/hear.css` ("What callers hear", `/dashboard/menu`: the same
+  form on the dashboard and in the app's tab, saved without leaving the page; recordings upload to `POST /dashboard/prompt`, `store/prompts.go`; `peaks.js` reads a recording's voice bars), `voicemail` + `voicemail.js`
   (the dashboard's list), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
-  (the owner's app `/app`, login required: Calls, Messages, Voice menu and Room tabs, the account from the round letter; a side menu and a detail
+  (the owner's app `/app`, login required: Calls, Messages, What callers hear and Room tabs, the account from the round letter; a side menu and a detail
   pane on a computer; the incoming call screen).
 - The owner's app has its own plain CSS, `assets/css/app.css` (the dashboard's look, DESIGN.md "Owner app"); the
   visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare

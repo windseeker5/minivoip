@@ -85,6 +85,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /dashboard/menu", s.auth(s.menuPage))
 	mux.Handle("GET /dashboard/business", s.auth(s.businessPage))
 	mux.Handle("POST /dashboard/menu", s.auth(s.saveMenu))
+	mux.Handle("POST /dashboard/business", s.auth(s.saveBusiness))
 	mux.Handle("GET /app", s.auth(s.phoneApp))
 	mux.Handle("GET /app/voicemails", s.auth(s.voicemailFragment))
 	mux.Handle("GET /app/calls", s.auth(s.callsFragment))

@@ -15,7 +15,7 @@ const (
 	Ring      Action = "ring"      // ring the owner's phones
 	Play      Action = "play"      // say a message, then hang up
 	Link      Action = "link"      // open a web page
-	Voicemail Action = "voicemail" // take a message (not built yet: says so)
+	Voicemail Action = "voicemail" // play the voicemail greeting, then take a message
 )
 
 // Actions in the order the menu editor lists them, with their labels.
@@ -59,6 +59,13 @@ type Line struct {
 	// so the owner says the choices in it.
 	GreetingAudio string
 	Options       []Option
+	// VoicemailText is what callers hear before the beep: on a missed call,
+	// while the owner is away, and on a "Take a voicemail" choice. "" means
+	// the standard words (DefaultVoicemail).
+	VoicemailText string
+	// VoicemailAudio is the owner's recording of it (a prompt file name),
+	// played instead of the computer voice when set.
+	VoicemailAudio string
 	// AwayUntil is when the owner's Available switch turns back on (UTC
 	// "YYYY-MM-DD HH:MM:SS"); "" means available.
 	AwayUntil string
@@ -92,7 +99,31 @@ func StarterGreeting(business string) string { return "Hi, you've reached " + bu
 // Starter says whether the owner hasn't touched the starter menu yet.
 func (l Line) Starter() bool {
 	return l.GreetingAudio == "" && l.Greeting == StarterGreeting(l.Business) &&
+		l.VoicemailText == "" && l.VoicemailAudio == "" &&
 		len(l.Options) == 1 && l.Options[0].Label == StarterChoice && l.Options[0].SayAudio == ""
+}
+
+// DefaultVoicemail is the voicemail greeting until the owner writes their own.
+func (l Line) DefaultVoicemail() string {
+	who := l.Owner
+	if who == "" {
+		who = l.Business
+	}
+	return who + " can't answer right now. After the tone, please say your name and phone number."
+}
+
+// VoicemailWords is what callers hear before the beep.
+func (l Line) VoicemailWords() string {
+	if l.VoicemailText != "" {
+		return l.VoicemailText
+	}
+	return l.DefaultVoicemail()
+}
+
+// WelcomeWords is the greeting and the spoken menu: what a recorded welcome
+// has to say, since it replaces both. Mirrored in assets/js/menu.js.
+func (l Line) WelcomeWords() string {
+	return strings.TrimSpace(l.Greeting + " " + l.Menu())
 }
 
 // Menu is the spoken menu: "Press 1 for bookings, press 2 ...".
@@ -110,7 +141,7 @@ func (l Line) Menu() string {
 
 // choicePhrase turns a choice name into speech: "Talk to Joe" becomes
 // "to talk to Joe", "Bookings" becomes "for bookings". Mirrored in
-// assets/js/dashboard.js for the "Hear it" preview.
+// assets/js/menu.js for the "Hear it" preview.
 func choicePhrase(label string) string {
 	s := strings.ToLower(label[:1]) + label[1:]
 	first := strings.Fields(s)[0]

@@ -17,6 +17,9 @@ type callData struct {
 	Greeting      string       `json:"greeting"`
 	GreetingAudio string       `json:"greetingAudio,omitempty"` // owner's recording; replaces greeting + menu
 	Menu          string       `json:"menu"`
+	// Voicemail is what callers hear before the beep; VoicemailAudio the owner's recording of it.
+	Voicemail      string `json:"voicemail"`
+	VoicemailAudio string `json:"voicemailAudio,omitempty"`
 	Options       []callOption `json:"options"`
 	RingSeconds   int          `json:"ringSeconds"`    // the owner's phones ring this long, then voicemail
 	OwnerInitials string       `json:"ownerInitials"`  // the owner's face on the stage until their camera is on
@@ -41,7 +44,7 @@ func promptURL(name string) string {
 
 func newCallData(l lines.Line, ringSeconds int) callData {
 	d := callData{Line: l.Name, Business: l.Business, Owner: ownerName(l), Greeting: l.Greeting,
-		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l)), Logo: logoURL(l)}
+		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), Voicemail: l.VoicemailWords(), VoicemailAudio: promptURL(l.VoicemailAudio), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l)), Logo: logoURL(l)}
 	for _, o := range l.Options {
 		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, SayAudio: promptURL(o.SayAudio), URL: o.URL})
 	}

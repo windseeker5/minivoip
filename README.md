@@ -9,7 +9,7 @@ Proof of concept. Part of the mini family, with minipass and minicrm.
 ## What works
 
 - Sign up, then your line and its call link (`/call/<name>`)
-- Voice menu editor: ring your phone, play a message, open a web page, take a voicemail
+- "What callers hear": a welcome, choices (ring your phone, play a message, open a web page, take a voicemail) and a voicemail greeting, typed or in your own voice, from the dashboard or the phone app
 - Real calls, browser to phone (WebRTC), with a built-in relay (TURN) for phones that can't connect directly
 - Voicemail, push notifications that wake a sleeping phone, promo codes with an admin page
 

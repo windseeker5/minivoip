@@ -6,7 +6,6 @@ import (
 	"minivoip/components/button"
 	"minivoip/components/icon"
 	"minivoip/components/input"
-	"minivoip/components/textarea"
 	"minivoip/layouts"
 	"minivoip/lines"
 	"minivoip/store"
@@ -44,8 +43,8 @@ templ dashShell(title, email, current string) {
 					@sideTab("/dashboard", "Home", current, 0) {
 						@icon.House(icon.Props{Class: "size-[18px]"})
 					}
-					@sideTab("/dashboard/menu", "Voice menu", current, 0) {
-						@icon.ListTree(icon.Props{Class: "size-[18px]"})
+					@sideTab("/dashboard/menu", "What callers hear", current, 0) {
+						@icon.AudioLines(icon.Props{Class: "size-[18px]"})
 					}
 					@sideTab("/dashboard/voicemail", "Messages", current, newMessages(ctx)) {
 						@icon.Voicemail(icon.Props{Class: "size-[18px]"})
@@ -86,8 +85,8 @@ templ dashShell(title, email, current string) {
 				@bottomTab("/dashboard", "Home", current, 0) {
 					@icon.House(icon.Props{Class: "size-[22px]"})
 				}
-				@bottomTab("/dashboard/menu", "Menu", current, 0) {
-					@icon.ListTree(icon.Props{Class: "size-[22px]"})
+				@bottomTab("/dashboard/menu", "Callers hear", current, 0) {
+					@icon.AudioLines(icon.Props{Class: "size-[22px]"})
 				}
 				@bottomTab("/dashboard/voicemail", "Messages", current, newMessages(ctx)) {
 					@icon.Voicemail(icon.Props{Class: "size-[22px]"})
@@ -364,9 +363,13 @@ templ dashBadge(l lines.Line, size string) {
 	}
 }
 
-// logoNote says what just happened to the logo (?logo= on the dashboard).
-func logoNote(msg string) (text string, bad bool) {
+// businessNote says what just happened on the Business tab (?note=).
+func businessNote(msg string) (text string, bad bool) {
 	switch msg {
+	case "named":
+		return "Saved. Callers see the new name right away.", false
+	case "noname":
+		return "Write your business name.", true
 	case "saved":
 		return "Saved. Callers see your new logo right away.", false
 	case "removed":
@@ -417,6 +420,7 @@ templ Dashboard(h HomeTab) {
 					</div>
 				</div>
 			</section>
+			@hearCard(l)
 			<section class={ card } aria-labelledby="share-title">
 				<h2 id="share-title" class="text-[17px] font-semibold tracking-[-0.015em]">Share your line</h2>
 				<p class="text-sm text-muted-foreground">Where do you want people to call you from?</p>
@@ -657,12 +661,12 @@ templ phoneSheet(h HomeTab) {
 }
 
 // Business is the Business tab: the logo, the name, the call link and the plan.
-templ Business(email string, l lines.Line, callURL, plan, logoMsg string) {
+templ Business(email string, l lines.Line, callURL, plan, note string) {
 	@dashShell("Business", email, "/dashboard/business") {
 		<div class="max-w-3xl">
 			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Your business</h1>
 			<p class="mt-2 text-muted-foreground">What your callers see.</p>
-			if text, bad := logoNote(logoMsg); bad {
+			if text, bad := businessNote(note); bad {
 				<div class="mt-6">
 					@formError(text)
 				</div>
@@ -695,8 +699,13 @@ templ Business(email string, l lines.Line, callURL, plan, logoMsg string) {
 				<div class="grid gap-x-4 gap-y-1 border-t py-6 sm:grid-cols-[11rem_minmax(0,1fr)]">
 					<dt class="font-semibold">Name</dt>
 					<dd>
-						<p>{ l.Business }</p>
-						<p class="mt-1 text-sm text-muted-foreground">Callers hear "Ringing { l.Business }". Change it in your <a href="/dashboard/menu" class="font-medium text-foreground underline underline-offset-4">voice menu</a>.</p>
+						<form method="post" action="/dashboard/business" class="flex flex-col gap-2 sm:flex-row sm:items-center" data-business-form>
+							@input.Input(input.Props{ID: "business", Name: "business", Value: l.Business, Required: true, Class: "h-10", Attributes: templ.Attributes{"aria-label": "Business name", "autocomplete": "organization"}})
+							@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Class: "h-10 flex-none " + pill}) {
+								Save
+							}
+						</form>
+						<p class="mt-2 text-sm text-muted-foreground">Callers see it on the call page and hear "Ringing { l.Business }".</p>
 					</dd>
 				</div>
 				<div class="grid gap-x-4 gap-y-1 border-t py-6 sm:grid-cols-[11rem_minmax(0,1fr)]">
@@ -722,144 +731,15 @@ templ Business(email string, l lines.Line, callURL, plan, logoMsg string) {
 	}
 }
 
-// MenuEditor edits the greeting and the choices. dashboard.js adds and
-// removes choice rows and plays a preview.
-templ MenuEditor(email string, l lines.Line, saved bool, errMsg string) {
-	@dashShell("Voice menu", email, "/dashboard/menu") {
-		<div class="max-w-3xl">
-			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Voice menu</h1>
-			<p class="mt-2 text-muted-foreground">What your receptionist says, and where each choice sends the caller. Type it for a computer voice to read, or record it in your own voice.</p>
-			<form method="post" action="/dashboard/menu" class="mt-8 flex flex-col gap-6" data-menu-form>
-				@formError(errMsg)
-				if saved {
-					<p class="rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400" role="status">Saved. Callers hear the new menu right away.</p>
-				}
-				@panel() {
-					@formField("business", "Business name") {
-						@input.Input(input.Props{ID: "business", Name: "business", Value: l.Business, Required: true})
-						<p class="text-xs text-muted-foreground">Callers see it on the call page and hear "Ringing { l.Business }".</p>
-					}
-					<div class="mt-5">
-						@formField("greeting", "Welcome message") {
-							@textarea.Textarea(textarea.Props{ID: "greeting", Name: "greeting", Value: l.Greeting, Rows: 2})
-							<p class="text-xs text-muted-foreground">Callers hear this first, then the list of choices, read by a computer voice.</p>
-							@recorder("greeting_audio", l.GreetingAudio, "Or record it in your own voice. Say your choices in it too (\"press 1 for bookings\"): callers hear your recording instead of the text and the list.")
-						}
-					</div>
-				}
-				@panel() {
-					<div class="flex items-center justify-between gap-4">
-						<h2 class="font-semibold">Choices</h2>
-						@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeSm, Attributes: templ.Attributes{"data-add-choice": ""}}) {
-							@icon.Plus()
-							Add a choice
-						}
-					</div>
-					<div class="mt-5 flex flex-col gap-4" data-choices>
-						for _, o := range l.Options {
-							@choiceRow(o)
-						}
-					</div>
-					<template data-choice-template>
-						@choiceRow(lines.Option{Action: lines.Ring})
-					</template>
-				}
-				<div class="flex flex-wrap items-center gap-3">
-					@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "h-10"}) {
-						Save the menu
-					}
-					@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-10", Attributes: templ.Attributes{"data-preview": ""}}) {
-						@icon.Play()
-						Hear it
-					}
-					<span class="text-sm text-muted-foreground" data-preview-text></span>
-				</div>
-			</form>
-		</div>
-		<script src="/assets/js/dashboard.js" defer></script>
-	}
-}
-
-// recorder records a prompt in the owner's voice (dashboard.js). The hidden
-// field carries the recording's name when the menu is saved; empty means
-// the computer voice reads the text.
-templ recorder(name, value, hint string) {
-	<div class="flex flex-col gap-2" data-recorder>
-		<input type="hidden" name={ name } value={ value } data-rec-value/>
-		<div class="flex flex-wrap items-center gap-2">
-			<button type="button" data-rec-start class="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-2.5 text-xs font-medium hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-				@icon.Mic(icon.Props{Class: "size-3.5"})
-				if value == "" {
-					<span data-rec-start-label>Record my voice</span>
-				} else {
-					<span data-rec-start-label>Record again</span>
-				}
-			</button>
-			<button type="button" data-rec-stop hidden class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-600 px-2.5 text-xs font-medium text-white hover:bg-red-700 focus-visible:ring-3 focus-visible:ring-red-600/30 focus-visible:outline-none">
-				@icon.Square(icon.Props{Class: "size-3"})
-				Stop <span class="tabular-nums" data-rec-timer>0:00</span>
-			</button>
-			<audio
-				controls
-				preload="none"
-				class="h-8 max-w-full"
-				data-rec-audio
-				if value != "" {
-					src={ "/prompt/" + value }
-				} else {
-					hidden
-				}
-			></audio>
-			<button
-				type="button"
-				data-rec-clear
-				class="h-8 px-1 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-				if value == "" {
-					hidden
-				}
-			>Use the computer voice instead</button>
-			<span class="text-xs text-muted-foreground" data-rec-status role="status"></span>
-		</div>
-		if hint != "" {
-			<p class="text-xs text-muted-foreground">{ hint }</p>
-		}
-	</div>
-}
-
 // selectClass matches the input component's look for a native select.
 const selectClass = "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 
-templ choiceRow(o lines.Option) {
-	<div class="grid gap-3 rounded-xl border bg-muted/30 p-4 sm:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start" data-choice>
-		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
-			Key
-			@input.Input(input.Props{Name: "key", Value: o.Key, Class: "text-center font-semibold", Attributes: templ.Attributes{"maxlength": "1", "inputmode": "numeric", "aria-label": "Key the caller presses"}})
-		</label>
-		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
-			Name
-			@input.Input(input.Props{Name: "label", Value: o.Label, Placeholder: "Bookings"})
-		</label>
-		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
-			Does
-			<select name="action" class={ selectClass } data-action-select>
-				for _, a := range lines.Actions {
-					<option value={ string(a.Value) } selected?={ a.Value == o.Action }>{ a.Label }</option>
-				}
-			</select>
-		</label>
-		<button type="button" class="order-first flex size-9 items-center justify-center justify-self-end rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground sm:order-none sm:mt-5 sm:self-start" data-remove-choice aria-label="Remove this choice">
-			@icon.Trash2(icon.Props{Class: "size-4"})
-		</button>
-		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3 sm:col-start-2">
-			<span data-say-label>Message</span>
-			@input.Input(input.Props{Name: "say", Value: o.Say, Placeholder: "Please hold, I'm ringing you."})
-		</label>
-		<div class="sm:col-span-3 sm:col-start-2">
-			@recorder("say_audio", o.SayAudio, "")
+// MenuEditor is the "What callers hear" tab (hearForm).
+templ MenuEditor(email string, l lines.Line) {
+	@dashShell("What callers hear", email, "/dashboard/menu") {
+		<link rel="stylesheet" href="/assets/css/hear.css"/>
+		<div class="max-w-3xl">
+			@hearForm(l, false)
 		</div>
-		<label class="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3 sm:col-start-2" data-url-field>
-			Web address
-			@input.Input(input.Props{Name: "url", Value: o.URL, Type: "url", Placeholder: "https://joesbnb.example/booking"})
-		</label>
-	</div>
+	}
 }

@@ -168,6 +168,15 @@ var migrations = []string{
 		created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 	);
 	`,
+	// 11: the voicemail greeting, one per line. A "Take a voicemail" choice's
+	// own message becomes it, so nobody loses their words or recording.
+	`
+	ALTER TABLE line ADD COLUMN voicemail_text TEXT NOT NULL DEFAULT '';
+	ALTER TABLE line ADD COLUMN voicemail_audio TEXT NOT NULL DEFAULT '';
+	UPDATE line SET
+		voicemail_text = COALESCE((SELECT say FROM menu_option o WHERE o.line_id = line.id AND o.action = 'voicemail' AND o.say <> '' ORDER BY o.position LIMIT 1), ''),
+		voicemail_audio = COALESCE((SELECT say_audio FROM menu_option o WHERE o.line_id = line.id AND o.action = 'voicemail' AND o.say_audio <> '' ORDER BY o.position LIMIT 1), '');
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

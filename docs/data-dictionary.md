@@ -46,6 +46,8 @@ A phone line: the call link `/call/<name>` and its voice menu. One per account.
 | `owner_name` | text | Name callers hear in "Ringing …" and "On the line with …". Since 2026-10-21 it is the business name (sign up no longer asks for a first name) |
 | `greeting` | text | Welcome message, read by the browser's voice |
 | `greeting_audio` | text | The owner's recorded welcome (file under `prompts/`), or empty. When set, callers hear it instead of `greeting` and the spoken menu |
+| `voicemail_text` | text | The voicemail greeting's words: what callers hear before the beep on a missed call, while away and on a `voicemail` choice. Empty = the standard words (`lines.Line.DefaultVoicemail`, which follow the business's name) |
+| `voicemail_audio` | text | The owner's recording of the voicemail greeting (file under `prompts/`), or empty. When set, callers hear it instead of the computer voice |
 | `away_until` | text (UTC) | The app's Available switch: '' = available; a time = paused until then ("Pause for 1 hour"); `9999-12-31 00:00:00` = Off until turned back on. While away, calls go straight to voicemail and nothing rings |
 | `logo` | text | The business's logo (file under `logos/`, PNG, JPG or WebP, 2 MB at most; the browser frames and shrinks it to a 512 px WebP first), or empty. Callers see it instead of the initials: call window, meeting room, the owner's face on the stage. Asked when the line is made, changed on the dashboard |
 | `created_at` | text (UTC) | |
@@ -61,7 +63,7 @@ One choice in a line's voice menu.
 | `key` | text | The key the caller presses: `0`–`9`, `*` or `#`; unique per line |
 | `label` | text | Choice name, e.g. "Bookings"; spoken as "press 1 for bookings" |
 | `action` | text: `ring`, `play`, `link`, `voicemail` | What the choice does |
-| `say` | text | Spoken when the caller picks it (required for `play`) |
+| `say` | text | Spoken when the caller picks it (required for `play`; empty for `voicemail`, which plays the line's voicemail greeting) |
 | `url` | text | Web page for `link` (http or https) |
 | `say_audio` | text | The owner's recording of `say` (file under `prompts/`), or empty |
 
@@ -169,3 +171,4 @@ Emails left on the landing page's "Get Premium" form (`POST /premium`, at most 3
 | 8 | 2026-10-25 | `account.plan`, `promo_code.plan` (Basic or Premium); admins' accounts start on Premium |
 | 9 | 2026-10-27 | `line.logo` (in `<data dir>/logos/`, public at `/logo/<name>`, random names; a new logo or Remove deletes the old file) |
 | 10 | 2026-10-31 | `premium_request` (the landing page's "Get Premium" emails) |
+| 11 | 2026-11-02 | `line.voicemail_text`, `line.voicemail_audio` (the voicemail greeting; a `voicemail` choice's own message becomes it) |

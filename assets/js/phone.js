@@ -162,25 +162,7 @@
 
   // The wave is the message's real loudness, read once per message; flat bars
   // until it's read (or if this browser can't read it).
-  var waves = {};
   var SPECTRUM = ["#f3840f", "#ef5b2a", "#e0336b", "#9b2f9a", "#5b34a8", "#143495"];
-  function peaks(id, url, n) {
-    var key = id + ":" + n;
-    if (!waves[key]) waves[key] = fetch(url).then(function (r) { return r.arrayBuffer(); }).then(function (buf) {
-      var C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-      return new Promise(function (ok, fail) { new C(1, 2, 44100).decodeAudioData(buf, ok, fail); });
-    }).then(function (audio) {
-      var data = audio.getChannelData(0), step = Math.max(1, Math.floor(data.length / n)), out = [], top = 0;
-      for (var i = 0; i < n; i++) {
-        var m = 0;
-        for (var j = i * step, end = Math.min(data.length, j + step); j < end; j += 4) m = Math.max(m, Math.abs(data[j]));
-        out.push(m);
-        top = Math.max(top, m);
-      }
-      return out.map(function (m) { return top ? m / top : 0; });
-    });
-    return waves[key];
-  }
   function drawWave(id, url) {
     var box = $("[data-vm-wave]"), n = Math.max(12, Math.floor(box.clientWidth / 6));
     function bars(h) {
@@ -194,7 +176,7 @@
       vmTime();
     }
     bars(new Array(n).fill(0.3));
-    peaks(id, url, n).then(function (h) { if (vmRow && vmRow.dataset.voicemail === id) bars(h); }, function () {});
+    window.minivoipPeaks(url, n).then(function (h) { if (vmRow && vmRow.dataset.voicemail === id) bars(h); }, function () {});
   }
 
   function mmss(s) {

@@ -5,7 +5,7 @@ Last update: 2026-10-28 · Design: [architecture.md](architecture.md) · Goal: [
 ## Where we are (2026-10-24)
 - **Works end to end:** a visitor clicks "Call us", hears the owner's voice menu, and talks to the owner or leaves a
   voicemail. Real calls over HTTPS through the built-in relay (https://voip.dresdell.com while `task dev` runs).
-- **Owner's app** (the dashboard's look): call history, voicemails, Available / Pause / Off, menu editor. On a computer it rings
+- **Owner's app** (the dashboard's look): call history, voicemails, Available / Pause / Off, "What callers hear". On a computer it rings
   and fills the window; on Android the minivoip app rings like a real phone call, even locked (Ken's Pixel 9).
 - **Visitor's call window** (2026-10-25, look A, `DESIGN.md` "Call window"): white like the landing page, the menu's
   words written out as they're said, choices as big buttons, a clear ending. The business's logo since 2026-10-27;

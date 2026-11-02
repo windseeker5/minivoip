@@ -171,20 +171,6 @@ func pauseEnd(until string) string {
 	return t.Format(time.RFC3339)
 }
 
-func optionAction(o lines.Option) string {
-	switch o.Action {
-	case lines.Ring:
-		return "Rings your phone and computer"
-	case lines.Play:
-		return "Plays a message, then hangs up"
-	case lines.Link:
-		return "Opens " + o.URL
-	case lines.Voicemail:
-		return "Takes a voicemail"
-	}
-	return ""
-}
-
 func idStr(id int64) string { return strconv.FormatInt(id, 10) }
 
 // waitingText says who waits in the meeting room: "Ana is waiting in your
@@ -234,7 +220,7 @@ templ icMic() {
 }
 
 templ icMenu() {
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
 }
 
 templ icPlay() {
@@ -467,7 +453,7 @@ templ tab(name, label, short string) {
 }
 
 // Phone is the owner's app: /app, on the phone and the computer. Four tabs
-// (Calls, Messages, Voice menu, Room) in a menu on the left on a computer, at
+// (Calls, Messages, What callers hear, Room) in a menu on the left on a computer, at
 // the bottom on a phone; the account (ringing, install, log out) opens from
 // the round letter. On a computer a message opens on the right. An incoming
 // call takes the whole screen (the whole window on a computer). phone.js runs
@@ -478,6 +464,7 @@ templ Phone(d AppData) {
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
 		<link rel="stylesheet" href="/assets/css/app.css"/>
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
+		<link rel="stylesheet" href="/assets/css/hear.css"/>
 		<div class="ap" data-phone data-view="calls" data-android-latest={ d.Android } data-line={ d.Line.Name } data-business={ d.Line.Business } data-vapid={ d.VapidKey } data-ring={ strconv.Itoa(d.RingSeconds) } data-me-name={ ownerName(d.Line) } data-me-initials={ initials(ownerName(d.Line)) } data-me-logo={ logoURL(d.Line) }>
 			<div class="ap-offline" data-offline hidden role="status">Offline. Reconnecting…</div>
 			if d.Line.Premium {
@@ -496,7 +483,7 @@ templ Phone(d AppData) {
 				<nav class="ap-tabs" role="tablist" aria-label="minivoip">
 					@tab("calls", "Calls", "")
 					@tab("messages", "Messages", "")
-					@tab("menu", "Voice menu", "")
+					@tab("menu", "What callers hear", "Callers hear")
 					@tab("room", "Meeting room", "Room")
 				</nav>
 				<button type="button" class="ap-acct" data-tab="me">
@@ -528,38 +515,12 @@ templ Phone(d AppData) {
 					</div>
 				</section>
 				<section class="ap-panel" id="panel-menu" role="tabpanel" data-panel="menu" hidden>
-					<header class="ap-head">
-						<h1>Voice menu</h1>
-						<p>What callers hear before your phone rings.</p>
-					</header>
+					@hearForm(d.Line, true)
 					<h2 class="ap-day">Your call link</h2>
 					<div class="ap-card ap-link">
 						<span class="ap-link-url" data-call-url>{ d.CallURL }</span>
 						<button type="button" class="ap-btn" data-copy>Copy</button>
 					</div>
-					<h2 class="ap-day">Greeting</h2>
-					<div class="ap-card ap-greeting">
-						if d.Line.GreetingAudio != "" {
-							<p>Your recorded greeting</p>
-							<audio controls preload="none" src={ promptURL(d.Line.GreetingAudio) }></audio>
-						} else {
-							<p>“{ d.Line.Greeting }”</p>
-							<p class="ap-muted">Read by the caller's browser. Record it in your own voice from the dashboard.</p>
-						}
-					</div>
-					<h2 class="ap-day">Choices</h2>
-					<ul class="ap-group">
-						for _, o := range d.Line.Options {
-							<li class="ap-row">
-								<span class="ap-key">{ o.Key }</span>
-								<span class="ap-row-main">
-									<span class="ap-row-title">{ o.Label }</span>
-									<span class="ap-row-sub">{ optionAction(o) }</span>
-								</span>
-							</li>
-						}
-					</ul>
-					<p class="ap-note">To change your greeting and choices, open the dashboard on a computer.</p>
 				</section>
 				<section class="ap-panel" id="panel-room" role="tabpanel" data-panel="room" hidden>
 					<header class="ap-head">

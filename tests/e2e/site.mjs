@@ -306,6 +306,7 @@ try {
 
   step = "menu editor";
   const rows = owner.locator("[data-choice]");
+  const openRow = (row) => row.evaluate((d) => { d.open = true; });
   await owner.click("[data-add-choice]");
   await rows.nth(1).locator("[name=label]").fill("Opening hours");
   await rows.nth(1).locator("[data-action-select]").selectOption("play");
@@ -320,20 +321,29 @@ try {
   await owner.click("[data-preview]");
   const heard = await owner.textContent("[data-preview-text]");
   check(/press 1 to talk to us/i.test(heard) && /press 2 for opening hours/i.test(heard), `"Hear it" reads the menu: ${heard.trim()}`);
+  check(/press 3 for our website/i.test(await owner.textContent("[data-script]")), "the words to say when recording follow the choices");
+  check(/plays your voicemail greeting/i.test(await rows.nth(3).locator("[data-sum-words]").textContent()) && await rows.nth(3).locator("[data-say-box]").isHidden(), "a voicemail choice uses the voicemail greeting, with no message of its own");
   await owner.click("main button[type=submit]");
   await owner.waitForSelector("text=Saved.");
-  check(true, "menu saves");
+  check(await owner.isHidden("[data-save]"), "menu saves without leaving the page");
+  await owner.reload();
+  check(await rows.count() === 4 && await rows.nth(1).locator("[name=say]").isHidden() && await rows.nth(1).locator("summary").isVisible(), "after a reload the saved choices are folded into short rows");
+  check(/Opening hours/.test(await rows.nth(1).locator("[data-sum-label]").textContent()) && /Plays a message/.test(await rows.nth(1).locator("[data-sum-words]").textContent()), "a folded row says what the choice does");
+  check(await owner.isVisible('[name="greeting_audio"] ~ .hr-head [data-rec-start]') && await owner.isVisible('[name="voicemail_audio"] ~ .hr-head [data-rec-start]'), "the welcome and the voicemail greeting each have a record button in sight");
   await owner.screenshot({ path: `${SHOTS}/menu.png`, fullPage: true });
 
   step = "menu errors";
+  await openRow(rows.nth(2));
   await rows.nth(2).locator("[name=url]").fill("");
   await owner.click("main button[type=submit]");
-  check(await owner.isVisible("text=needs a web address"), "menu editor explains a missing web address");
+  await owner.waitForSelector("text=needs a web address");
+  check(true, "the page explains a missing web address");
 
   // Recordings ------------------------------------------------------------
   step = "record greeting";
   await rows.nth(2).locator("[name=url]").fill("https://example.com/");
   const greetingRec = owner.locator('[data-recorder]:has([name="greeting_audio"])');
+  const voicemailRec = owner.locator('[data-recorder]:has([name="voicemail_audio"])');
   async function record(box, ms) {
     await box.locator("[data-rec-start]").click();
     await owner.waitForTimeout(ms);
@@ -341,12 +351,27 @@ try {
     await box.locator("text=Recorded.").waitFor({ timeout: 10000 });
   }
   await record(greetingRec, 2000);
+  await openRow(rows.nth(1));
   await record(rows.nth(1).locator("[data-recorder]"), 1500);
+  await record(voicemailRec, 1500);
   await owner.click("main button[type=submit]");
   await owner.waitForSelector("text=Saved.");
   const greetingFile = await owner.inputValue('[name="greeting_audio"]');
   const hoursFile = await rows.nth(1).locator('[name="say_audio"]').inputValue();
-  check(/^prompt-/.test(greetingFile) && /^prompt-/.test(hoursFile), "recorded greeting and message are saved with the menu");
+  const voicemailFile = await owner.inputValue('[name="voicemail_audio"]');
+  check(/^prompt-/.test(greetingFile) && /^prompt-/.test(hoursFile) && /^prompt-/.test(voicemailFile), "recorded greeting, message and voicemail greeting are saved");
+  check((await greetingRec.locator("[data-rec-chip]").textContent()) === "Your voice" && await greetingRec.locator("[data-rec-text]").isHidden() && await greetingRec.locator("[data-rec-player]").isVisible(), "a recorded card says Your voice and shows its player");
+  await greetingRec.locator("[data-rec-bars] i").first().waitFor({ state: "attached", timeout: 5000 });
+  await greetingRec.locator("[data-rec-play]").click();
+  await greetingRec.locator('[data-rec-play][aria-label="Pause"]').waitFor({ timeout: 5000 });
+  await greetingRec.locator("[data-rec-play]").click();
+  check(true, "the player plays a recording");
+  await openRow(rows.nth(0));
+  await rows.nth(0).locator("[name=label]").fill("Talk to reception");
+  check(await owner.isVisible("[data-script-stale]"), "changing a choice says the recorded welcome must be recorded again");
+  await rows.nth(0).locator("[name=label]").fill("Talk to us");
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector("text=Saved.");
   const promptRes = await owner.request.get(`${BASE}/prompt/${greetingFile}`);
   check(promptRes.ok() && (await promptRes.body()).length > 1000, `a recording plays back (${(await promptRes.body()).length} bytes)`);
   await owner.screenshot({ path: `${SHOTS}/menu-recorded.png`, fullPage: true });
@@ -370,6 +395,36 @@ try {
   const gone = await owner.request.get(`${BASE}/prompt/${greetingFile}`);
   check(gone.status() === 404, `the unused recording is deleted (${gone.status()})`);
 
+  // The voicemail greeting: a caller who presses "Leave a message" hears the
+  // owner's recording, then their own words once the recording is gone.
+  step = "voicemail greeting";
+  const vmHeard = [];
+  const vmCaller = await newPage(390, 760);
+  vmCaller.on("request", (r) => { if (r.url().includes("/prompt/")) vmHeard.push(r.url().split("/prompt/")[1]); });
+  await vmCaller.goto(BASE + `/call/${LINE}`);
+  await vmCaller.click('[data-action="call"]:visible');
+  await vmCaller.waitForSelector('[data-key="4"]:visible');
+  await vmCaller.click('[data-key="4"]');
+  await vmCaller.waitForSelector("[data-vm-words]:visible");
+  await vmCaller.waitForFunction((f) => performance.getEntriesByType("resource").some((e) => e.name.includes(f)), voicemailFile, { timeout: 10000 });
+  check(vmHeard.includes(voicemailFile), "a caller leaving a message hears the recorded voicemail greeting");
+  await vmCaller.context().close();
+  await voicemailRec.locator("[data-rec-clear]").click();
+  await owner.fill("#voicemail-text", "Sorry we missed you. Leave your number after the beep.");
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector("text=Saved.");
+  check((await owner.request.get(`${BASE}/prompt/${voicemailFile}`)).status() === 404, "the unused voicemail recording is deleted");
+  await owner.reload();
+  check((await voicemailRec.locator("[data-rec-chip]").textContent()) === "Computer voice" && await owner.inputValue("#voicemail-text") === "Sorry we missed you. Leave your number after the beep.", "the voicemail greeting's own words are kept");
+  const vmWords = await newPage(390, 760);
+  await vmWords.goto(BASE + `/call/${LINE}`);
+  await vmWords.click('[data-action="call"]:visible');
+  await vmWords.waitForSelector('[data-key="4"]:visible');
+  await vmWords.click('[data-key="4"]');
+  await vmWords.waitForSelector("[data-vm-words]:visible");
+  check(/Sorry we missed you/.test(await vmWords.textContent("[data-vm-words]")), "the caller gets the owner's voicemail words");
+  await vmWords.context().close();
+
   const pagesIn = await crawl(owner, "/", "logged in");
   for (const p of ["/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/business", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
   step = "dashboard";
@@ -377,6 +432,11 @@ try {
   await owner.screenshot({ path: `${SHOTS}/dashboard.png`, fullPage: true });
   const loaded = (p, sel) => p.evaluate((s) => [...document.querySelectorAll(s)].filter((i) => i.complete && i.naturalWidth > 0).length, sel);
   check(await loaded(owner, "[data-logo-badge] img") === 1, "the dashboard shows the logo given at sign up");
+  check(/Welcome[\s\S]*Computer voice[\s\S]*4 choices[\s\S]*Voicemail greeting[\s\S]*Computer voice/.test(await owner.textContent("[data-hear-card]")), "Home says what callers hear, and whose voice");
+  await owner.click('[data-hear-card] a:has-text("Change")');
+  await owner.waitForSelector("[data-menu-form]");
+  check(new URL(owner.url()).pathname === "/dashboard/menu" && await owner.isVisible('aside a[aria-current="page"]:has-text("What callers hear")'), "Home's Change opens What callers hear");
+  await owner.goto(BASE + "/dashboard");
   // Get set up ticks what the line really has: a menu of its own and a logo, but no phone yet.
   const band = (await owner.textContent("[data-setup-band]")).trim();
   check(band.startsWith("One step left: make your phone ring."), `the setup band shows the one step left: a menu of its own and a logo are done, the phone isn't (${band.slice(0, 60)})`);
@@ -397,6 +457,13 @@ try {
   await owner.keyboard.press("Escape");
   await owner.goto(BASE + "/dashboard/business");
   check((await owner.textContent("[data-plan]")).includes("Plan: Basic"), "a new account is on Basic");
+  await owner.fill("[data-business-form] #business", "E2E Shop Two");
+  await owner.click("[data-business-form] button[type=submit]");
+  await owner.waitForSelector("text=Callers see the new name");
+  check(await owner.inputValue("[data-business-form] #business") === "E2E Shop Two", "the Business tab changes the business's name");
+  await owner.fill("[data-business-form] #business", "E2E Shop");
+  await owner.click("[data-business-form] button[type=submit]");
+  await owner.waitForSelector("text=Callers see the new name");
   check((await owner.request.get(BASE + `/room/${LINE}`)).status() === 404, "a Basic line has no meeting room page");
   const phoneSize = await newPage(390, 844);
   await phoneSize.context().addCookies(await owner.context().cookies());
@@ -416,6 +483,33 @@ try {
   await phoneSize.screenshot({ path: `${SHOTS}/dashboard-website-phone.png` });
   await phoneSize.goto(BASE + "/dashboard/menu");
   await phoneSize.screenshot({ path: `${SHOTS}/menu-phone.png`, fullPage: true });
+  // The phone app changes what callers hear itself: no trip to a computer.
+  step = "app: what callers hear";
+  await phoneSize.goto(BASE + "/app");
+  await phoneSize.click('[role="tab"][data-tab="menu"]');
+  await phoneSize.waitForSelector('[data-panel="menu"] [data-menu-form]');
+  check(await phoneSize.isVisible('[data-panel="menu"] [name="voicemail_audio"] ~ .hr-head [data-rec-start]'), "the phone app can record the voicemail greeting");
+  const appRows = phoneSize.locator('[data-panel="menu"] [data-choice]');
+  await openRow(appRows.nth(1));
+  await appRows.nth(1).locator("[name=label]").fill("Our hours");
+  await phoneSize.waitForSelector('[data-panel="menu"] [data-save]:visible');
+  await phoneSize.screenshot({ path: `${SHOTS}/app-hear-phone.png`, fullPage: true });
+  const saveBox = await phoneSize.locator('[data-panel="menu"] [data-save]').boundingBox();
+  const tabBox = await phoneSize.locator(".ap-tabs").boundingBox();
+  check(saveBox && tabBox && saveBox.y + saveBox.height <= tabBox.y, `Save sits above the tabs (${Math.round(saveBox.y + saveBox.height)} <= ${Math.round(tabBox.y)})`);
+  await phoneSize.click('[data-panel="menu"] [data-save-button]');
+  await phoneSize.waitForSelector('[data-panel="menu"] >> text=Saved.');
+  check(new URL(phoneSize.url()).pathname === "/app", "saving in the app stays in the app");
+  await phoneSize.reload();
+  await phoneSize.click('[role="tab"][data-tab="menu"]');
+  check(/Our hours/.test(await appRows.nth(1).locator("[data-sum-label]").textContent()), "a change made in the app is saved");
+  await phoneSize.click('[data-panel="menu"] button[data-tab="messages"]');
+  check(await phoneSize.isVisible('[data-panel="messages"]'), "the card's Messages link opens the app's Messages");
+  await phoneSize.click('[role="tab"][data-tab="menu"]');
+  await openRow(appRows.nth(1));
+  await appRows.nth(1).locator("[name=label]").fill("Opening hours");
+  await phoneSize.click('[data-panel="menu"] [data-save-button]');
+  await phoneSize.waitForSelector('[data-panel="menu"] >> text=Saved.');
 
   // Notifications ---------------------------------------------------------
   step = "install files";
@@ -1093,6 +1187,8 @@ try {
     JOIN account a ON a.id = l.account_id WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const f of files) rmSync(join(dirname(DB), "voicemail", f.file), { force: true });
   const prompts = db.prepare(`SELECT l.greeting_audio AS f FROM line l JOIN account a ON a.id = l.account_id
+      WHERE a.name LIKE 'e2e-%@example.com'
+    UNION SELECT l.voicemail_audio FROM line l JOIN account a ON a.id = l.account_id
       WHERE a.name LIKE 'e2e-%@example.com'
     UNION SELECT o.say_audio FROM menu_option o JOIN line l ON l.id = o.line_id JOIN account a ON a.id = l.account_id
       WHERE a.name LIKE 'e2e-%@example.com'`).all();

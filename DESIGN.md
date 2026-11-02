@@ -76,7 +76,7 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
 `.lp`'s tokens in `globals.css` (ink, Funnel Sans, headings in Funnel Display); the page is light grey #f6f6f7 (dark
 #0b0b0c) with white cards (`card`: 16px radius, a 1px ring, `bg-card`).
 
-- **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, Voice menu, Messages
+- **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, What callers hear, Messages
   (orange count of new voicemails), Business, the open one shaded; at its foot a "Phone app" card and the account
   button (letter, "Your account", email). Its menu (a native popover) holds the email, the phone app, Log out, and
   "minivoip admin" for staff only: minivoip's own admin is never a tab. On a phone a top bar (logo, account) and
@@ -85,16 +85,37 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
   real data (a menu of its own, a phone that gets notifications, a logo; gone when all are done); a card with the
   business's badge, name and status (green dot: calls ring you; amber: away, or messages until the phone is set up)
   over the call link with Copy link (ink) and Try it; then "Share your line" (website, emails, video meetings, each
-  row opening a window) beside "Latest calls".
+  row opening a window) beside "Latest calls". Between them, always there, a "What callers hear" card: three grey
+  tiles (Welcome, the choices, Voicemail greeting) saying whose voice callers hear, and one Change button.
 - **Windows** (`sheet`, a native dialog): centred on a computer, rising from the bottom on a phone; Esc, Close or a
   click outside close them. The website code lives only there, with "1. Copy this code, 2. Paste it" and where to
   paste it on Wix, Squarespace, WordPress and Shopify.
-- **Business** (`Business`): one card of label and value rows for the logo, the name, the call link and the plan.
-- Buttons on Home are pills; the menu editor and the messages list keep their white cards.
+- **Business** (`Business`): one card of label and value rows for the logo, the name (changed here), the call link and the plan.
+- Buttons on Home are pills; the messages list keeps its white cards.
 - **Links and code to copy show whole** (`shownValue`), the code to paste highlights the line name on peach
   (`--now`). **Copy** (`copyButton`) shows a check and "Copied"; screen readers hear it (`copyStatus`).
 - **On a phone** every button, tab and menu item is 44px tall (`tap`). **Keyboard focus, every page:** a 2px outline
   in the ink colour, 2px out (`:focus-visible` in `globals.css`), inside the menus (`.focus-inset`).
+
+## What callers hear (2026-11-02)
+
+The owner's one place for everything callers hear; it replaces the "Voice menu" editor. Ken couldn't find where to
+change his menu or record his voicemail after the redesign, and picked this from the picture
+https://claude.ai/artifact/EisCY92EKymwYNacqeAjCB. `hearForm` in `pages/hear.templ`, `assets/css/hear.css` (plain CSS:
+the same form on the dashboard and in the app, in their colours), `assets/js/menu.js`.
+
+- **Three numbered cards, in the order a caller hears them:** 1 Welcome, 2 Choices, 3 Voicemail greeting (when a call
+  is missed, while away, and on a "Take a voicemail" choice). The top has "Hear it like a caller".
+- **Recording cards** (`voiceCard`): the record button is always in the card's top right corner (an ink pill "Record
+  my voice", or a white "Record again"), and a tag says "Your voice" or "Computer voice". With a recording: a player with
+  the voice drawn as bars and "Use a computer voice instead". Without: the words to read out.
+- **What to say when you record** (peach, on the welcome): the page writes out the greeting and the choices, since a
+  recording replaces the spoken list. A red line asks to record again when the choices have changed since.
+- **Choices:** short rows (key, name, what it does, Change); a row opens to edit it (`<details>`). A voicemail choice
+  has no message of its own: it plays the voicemail greeting.
+- **Saving:** a dark bar "You changed something · Save" follows the screen once something changed, above the tabs on a
+  phone; "Saved." shows for 4 s. The page never reloads: in the app that would drop the call socket. Leaving with
+  unsaved changes asks first.
 
 ## Call window (chosen 2026-10-25: look A "the voice in the middle")
 
@@ -169,7 +190,7 @@ calm white page), "exactly like proposed", so the app and the dashboard read as 
 - **Plain words on every call:** "New message · 0:42" (then "Message" once played), "You talked · 4:18", "You
   declined", "Missed while you were away", "Missed call"; the second line "Chose “Book a room” · 9:36 PM". The
   dashboard's Latest calls uses the same words (`entryTitle`).
-- **Four tabs:** Calls, Messages (orange count of new ones), Voice menu, Room ("Meeting room" on a computer). The
+- **Four tabs:** Calls, Messages (orange count of new ones), What callers hear ("Callers hear" on a phone), Room ("Meeting room" on a computer). The
   account (ringing and notifications, install, Log out) opens from the round letter: top right on a phone, the
   business name and email at the foot of the menu on a computer. `#voicemail` still opens Messages.
 - **Does my phone ring?** A band on top of Calls (`Availability`): green "You're available. Calls ring on this
@@ -183,7 +204,7 @@ calm white page), "exactly like proposed", so the app and the dashboard read as 
   list (420px) and on the right the open message or a "Calls ring here" note. The message: when, "New message ·
   0:42", "The caller chose [Book a room]" on peach, a big player with the message's real voice drawn as bars that
   light up in the logo's colours as it plays (click to jump), Delete, and "Callers are asked to say their name and
-  phone number in the message." Voice menu, Room and the account take the page (680px max).
+  phone number in the message." What callers hear (the same form as the dashboard's), Room and the account take the page (680px max).
 - **Call coming in** (the whole phone screen, the whole window on a computer): white; "Incoming call from your
   website", the business's face (logo or initials) with two faint rings that pulse, "Someone wants to talk to
   you", "They chose [Book a room]", a bar draining to voicemail with "Goes to voicemail in 0:29", a big green

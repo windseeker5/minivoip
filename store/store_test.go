@@ -138,6 +138,8 @@ func TestPlansMigration(t *testing.T) {
 	s.db.Exec("ALTER TABLE promo_code DROP COLUMN plan")
 	s.db.Exec("ALTER TABLE line DROP COLUMN logo")
 	s.db.Exec("DROP TABLE premium_request")
+	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_text")
+	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_audio")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)
@@ -148,6 +150,44 @@ func TestPlansMigration(t *testing.T) {
 	}
 	if b, _ := s.Billing(other.AccountID); b.Plan != Basic {
 		t.Errorf("other account: %q", b.Plan)
+	}
+}
+
+// A "Take a voicemail" choice's own message becomes the voicemail greeting.
+func TestVoicemailGreetingMigration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	if err := s.CreateLine(u.AccountID, "joesbnb", "Joe's B&B"); err != nil {
+		t.Fatal(err)
+	}
+	other, _ := s.CreateAccount("sam@example.com", "password1", "")
+	if err := s.CreateLine(other.AccountID, "samsplace", "Sam's"); err != nil {
+		t.Fatal(err)
+	}
+	l, _ := s.LineForAccount(u.AccountID)
+	l.Options = append(l.Options, lines.Option{Key: "2", Label: "Message", Action: lines.Voicemail, Say: "Speak up!", SayAudio: "prompt-x.webm"})
+	if err := s.SaveMenu(u.AccountID, l); err != nil {
+		t.Fatal(err)
+	}
+	s.db.Exec("PRAGMA user_version = 10")
+	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_text")
+	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_audio")
+	s.Close()
+	if s, err = Open(path); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	l, _ = s.LineForAccount(u.AccountID)
+	if l.VoicemailText != "Speak up!" || l.VoicemailAudio != "prompt-x.webm" {
+		t.Errorf("voicemail greeting: %q %q", l.VoicemailText, l.VoicemailAudio)
+	}
+	l, _ = s.LineForAccount(other.AccountID)
+	if l.VoicemailText != "" || l.VoicemailAudio != "" {
+		t.Errorf("a line without a message: %q %q", l.VoicemailText, l.VoicemailAudio)
 	}
 }
 
@@ -174,12 +214,19 @@ func TestLineAndMenu(t *testing.T) {
 		{Key: "1", Label: "Bookings", Action: lines.Link, URL: "https://example.com/book"},
 		{Key: "2", Label: "Talk to Joe", Action: lines.Ring},
 	}
-	if err := s.SaveMenu(u.AccountID, "Joe's B&B", "Joe", "Welcome!", "", opts); err != nil {
+	if !strings.HasPrefix(l.VoicemailWords(), "Joe's B&B can't answer") {
+		t.Fatalf("standard voicemail greeting = %q", l.VoicemailWords())
+	}
+	l.Owner, l.Greeting, l.VoicemailText, l.Options = "Joe", "Welcome!", "Leave it after the beep.", opts
+	if err := s.SaveMenu(u.AccountID, l); err != nil {
 		t.Fatal(err)
 	}
 	l, _ = s.LineForAccount(u.AccountID)
 	if l.Greeting != "Welcome!" || len(l.Options) != 2 || l.Options[0].URL != "https://example.com/book" {
 		t.Fatalf("saved line: %+v", l)
+	}
+	if l.VoicemailWords() != "Leave it after the beep." {
+		t.Fatalf("voicemail greeting = %q", l.VoicemailWords())
 	}
 	if !s.LineExists("joesbnb") || s.LineExists("nobody") {
 		t.Fatal("LineExists")

@@ -1,0 +1,276 @@
+package pages
+
+import (
+	"strconv"
+	"strings"
+
+	"minivoip/components/icon"
+	"minivoip/lines"
+)
+
+// actionWords says in a few words what a choice does.
+func actionWords(a lines.Action) string {
+	switch a {
+	case lines.Ring:
+		return "Rings your phone"
+	case lines.Play:
+		return "Plays a message"
+	case lines.Link:
+		return "Opens a web page"
+	case lines.Voicemail:
+		return "Plays your voicemail greeting, then takes a message"
+	}
+	return ""
+}
+
+// choiceWords is actionWords, naming the page a link opens.
+func choiceWords(o lines.Option) string {
+	if o.Action == lines.Link && o.URL != "" {
+		return "Opens " + o.URL
+	}
+	return actionWords(o.Action)
+}
+
+// voiceWord is the tag on a recording: whose voice callers hear.
+func voiceWord(audio string) string {
+	if audio != "" {
+		return "Your voice"
+	}
+	return "Computer voice"
+}
+
+// choicesWord is "3 choices".
+func choicesWord(n int) string {
+	if n == 1 {
+		return "1 choice"
+	}
+	return strconv.Itoa(n) + " choices"
+}
+
+// choiceNames is "Bookings, Our address, Leave a message".
+func choiceNames(l lines.Line) string {
+	names := make([]string, len(l.Options))
+	for i, o := range l.Options {
+		names[i] = o.Label
+	}
+	return strings.Join(names, ", ")
+}
+
+// hearForm is "What callers hear": the welcome, the choices and the voicemail
+// greeting, in the order a caller hears them. The same form on the dashboard
+// and in the phone app (inApp), run by menu.js, in assets/css/hear.css.
+templ hearForm(l lines.Line, inApp bool) {
+	<form class="hr" method="post" action="/dashboard/menu" data-menu-form>
+		<header class="hr-top">
+			<div>
+				<h1>What callers hear</h1>
+				<p>From the moment they press Call.</p>
+			</div>
+			<button type="button" class="hr-pill" data-preview>
+				@icon.Play(icon.Props{Class: "size-3.5"})
+				Hear it like a caller
+			</button>
+		</header>
+		<p class="hr-note" data-preview-text></p>
+		@voiceCard("welcome", "1", "Welcome", "Callers hear this first.", "greeting_audio", l.GreetingAudio) {
+			<div class="hr-text" data-rec-text hidden?={ l.GreetingAudio != "" }>
+				<label for="greeting">Your words, read by a computer voice</label>
+				<textarea id="greeting" name="greeting" rows="2" class="hr-field">{ l.Greeting }</textarea>
+				<p class="hr-note">Then the computer voice reads your choices.</p>
+			</div>
+			<div class="hr-say">
+				<b>What to say when you record</b>
+				<span data-script>{ l.WelcomeWords() }</span>
+			</div>
+			<p class="hr-warn" data-script-stale hidden>You changed your choices. Record your welcome again so callers hear them.</p>
+		}
+		<section class="hr-card" id="choices">
+			<div class="hr-head">
+				<span class="hr-step">2</span>
+				<div class="hr-titles">
+					<h2>Choices</h2>
+					<p>What each key does.</p>
+				</div>
+				<button type="button" class="hr-pill" data-add-choice>
+					@icon.Plus(icon.Props{Class: "size-4"})
+					Add a choice
+				</button>
+			</div>
+			<div class="hr-rows" data-choices>
+				for _, o := range l.Options {
+					@choiceRow(o)
+				}
+			</div>
+			<template data-choice-template>
+				@choiceRow(lines.Option{Action: lines.Ring})
+			</template>
+		</section>
+		@voiceCard("voicemail", "3", "Voicemail greeting", "When you miss a call, or you're away. Then the beep.", "voicemail_audio", l.VoicemailAudio) {
+			<div class="hr-text" data-rec-text hidden?={ l.VoicemailAudio != "" }>
+				<label for="voicemail-text">Your words, read by a computer voice</label>
+				<textarea id="voicemail-text" name="voicemail_text" rows="2" class="hr-field">{ l.VoicemailWords() }</textarea>
+				<button type="button" class="hr-link" data-speak>Hear it</button>
+			</div>
+			<p class="hr-note">
+				The messages people leave land in
+				if inApp {
+					<button type="button" class="hr-link" data-tab="messages">Messages</button>.
+				} else {
+					<a class="hr-link" href="/dashboard/voicemail">Messages</a>.
+				}
+			</p>
+		}
+		<div class="hr-bar">
+			<p class="hr-saved" data-saved role="status" hidden>Saved. Callers hear the new menu right away.</p>
+			<p class="hr-error" data-menu-error role="alert" hidden></p>
+			<div class="hr-save" data-save hidden>
+				<span>You changed something</span>
+				<button type="submit" class="hr-pill" data-save-button>Save</button>
+			</div>
+		</div>
+	</form>
+	<script src="/assets/js/peaks.js" defer></script>
+	<script src="/assets/js/menu.js" defer></script>
+}
+
+// voiceCard is a numbered card with something the owner can record: the record
+// button in its corner, the player once there's a recording. menu.js runs it.
+templ voiceCard(id, step, title, hint, field, audio string) {
+	<section class="hr-card" id={ id } data-recorder>
+		<input type="hidden" name={ field } value={ audio } data-rec-value/>
+		<div class="hr-head">
+			<span class="hr-step">{ step }</span>
+			<div class="hr-titles">
+				<h2>
+					{ title }
+					<span class={ "hr-chip", templ.KV("is-you", audio != "") } data-rec-chip>{ voiceWord(audio) }</span>
+				</h2>
+				<p>{ hint }</p>
+			</div>
+			@recButtons(audio, true)
+		</div>
+		@recPlayer(audio)
+		<p class="hr-note" data-rec-status role="status"></p>
+		{ children... }
+		@recClear(audio)
+	</section>
+}
+
+// recButtons records and stops. Prominent while there's no recording (strong).
+templ recButtons(audio string, strong bool) {
+	<button type="button" data-rec-start data-strong?={ strong } class={ "hr-pill", templ.KV("is-ink", strong && audio == "") }>
+		@icon.Mic(icon.Props{Class: "size-4"})
+		if audio == "" {
+			<span data-rec-start-label>Record my voice</span>
+		} else {
+			<span data-rec-start-label>Record again</span>
+		}
+	</button>
+	<button type="button" data-rec-stop hidden class="hr-pill is-rec">
+		@icon.Square(icon.Props{Class: "size-3"})
+		Stop <span class="hr-time" data-rec-timer>0:00</span>
+	</button>
+}
+
+// recPlayer plays a recording, with its voice drawn as bars (peaks.js).
+templ recPlayer(audio string) {
+	<div class="hr-player" data-rec-player hidden?={ audio == "" }>
+		<button type="button" class="hr-play" data-rec-play aria-label="Play">
+			@icon.Play(icon.Props{Class: "size-3.5", Attributes: templ.Attributes{"data-rec-icon-play": ""}})
+			@icon.Pause(icon.Props{Class: "size-3.5", Attributes: templ.Attributes{"data-rec-icon-pause": "", "hidden": ""}})
+		</button>
+		<span class="hr-bars" data-rec-bars aria-hidden="true"></span>
+		<span class="hr-time" data-rec-time></span>
+		<audio
+			preload="none"
+			data-rec-audio
+			if audio != "" {
+				src={ promptURL(audio) }
+			}
+		></audio>
+	</div>
+}
+
+// recClear goes back to the computer voice.
+templ recClear(audio string) {
+	<button type="button" class="hr-link is-quiet" data-rec-clear hidden?={ audio == "" }>Use a computer voice instead</button>
+}
+
+// choiceRow is one choice, folded to a short row; it opens to change it.
+templ choiceRow(o lines.Option) {
+	<details class="hr-choice" data-choice>
+		<summary>
+			<span class="hr-key" data-sum-key>{ o.Key }</span>
+			<span class="hr-what">
+				<b data-sum-label>{ o.Label }</b>
+				<span data-sum-words>{ choiceWords(o) }</span>
+			</span>
+			<span class="hr-link hr-change">Change</span>
+			<span class="hr-link hr-close">Close</span>
+		</summary>
+		<div class="hr-edit">
+			<div class="hr-edit-row">
+				<label class="hr-label is-key">
+					Key
+					<input name="key" value={ o.Key } maxlength="1" inputmode="numeric" class="hr-field" aria-label="Key the caller presses"/>
+				</label>
+				<label class="hr-label">
+					Name
+					<input name="label" value={ o.Label } placeholder="Bookings" class="hr-field"/>
+				</label>
+				<label class="hr-label">
+					Does
+					<select name="action" class="hr-field" data-action-select>
+						for _, a := range lines.Actions {
+							<option value={ string(a.Value) } selected?={ a.Value == o.Action } data-words={ actionWords(a.Value) }>{ a.Label }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<label class="hr-label" data-url-field>
+				Web address
+				<input name="url" value={ o.URL } type="url" placeholder="https://joesbnb.example/booking" class="hr-field"/>
+			</label>
+			<p class="hr-note" data-vm-note hidden>Callers hear your voicemail greeting, then the beep. Change it below.</p>
+			<div class="hr-edit" data-say-box data-recorder>
+				<input type="hidden" name="say_audio" value={ o.SayAudio } data-rec-value/>
+				<label class="hr-label" data-rec-text hidden?={ o.SayAudio != "" }>
+					<span data-say-label>Message</span>
+					<input name="say" value={ o.Say } placeholder="Please hold, I'm ringing you." class="hr-field"/>
+				</label>
+				@recPlayer(o.SayAudio)
+				<div class="hr-rec-row">
+					@recButtons(o.SayAudio, false)
+					@recClear(o.SayAudio)
+				</div>
+				<p class="hr-note" data-rec-status role="status"></p>
+			</div>
+			<button type="button" class="hr-link is-quiet" data-remove-choice>Remove this choice</button>
+		</div>
+	</details>
+}
+
+// hearCard is Home's way to "What callers hear", always there: whose voice
+// callers hear in each part, and one button to change it.
+templ hearCard(l lines.Line) {
+	<section class={ card + " lg:col-span-2" } aria-labelledby="hear-title" data-hear-card>
+		<div class="flex items-center justify-between gap-4">
+			<h2 id="hear-title" class="text-[17px] font-semibold tracking-[-0.015em]">What callers hear</h2>
+			<a href="/dashboard/menu" class={ "inline-flex h-9 flex-none items-center justify-center bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90", pill }>Change</a>
+		</div>
+		<ul class="mt-4 grid gap-2.5 sm:grid-cols-3">
+			@hearTile("/dashboard/menu#welcome", "Welcome", voiceWord(l.GreetingAudio))
+			@hearTile("/dashboard/menu#choices", choicesWord(len(l.Options)), choiceNames(l))
+			@hearTile("/dashboard/menu#voicemail", "Voicemail greeting", voiceWord(l.VoicemailAudio))
+		</ul>
+	</section>
+}
+
+templ hearTile(href, title, hint string) {
+	<li>
+		<a href={ templ.SafeURL(href) } class="focus-inset flex h-full flex-col gap-0.5 rounded-xl bg-muted p-3.5 hover:bg-muted/70">
+			<span class="font-semibold">{ title }</span>
+			<span class="text-[13px] text-muted-foreground">{ hint }</span>
+		</a>
+	</li>
+}

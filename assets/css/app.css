@@ -149,8 +149,6 @@ body:has(> .ap), html:has(.ap) { background: #f6f6f7; color-scheme: light; }
 .ap-card { padding: 16px; border-radius: 16px; background: var(--ap-surface); box-shadow: 0 0 0 1px var(--ap-ring); }
 .ap-link { display: flex; align-items: center; gap: 12px; }
 .ap-link-url { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
-.ap-greeting { display: grid; gap: 8px; }
-.ap-greeting audio { width: 100%; }
 .ap-setting { display: grid; gap: 6px; }
 .ap-setting-title { font-weight: 600; }
 .ap-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 0; }

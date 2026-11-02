@@ -58,7 +58,7 @@ func (s *Server) businessPage(w http.ResponseWriter, r *http.Request, u store.Us
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.Business(u.Email, l, baseURL(r)+"/call/"+l.Name, s.planText(u.AccountID), r.URL.Query().Get("logo")))
+	render(w, r, pages.Business(u.Email, l, baseURL(r)+"/call/"+l.Name, s.planText(u.AccountID), r.URL.Query().Get("note")))
 }
 
 func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -126,12 +126,15 @@ func (s *Server) menuPage(w http.ResponseWriter, r *http.Request, u store.User) 
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.MenuEditor(u.Email, l, r.URL.Query().Get("saved") != "", ""))
+	render(w, r, pages.MenuEditor(u.Email, l))
 }
 
 // maxOptions keeps the spoken menu short enough to remember.
 const maxOptions = 9
 
+// saveMenu saves "What callers hear" (assets/js/menu.js posts it without
+// leaving the page, on the dashboard and in the phone app): nothing back when
+// it's saved, otherwise what's wrong in plain words.
 func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Bad form", http.StatusBadRequest)
@@ -142,10 +145,13 @@ func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) 
 		serverError(w, r, err)
 		return
 	}
-	l.Business = strings.TrimSpace(r.FormValue("business"))
-	l.Owner = l.Business
 	l.Greeting = strings.TrimSpace(r.FormValue("greeting"))
 	l.GreetingAudio = s.recording(r.FormValue("greeting_audio"))
+	l.VoicemailText = strings.TrimSpace(r.FormValue("voicemail_text"))
+	if l.VoicemailText == l.DefaultVoicemail() {
+		l.VoicemailText = "" // the standard words follow the business's name
+	}
+	l.VoicemailAudio = s.recording(r.FormValue("voicemail_audio"))
 	l.Options = nil
 	keys, labels, actions, says, urls, audios := r.Form["key"], r.Form["label"], r.Form["action"], r.Form["say"], r.Form["url"], r.Form["say_audio"]
 	for i := range keys {
@@ -163,26 +169,50 @@ func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) 
 		if o.Key == "" && o.Label == "" {
 			continue // an empty row
 		}
+		if o.Action == lines.Voicemail {
+			o.Say, o.SayAudio = "", "" // callers hear the voicemail greeting
+		}
 		l.Options = append(l.Options, o)
 	}
 
 	if msg := checkMenu(l); msg != "" {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		render(w, r, pages.MenuEditor(u.Email, l, false, msg))
+		http.Error(w, msg, http.StatusUnprocessableEntity)
 		return
 	}
-	if err := s.Store.SaveMenu(u.AccountID, l.Business, l.Owner, l.Greeting, l.GreetingAudio, l.Options); err != nil {
+	if err := s.Store.SaveMenu(u.AccountID, l); err != nil {
 		serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/dashboard/menu?saved=1", http.StatusSeeOther)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// saveBusiness changes the business's name. A greeting still in the starter
+// words follows it, so callers never hear the old name.
+func (s *Server) saveBusiness(w http.ResponseWriter, r *http.Request, u store.User) {
+	l, err := s.Store.LineForAccount(u.AccountID)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("business"))
+	if name == "" {
+		http.Redirect(w, r, "/dashboard/business?note=noname", http.StatusSeeOther)
+		return
+	}
+	if l.Greeting == lines.StarterGreeting(l.Business) {
+		l.Greeting = lines.StarterGreeting(name)
+	}
+	l.Business, l.Owner = name, name
+	if err := s.Store.SaveMenu(u.AccountID, l); err != nil {
+		serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/dashboard/business?note=named", http.StatusSeeOther)
 }
 
 // checkMenu returns what's wrong with a menu, in plain words, or "".
 func checkMenu(l lines.Line) string {
 	switch {
-	case l.Business == "":
-		return "Write your business name."
 	case l.Greeting == "" && l.GreetingAudio == "":
 		return "Write or record a welcome message."
 	case len(l.Options) == 0:

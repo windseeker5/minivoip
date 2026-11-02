@@ -67,9 +67,9 @@ func (s *Store) HasRoom(name string) bool {
 func (s *Store) line(where string, arg any) (lines.Line, error) {
 	var l lines.Line
 	var id int64
-	err := s.db.QueryRow(`SELECT id, name, business, owner_name, greeting, greeting_audio, away_until, logo,
+	err := s.db.QueryRow(`SELECT id, name, business, owner_name, greeting, greeting_audio, voicemail_text, voicemail_audio, away_until, logo,
 		(SELECT plan FROM account WHERE account.id = line.account_id) = 'premium' FROM line WHERE `+where, arg).
-		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio, &l.AwayUntil, &l.Logo, &l.Premium)
+		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio, &l.VoicemailText, &l.VoicemailAudio, &l.AwayUntil, &l.Logo, &l.Premium)
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, ErrNotFound
 	}
@@ -91,9 +91,9 @@ func (s *Store) line(where string, arg any) (lines.Line, error) {
 	return l, rows.Err()
 }
 
-// SaveMenu replaces the account's line details, greeting and menu options.
+// SaveMenu replaces the account's line details, greetings and menu options.
 // Recordings the menu no longer uses are deleted.
-func (s *Store) SaveMenu(accountID int64, business, owner, greeting, greetingAudio string, opts []lines.Option) error {
+func (s *Store) SaveMenu(accountID int64, l lines.Line) error {
 	old, err := s.LineForAccount(accountID)
 	if err != nil {
 		return err
@@ -111,14 +111,14 @@ func (s *Store) SaveMenu(accountID int64, business, owner, greeting, greetingAud
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec("UPDATE line SET business = ?, owner_name = ?, greeting = ?, greeting_audio = ? WHERE id = ?",
-		strings.TrimSpace(business), strings.TrimSpace(owner), strings.TrimSpace(greeting), greetingAudio, lineID); err != nil {
+	if _, err := tx.Exec("UPDATE line SET business = ?, owner_name = ?, greeting = ?, greeting_audio = ?, voicemail_text = ?, voicemail_audio = ? WHERE id = ?",
+		strings.TrimSpace(l.Business), strings.TrimSpace(l.Owner), strings.TrimSpace(l.Greeting), l.GreetingAudio, strings.TrimSpace(l.VoicemailText), l.VoicemailAudio, lineID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec("DELETE FROM menu_option WHERE line_id = ?", lineID); err != nil {
 		return err
 	}
-	for i, o := range opts {
+	for i, o := range l.Options {
 		if _, err := tx.Exec("INSERT INTO menu_option (line_id, position, key, label, action, say, url, say_audio) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 			lineID, i, o.Key, o.Label, string(o.Action), o.Say, o.URL, o.SayAudio); err != nil {
 			return err
@@ -127,11 +127,11 @@ func (s *Store) SaveMenu(accountID int64, business, owner, greeting, greetingAud
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	keep := map[string]bool{greetingAudio: true}
-	for _, o := range opts {
+	keep := map[string]bool{l.GreetingAudio: true, l.VoicemailAudio: true}
+	for _, o := range l.Options {
 		keep[o.SayAudio] = true
 	}
-	for _, f := range append([]string{old.GreetingAudio}, sayAudios(old.Options)...) {
+	for _, f := range append([]string{old.GreetingAudio, old.VoicemailAudio}, sayAudios(old.Options)...) {
 		if f != "" && !keep[f] {
 			os.Remove(s.PromptPath(f))
 		}

@@ -247,7 +247,8 @@ for (const [w, h, name] of [[390, 844, "phone"], [1280, 800, "desk"]]) {
   check(await page.isVisible('[data-panel="messages"]') && await page.isVisible(".ap-detail"), "computer: Messages keeps the detail on the right");
   await page.screenshot({ path: `${SHOTS}/app-desk-messages.png` });
   await page.click('[role="tab"][data-tab="menu"]');
-  check(await page.isHidden(".ap-detail"), "computer: the voice menu takes the page");
+  check(await page.isHidden(".ap-detail"), "computer: what callers hear takes the page");
+  check(await page.isVisible('[name="voicemail_audio"] ~ .hr-head [data-rec-start]') && await page.isVisible('[data-choice] summary'), "computer: the app can change what callers hear");
   await page.screenshot({ path: `${SHOTS}/app-desk-menu.png` });
   await page.click(".ap-acct");
   check(await page.isVisible('[data-panel="me"]') && await page.isVisible("text=Log out"), "computer: the account opens from the bottom of the menu");

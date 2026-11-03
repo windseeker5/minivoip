@@ -183,7 +183,8 @@ func Suggest(business string) string {
 var nameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{1,28}[a-z0-9])$`)
 
 // Reserved names would clash with the site's own pages.
-var reserved = map[string]bool{"app": true, "call": true, "ws": true, "login": true, "logout": true, "signup": true, "dashboard": true, "assets": true, "admin": true, "api": true}
+var reserved = map[string]bool{"app": true, "call": true, "ws": true, "login": true, "logout": true, "signup": true, "dashboard": true, "assets": true, "admin": true, "api": true,
+	"room": true, "logo": true, "prompt": true, "voicemail": true, "download": true, "minivoip": true, "minipass": true, "minicrm": true, "support": true, "help": true, "www": true, "mail": true}
 
 // CheckName says why a line name can't be used, or nil.
 func CheckName(name string) error {

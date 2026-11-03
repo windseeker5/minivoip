@@ -1602,173 +1602,186 @@ func Phone(d AppData) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap\"><link rel=\"stylesheet\" href=\"/assets/css/app.css\"><link rel=\"stylesheet\" href=\"/assets/css/stage.css\"><link rel=\"stylesheet\" href=\"/assets/css/hear.css\"><div class=\"ap\" data-phone data-view=\"calls\" data-android-latest=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<link rel=\"stylesheet\" href=\"/assets/css/fonts.css\"><link rel=\"stylesheet\" href=\"/assets/css/app.css\"><link rel=\"stylesheet\" href=\"/assets/css/stage.css\"><link rel=\"stylesheet\" href=\"/assets/css/hear.css\"><div class=\"ap\" data-phone data-view=\"calls\" data-premium=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var60 string
-			templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Android)
+			templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatBool(d.Line.Premium))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var60)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "\" data-line=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "\" data-android-latest=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var61 string
-			templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Line.Name)
+			templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Android)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 130}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var61)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "\" data-business=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "\" data-line=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var62 string
-			templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Line.Business)
+			templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Line.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 138}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 156}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var62)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "\" data-vapid=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "\" data-business=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var63 string
-			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.VapidKey)
+			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Line.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 164}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 190}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "\" data-ring=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "\" data-vapid=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var64 string
-			templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(d.RingSeconds))
+			templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.VapidKey)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 206}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 216}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var64)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\" data-me-name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\" data-ring=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var65 string
-			templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.ResolveAttributeValue(ownerName(d.Line))
+			templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(d.RingSeconds))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 241}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 258}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var65)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "\" data-me-initials=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "\" data-me-name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var66 string
-			templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.ResolveAttributeValue(initials(ownerName(d.Line)))
+			templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.ResolveAttributeValue(ownerName(d.Line))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 290}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 293}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var66)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" data-me-logo=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" data-me-initials=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var67 string
-			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.ResolveAttributeValue(logoURL(d.Line))
+			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.ResolveAttributeValue(initials(ownerName(d.Line)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 323}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 342}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var67)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "\"><div class=\"ap-offline\" data-offline hidden role=\"status\">Offline. Reconnecting…</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "\" data-me-logo=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var68 string
+			templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.ResolveAttributeValue(logoURL(d.Line))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 468, Col: 375}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var68)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "\"><div class=\"ap-offline\" data-offline hidden role=\"status\">Offline. Reconnecting…</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if d.Line.Premium {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "<a class=\"ap-room-alert\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<a class=\"ap-room-alert\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var68 templ.SafeURL
-				templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(d.RoomURL))
+				var templ_7745c5c3_Var69 templ.SafeURL
+				templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(d.RoomURL))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 471, Col: 60}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\" target=\"_blank\" data-room-alert hidden=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var69 string
-				templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.ResolveAttributeValue(len(d.RoomWaiting) == 0)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 471, Col: 127}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var69)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\" role=\"status\"><i class=\"ap-dot\" aria-hidden=\"true\"></i> <span data-room-who>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\" target=\"_blank\" data-room-alert hidden=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var70 string
-				templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(waitingText(d.RoomWaiting))
+				templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.ResolveAttributeValue(len(d.RoomWaiting) == 0)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 471, Col: 127}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var70)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "\" role=\"status\"><i class=\"ap-dot\" aria-hidden=\"true\"></i> <span data-room-who>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var71 string
+				templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(waitingText(d.RoomWaiting))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 473, Col: 53}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "</span> <b>Join</b></a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "</span> <b>Join</b></a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "<header class=\"ap-top\"><img src=\"/assets/brand/logo-minivoip.svg\" alt=\"minivoip\" width=\"121\" height=\"22\"> <button type=\"button\" class=\"ap-avatar\" data-tab=\"me\" aria-label=\"Your account\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "<header class=\"ap-top\"><img src=\"/assets/brand/logo-minivoip.svg\" alt=\"minivoip\" width=\"121\" height=\"22\"> <button type=\"button\" class=\"ap-avatar\" data-tab=\"me\" aria-label=\"Your account\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var71 string
-			templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(firstLetter(d.Email))
+			var templ_7745c5c3_Var72 string
+			templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(firstLetter(d.Email))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 479, Col: 106}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "</button></header><aside class=\"ap-side\"><img class=\"ap-logo\" src=\"/assets/brand/logo-minivoip.svg\" alt=\"minivoip\" width=\"132\" height=\"24\"><nav class=\"ap-tabs\" role=\"tablist\" aria-label=\"minivoip\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "</button></header><aside class=\"ap-side\"><img class=\"ap-logo\" src=\"/assets/brand/logo-minivoip.svg\" alt=\"minivoip\" width=\"132\" height=\"24\"><nav class=\"ap-tabs\" role=\"tablist\" aria-label=\"minivoip\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1788,46 +1801,46 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "</nav><button type=\"button\" class=\"ap-acct\" data-tab=\"me\"><span class=\"ap-avatar\" aria-hidden=\"true\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var72 string
-			templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(firstLetter(d.Email))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 490, Col: 70}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "</span> <span class=\"ap-acct-who\"><b>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "</nav><button type=\"button\" class=\"ap-acct\" data-tab=\"me\"><span class=\"ap-avatar\" aria-hidden=\"true\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var73 string
-			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(d.Line.Business)
+			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(firstLetter(d.Email))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 492, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 490, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "</b> <small>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "</span> <span class=\"ap-acct-who\"><b>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var74 string
-			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(d.Email)
+			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(d.Line.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 493, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 492, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "</small></span> <span class=\"ap-sr\">Your account</span></button></aside><main class=\"ap-main\"><section class=\"ap-panel is-split\" id=\"panel-calls\" role=\"tabpanel\" data-panel=\"calls\"><header class=\"ap-head\"><h1>Calls</h1></header>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "</b> <small>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var75 string
+			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(d.Email)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 493, Col: 22}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "</small></span> <span class=\"ap-sr\">Your account</span></button></aside><main class=\"ap-main\"><section class=\"ap-panel is-split\" id=\"panel-calls\" role=\"tabpanel\" data-panel=\"calls\"><header class=\"ap-head\"><h1>Calls</h1></header>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1835,7 +1848,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "<div class=\"ap-box\" data-calls-box>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<div class=\"ap-box\" data-calls-box>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1843,7 +1856,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "</div></section><section class=\"ap-panel is-split\" id=\"panel-messages\" role=\"tabpanel\" data-panel=\"messages\" hidden><header class=\"ap-head\"><h1>Messages</h1><p>What callers left when nobody answered.</p></header><div class=\"ap-box\" data-voicemail-box>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "</div></section><section class=\"ap-panel is-split\" id=\"panel-messages\" role=\"tabpanel\" data-panel=\"messages\" hidden><header class=\"ap-head\"><h1>Messages</h1><p>What callers left when nobody answered.</p></header><div class=\"ap-box\" data-voicemail-box>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1851,7 +1864,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "</div></section><section class=\"ap-panel\" id=\"panel-menu\" role=\"tabpanel\" data-panel=\"menu\" hidden>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "</div></section><section class=\"ap-panel\" id=\"panel-menu\" role=\"tabpanel\" data-panel=\"menu\" hidden>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1859,51 +1872,51 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "<h2 class=\"ap-day\">Your call link</h2><div class=\"ap-card ap-link\"><span class=\"ap-link-url\" data-call-url>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<h2 class=\"ap-day\">Your call link</h2><div class=\"ap-card ap-link\"><span class=\"ap-link-url\" data-call-url>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var75 string
-			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(d.CallURL)
+			var templ_7745c5c3_Var76 string
+			templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(d.CallURL)
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 521, Col: 57}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "</span> <button type=\"button\" class=\"ap-btn\" data-copy>Copy</button></div></section><section class=\"ap-panel\" id=\"panel-room\" role=\"tabpanel\" data-panel=\"room\" hidden><header class=\"ap-head\"><h1>Meeting room</h1><p>Video meetings with your customers, in the browser.</p></header>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "</span> <button type=\"button\" class=\"ap-btn\" data-copy>Copy</button></div></section><section class=\"ap-panel\" id=\"panel-room\" role=\"tabpanel\" data-panel=\"room\" hidden><header class=\"ap-head\"><h1>Meeting room</h1><p>Video meetings with your customers, in the browser.</p></header>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if d.Line.Premium {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "<h2 class=\"ap-day\">Your room link</h2><div class=\"ap-card ap-link\"><span class=\"ap-link-url\" data-room-url>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "<h2 class=\"ap-day\">Your room link</h2><div class=\"ap-card ap-link\"><span class=\"ap-link-url\" data-room-url>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var76 string
-				templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(d.RoomURL)
+				var templ_7745c5c3_Var77 string
+				templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(d.RoomURL)
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 533, Col: 58}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "</span> <button type=\"button\" class=\"ap-btn\" data-copy-room>Copy</button></div><div class=\"ap-actions ap-room-open\"><a class=\"ap-btn is-ink\" href=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var77 templ.SafeURL
-				templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(d.RoomURL))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 537, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "\" target=\"_blank\" data-room-open>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "</span> <button type=\"button\" class=\"ap-btn\" data-copy-room>Copy</button></div><div class=\"ap-actions ap-room-open\"><a class=\"ap-btn is-ink\" href=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var78 templ.SafeURL
+				templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(d.RoomURL))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 537, Col: 63}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "\" target=\"_blank\" data-room-open>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1911,56 +1924,56 @@ func Phone(d AppData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, " Open the room</a></div><h2 class=\"ap-day\">How it works</h2><ul class=\"ap-group ap-steps\"><li class=\"ap-row\"><span class=\"ap-key\">1</span><span class=\"ap-row-main\"><span class=\"ap-row-title\">Send the link</span><span class=\"ap-row-sub ap-wrap\">By email or text. People join from their browser, nothing to install.</span></span></li><li class=\"ap-row\"><span class=\"ap-key\">2</span><span class=\"ap-row-main\"><span class=\"ap-row-title\">They wait for you</span><span class=\"ap-row-sub ap-wrap\">This app tells you when someone is waiting.</span></span></li><li class=\"ap-row\"><span class=\"ap-key\">3</span><span class=\"ap-row-main\"><span class=\"ap-row-title\">Open the room</span><span class=\"ap-row-sub ap-wrap\">Talk, turn cameras on, show your screen, draw on the whiteboard. Up to 4 people.</span></span></li></ul>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, " Open the room</a></div><h2 class=\"ap-day\">How it works</h2><ul class=\"ap-group ap-steps\"><li class=\"ap-row\"><span class=\"ap-key\">1</span><span class=\"ap-row-main\"><span class=\"ap-row-title\">Send the link</span><span class=\"ap-row-sub ap-wrap\">By email or text. People join from their browser, nothing to install.</span></span></li><li class=\"ap-row\"><span class=\"ap-key\">2</span><span class=\"ap-row-main\"><span class=\"ap-row-title\">They wait for you</span><span class=\"ap-row-sub ap-wrap\">This app tells you when someone is waiting.</span></span></li><li class=\"ap-row\"><span class=\"ap-key\">3</span><span class=\"ap-row-main\"><span class=\"ap-row-title\">Open the room</span><span class=\"ap-row-sub ap-wrap\">Talk, turn cameras on, show your screen, draw on the whiteboard. Up to 4 people.</span></span></li></ul>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "<div class=\"ap-card ap-locked\" data-room-locked><p class=\"ap-locked-tag\">Premium</p><p class=\"ap-locked-text\">Your own room for video meetings, plus a camera, screen sharing and a whiteboard in your calls. Up to 4 people, nothing to install.</p><p class=\"ap-locked-sub\">You're on Basic. Premium opens after the beta.</p></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "<div class=\"ap-card ap-locked\" data-room-locked><p class=\"ap-locked-tag\">Premium</p><p class=\"ap-locked-text\">Your own room for video meetings, plus a camera, screen sharing and a whiteboard in your calls. Up to 4 people, nothing to install.</p><p class=\"ap-locked-sub\">You're on Basic. Premium opens after the beta.</p></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "</section><section class=\"ap-panel\" id=\"panel-me\" role=\"region\" aria-label=\"Your account\" data-panel=\"me\" hidden><header class=\"ap-head\"><h1>Your account</h1><p>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var78 string
-			templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(d.Line.Business)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 559, Col: 26}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, " · ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "</section><section class=\"ap-panel\" id=\"panel-me\" role=\"region\" aria-label=\"Your account\" data-panel=\"me\" hidden><header class=\"ap-head\"><h1>Your account</h1><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var79 string
-			templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(d.Email)
+			templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(d.Line.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 559, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 559, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "</p></header><h2 class=\"ap-day\">Ringing</h2><div class=\"ap-card ap-setting\" data-push><p class=\"ap-setting-title\">Ring when the app is closed</p><p class=\"ap-muted\" data-push-state>Checking this device…</p><p class=\"ap-muted\" data-push-ios hidden>On iPhone: tap Share, then “Add to Home Screen”. Open minivoip from that icon and turn notifications on there.</p><div class=\"ap-actions\"><button type=\"button\" class=\"ap-btn is-ink\" data-push-on hidden>Turn on notifications</button> <button type=\"button\" class=\"ap-btn\" data-push-test hidden>Send a test</button> <button type=\"button\" class=\"ap-textbtn\" data-push-off hidden>Turn off on this device</button></div><p class=\"ap-muted ap-small\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, " · ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var80 string
-			templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(plural(d.Devices, "device has", "devices have"))
+			templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(d.Email)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 571, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 559, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, " notifications on. This device: <span data-conn>connecting…</span></p></div><h2 class=\"ap-day\">Install</h2><div class=\"ap-card ap-setting\" data-install><p class=\"ap-setting-title\" data-install-title>Put minivoip on this device</p><p class=\"ap-muted\" data-install-text>Install the app to open it from your home screen or dock, in its own window.</p><div class=\"ap-actions\"><button type=\"button\" class=\"ap-btn is-ink\" data-install-btn hidden>Install minivoip</button> <a class=\"ap-btn is-ink\" href=\"/download/minivoip.apk\" data-android-get hidden>Get the Android app</a> <a class=\"ap-btn is-ink\" href=\"/download/minivoip.apk\" data-android-update hidden>Update the app</a></div></div><form method=\"post\" action=\"/logout\" class=\"ap-logout\"><input type=\"hidden\" name=\"next\" value=\"/app\"> <button type=\"submit\" class=\"ap-btn\">Log out</button></form></section><aside class=\"ap-detail\" aria-label=\"Details\"><div class=\"ap-detail-idle\" data-detail-idle><span class=\"ap-empty-ico\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "</p></header><h2 class=\"ap-day\">Ringing</h2><div class=\"ap-card ap-setting\" data-push><p class=\"ap-setting-title\">Ring when the app is closed</p><p class=\"ap-muted\" data-push-state>Checking this device…</p><p class=\"ap-muted\" data-push-ios hidden>On iPhone: tap Share, then “Add to Home Screen”. Open minivoip from that icon and turn notifications on there.</p><div class=\"ap-actions\"><button type=\"button\" class=\"ap-btn is-ink\" data-push-on hidden>Turn on notifications</button> <button type=\"button\" class=\"ap-btn\" data-push-test hidden>Send a test</button> <button type=\"button\" class=\"ap-textbtn\" data-push-off hidden>Turn off on this device</button></div><p class=\"ap-muted ap-small\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var81 string
+			templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(plural(d.Devices, "device has", "devices have"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 571, Col: 84}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, " notifications on. This device: <span data-conn>connecting…</span></p></div><h2 class=\"ap-day\">Install</h2><div class=\"ap-card ap-setting\" data-install><p class=\"ap-setting-title\" data-install-title>Put minivoip on this device</p><p class=\"ap-muted\" data-install-text>Install the app to open it from your home screen or dock, in its own window.</p><div class=\"ap-actions\"><button type=\"button\" class=\"ap-btn is-ink\" data-install-btn hidden>Install minivoip</button> <a class=\"ap-btn is-ink\" href=\"/download/minivoip.apk\" data-android-get hidden>Get the Android app</a> <a class=\"ap-btn is-ink\" href=\"/download/minivoip.apk\" data-android-update hidden>Update the app</a></div></div><form method=\"post\" action=\"/logout\" class=\"ap-logout\"><input type=\"hidden\" name=\"next\" value=\"/app\"> <button type=\"submit\" class=\"ap-btn\">Log out</button></form></section><aside class=\"ap-detail\" aria-label=\"Details\"><div class=\"ap-detail-idle\" data-detail-idle><span class=\"ap-empty-ico\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1968,33 +1981,33 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "</span><h2>Calls ring here</h2><p>Keep this window open, even behind your other work. A call fills this window with a ringtone, and an alert brings it to the front.</p><dl class=\"ap-facts\"><div><dt>Your call link</dt><dd>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var81 string
-			templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(d.CallURL)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 596, Col: 50}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "</dd></div><div><dt>Ringing</dt><dd>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "</span><h2>Calls ring here</h2><p>Keep this window open, even behind your other work. A call fills this window with a ringtone, and an alert brings it to the front.</p><dl class=\"ap-facts\"><div><dt>Your call link</dt><dd>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var82 string
-			templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(d.RingSeconds))
+			templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(d.CallURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 597, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 596, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, " s, then a message</dd></div></dl></div><div class=\"ap-vm\" data-detail-vm hidden><p class=\"ap-vm-when\" data-vm-when></p><h2 data-vm-title></h2><p class=\"ap-vm-option\" data-vm-option></p><div class=\"ap-player\"><button type=\"button\" class=\"ap-play is-big\" data-vm-play aria-label=\"Play message\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "</dd></div><div><dt>Ringing</dt><dd>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var83 string
+			templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(d.RingSeconds))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/app.templ`, Line: 597, Col: 61}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, " s, then a message</dd></div></dl></div><div class=\"ap-vm\" data-detail-vm hidden><p class=\"ap-vm-when\" data-vm-when></p><h2 data-vm-title></h2><p class=\"ap-vm-option\" data-vm-option></p><div class=\"ap-player\"><button type=\"button\" class=\"ap-play is-big\" data-vm-play aria-label=\"Play message\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2002,7 +2015,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "</button><div class=\"ap-wave\" data-vm-wave aria-hidden=\"true\"></div><span class=\"ap-time\"><span data-vm-time>0:00</span> / <span data-vm-len></span></span> <i class=\"ap-progress\" data-vm-bar hidden></i></div><form method=\"post\" class=\"ap-actions\" data-vm-delete><input type=\"hidden\" name=\"back\" value=\"/app#messages\"> <button type=\"submit\" class=\"ap-btn is-red\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "</button><div class=\"ap-wave\" data-vm-wave aria-hidden=\"true\"></div><span class=\"ap-time\"><span data-vm-time>0:00</span> / <span data-vm-len></span></span> <i class=\"ap-progress\" data-vm-bar hidden></i></div><form method=\"post\" class=\"ap-actions\" data-vm-delete><input type=\"hidden\" name=\"back\" value=\"/app#messages\"> <button type=\"submit\" class=\"ap-btn is-red\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2010,7 +2023,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, " Delete</button></form><p class=\"ap-vm-hint\">Callers are asked to say their name and phone number in the message.</p></div></aside></main><div class=\"ap-call\" data-call-screen data-show=\"incoming connecting talking\" hidden><div class=\"ap-call-in\"><p class=\"ap-call-state\"><i class=\"ap-dot\"></i> <span data-status role=\"status\" aria-live=\"assertive\">Incoming call from your website</span> <span data-timer></span></p><div class=\"ap-face\"><i></i><i></i>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, " Delete</button></form><p class=\"ap-vm-hint\">Callers are asked to say their name and phone number in the message.</p></div></aside></main><div class=\"ap-call\" data-call-screen data-show=\"incoming connecting talking\" hidden><div class=\"ap-call-in\"><p class=\"ap-call-state\"><i class=\"ap-dot\"></i> <span data-status role=\"status\" aria-live=\"assertive\">Incoming call from your website</span> <span data-timer></span></p><div class=\"ap-face\"><i></i><i></i>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2018,7 +2031,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "</div><h2 class=\"ap-call-title\" data-call-title>Someone wants to talk to you</h2><p class=\"ap-call-sub\" data-call-sub>A visitor on your website is calling.</p><div class=\"ap-countdown\" data-show=\"incoming\" hidden><div class=\"ap-countdown-bar\"><i data-countdown-bar></i></div><p data-countdown>Goes to voicemail</p></div><div class=\"ap-call-bar\" data-show=\"incoming\" hidden><button type=\"button\" class=\"ap-answer\" data-action=\"accept\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "</div><h2 class=\"ap-call-title\" data-call-title>Someone wants to talk to you</h2><p class=\"ap-call-sub\" data-call-sub>A visitor on your website is calling.</p><div class=\"ap-countdown\" data-show=\"incoming\" hidden><div class=\"ap-countdown-bar\"><i data-countdown-bar></i></div><p data-countdown>Goes to voicemail</p></div><div class=\"ap-call-bar\" data-show=\"incoming\" hidden><button type=\"button\" class=\"ap-answer\" data-action=\"accept\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2026,7 +2039,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "<span>Answer</span></button> <button type=\"button\" class=\"ap-decline\" data-action=\"decline\">Decline</button><p class=\"ap-call-note\">If you decline, they can leave a message.</p></div><div class=\"ap-stage\" data-stage></div><p class=\"ap-meet-note\" data-meet-note role=\"status\" hidden></p><div class=\"ap-call-bar is-live\" data-show=\"connecting talking\" hidden><button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"mute\" aria-pressed=\"false\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "<span>Answer</span></button> <button type=\"button\" class=\"ap-decline\" data-action=\"decline\">Decline</button><p class=\"ap-call-note\">If you decline, they can leave a message.</p></div><div class=\"ap-stage\" data-stage></div><p class=\"ap-meet-note\" data-meet-note role=\"status\" hidden></p><div class=\"ap-call-bar is-live\" data-show=\"connecting talking\" hidden><button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"mute\" aria-pressed=\"false\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2034,12 +2047,12 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "<span>Mute</span></button> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "<span>Mute</span></button> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if d.Line.Premium {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "<button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"camera\" aria-pressed=\"false\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "<button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"camera\" aria-pressed=\"false\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2047,7 +2060,7 @@ func Phone(d AppData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "<span>Camera</span></button> <button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"screen\" aria-pressed=\"false\" data-share-btn hidden>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "<span>Camera</span></button> <button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"screen\" aria-pressed=\"false\" data-share-btn hidden>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2055,7 +2068,7 @@ func Phone(d AppData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "<span>Screen</span></button> <button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"board\" aria-pressed=\"false\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "<span>Screen</span></button> <button type=\"button\" class=\"ap-btn ap-tool\" data-action=\"board\" aria-pressed=\"false\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2063,12 +2076,12 @@ func Phone(d AppData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "<span>Whiteboard</span></button> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "<span>Whiteboard</span></button> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "<button type=\"button\" class=\"ap-hangup\" data-action=\"hangup\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "<button type=\"button\" class=\"ap-hangup\" data-action=\"hangup\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2076,7 +2089,7 @@ func Phone(d AppData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "<span>Hang up</span></button></div></div></div><audio data-remote autoplay playsinline></audio></div><script src=\"/assets/js/voicemail.js\" defer></script> <script src=\"/assets/js/meet.js\" defer></script> <script src=\"/assets/js/phone.js\" defer></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "<span>Hang up</span></button></div></div></div><audio data-remote autoplay playsinline></audio></div><script src=\"/assets/js/voicemail.js\" defer></script> <script src=\"/assets/js/meet.js\" defer></script> <script src=\"/assets/js/phone.js\" defer></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

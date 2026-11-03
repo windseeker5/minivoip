@@ -5,10 +5,12 @@ ring like a phone call (ringtone until answered, call screen over the lock scree
 
 - `CallService`: Firebase messages from the server (`push/fcm.go`), same JSON as the web push.
 - `Ring`: the call notification (channel "Incoming calls", the phone's ringtone, repeating) and missed-call notes.
-- `RingActivity`: the ring screen. Answer opens `/app?answer=<call>` and `phone.js` answers; Decline posts
+- `RingActivity`: the ring screen. Answer opens `/app?answer=<call>` with a secret pass only this app knows, and
+  `phone.js` answers (only inside the app: a browser ignores `answer`); Decline posts
   `/app/calls/{id}/decline`.
 - `MainActivity`: the web view, microphone and camera (video calls, the meeting room), and `window.MinivoipAndroid`
-  (start, settings, clearRing).
+  (start, settings, clearRing, callEnded, takeAnswer). Only our own pages get the microphone and camera. Over the lock
+  screen the page shows only the call, and Back leaves.
 - `Server`: posts with the web view's login cookie; starts Firebase with the settings from `GET /api/android/config`,
   so no `google-services.json` is built in.
 

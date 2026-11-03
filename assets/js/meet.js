@@ -7,9 +7,13 @@
 // strokes. The server never sees any of it.
 //
 //   var s = MinivoipMeet.Session({ stage: el, me: { name, initials, logo }, mic: stream, onChange: fn,
-//                                  camera: track, muted: bool });  // the last two optional
-//   var link = s.link(id, pc, { name, initials, logo, onAudio: fn });  // before the offer or the answer
-//   (logo: the business's logo URL, the owner's face instead of initials)
+//                                  camera: track, muted: bool,   // these two optional
+//                                  video: false });  // a Basic line: nothing but voice comes in
+//   var link = s.link(id, pc, { name, initials, logo, onAudio: fn, fixedName: true });  // before the offer or the answer
+//   (logo: the business's logo URL, the owner's face instead of initials; fixedName: the other side can't rename itself)
+// Everything arriving on the data channel comes from the other person's
+// browser, which they may have changed: Link.receive and Board.receive keep
+// only what makes sense.
 //   link.offer() / link.answer(sdp)  -> the local description's SDP
 //   s.camera(), s.screen(), s.board(), s.mute(on), s.drop(id), s.end()
 //   MinivoipMeet.cameraError(err, blockedText): why the camera didn't start
@@ -17,6 +21,7 @@
   var CAMERA = 0, SCREEN = 1;
   var BOARD_W = 1600, BOARD_H = 1000; // the whiteboard's own units (16:10)
   var COLORS = ["#0c0c0d", "#f46422", "#2251d1", "#1f9d55", "#d33a2c"];
+  var MAX_STROKES = 5000, MAX_POINTS = 20000, MAX_RECEIVED = 400000; // per board, numbers per stroke, numbers from others
 
   var canShare = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) &&
     !/Android|iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -39,6 +44,8 @@
     this.me = o.me || { name: "You", initials: "" };
     this.mic = o.mic || null;
     this.onChange = o.onChange || function () {};
+    this.video = o.video !== false;
+    this.askVideo = !!o.askVideo;
     this.links = {};
     this.cam = o.camera || null; // my camera track (one already on, from a preview)
     this.scr = null;      // my screen track
@@ -248,11 +255,23 @@
   };
 
   Session.prototype.fill = function (t, p) {
-    if (t.track !== p.track) {
-      t.track = p.track;
-      t.video.srcObject = p.track ? new MediaStream([p.track]) : null;
+    // A stranger's picture waits for the owner's tap (askVideo, phone.js).
+    var held = this.askVideo && !p.self && !p.board && !!p.track;
+    var track = held ? null : p.track;
+    if (t.track !== track) {
+      t.track = track;
+      t.video.srcObject = track ? new MediaStream([track]) : null;
     }
-    t.box.classList.toggle("has-video", !!p.track);
+    t.box.classList.toggle("has-video", !!track);
+    if (held && !t.show) {
+      t.show = el("button", "mv-stop mv-show", "Show their video");
+      t.show.type = "button";
+      t.show.dataset.meet = "show-video";
+      t.box.append(t.show);
+    } else if (!held && t.show) {
+      t.show.remove();
+      t.show = null;
+    }
     t.box.classList.toggle("is-self", !!p.self);
     t.box.classList.toggle("is-screen", !!p.screen);
     t.box.classList.toggle("is-board", !!p.board);
@@ -369,6 +388,7 @@
     l.name = info.name || "Guest";
     l.initials = info.initials || "";
     l.logo = info.logo || "";
+    l.fixedName = !!info.fixedName;
     l.onAudio = info.onAudio || function () {};
     l.state = {};
     l.tracks = [null, null];
@@ -392,7 +412,7 @@
     pc.ontrack = function (e) {
       if (e.track.kind === "audio") return l.onAudio(e.streams[0] || new MediaStream([e.track]), e);
       var i = l.videoLanes().indexOf(e.transceiver);
-      if (i < 0) return;
+      if (i < 0 || !s.video) return;
       l.tracks[i] = e.track;
       e.track.onunmute = function () { s.render(); };
       s.render();
@@ -446,24 +466,27 @@
     var s = this.s;
     switch (m.t) {
       case "hi":
-        if (m.board && !s.boardOpen) s.openBoard(true);
-        if (m.strokes) s.wb.merge(m.strokes);
+        if (s.video && m.board && !s.boardOpen) s.openBoard(true);
+        if (s.video && Array.isArray(m.strokes)) s.wb.merge(m.strokes);
         // falls through: a hello carries the state too
       case "state":
         var was = !!this.state.screen;
-        this.state = m;
-        if (m.name) this.name = m.name;
-        if (m.initials !== undefined) this.initials = m.initials;
+        var screen = s.video && !!m.screen;
+        this.state = { camera: s.video && !!m.camera, screen: screen, muted: !!m.muted };
+        if (!this.fixedName) {
+          if (typeof m.name === "string" && m.name) this.name = m.name.slice(0, 40);
+          if (typeof m.initials === "string") this.initials = m.initials.slice(0, 4);
+        }
         this.muted = !!m.muted;
-        if (m.screen && !was) s.refocus("screen:" + this.id);
-        if (!m.screen) s.unfocus("screen:" + this.id);
+        if (screen && !was) s.refocus("screen:" + this.id);
+        if (!screen) s.unfocus("screen:" + this.id);
         s.render();
         break;
       case "board":
-        s.openBoard(!!m.open);
+        if (s.video) s.openBoard(!!m.open);
         break;
       default:
-        s.wb.receive(m);
+        if (s.video) s.wb.receive(m);
     }
   };
 
@@ -476,6 +499,7 @@
     b.s = s;
     b.strokes = [];
     b.byId = {};
+    b.received = 0;
     b.color = COLORS[0];
     b.n = 0;
     b.mine = [];
@@ -526,6 +550,7 @@
   };
 
   Board.prototype.reset = function () {
+    this.received = 0;
     this.strokes = [];
     this.byId = {};
     this.mine = [];
@@ -538,13 +563,20 @@
   };
 
   Board.prototype.receive = function (m) {
+    if (!m) return;
     if (m.t === "s") {
-      var k = this.byId[m.id];
+      if (typeof m.id !== "string" || m.id.length > 40 || !Object.prototype.hasOwnProperty.call(this.byId, m.id) && this.strokes.length >= MAX_STROKES) return;
+      if (m.p !== undefined && !(Array.isArray(m.p) && m.p.every(Number.isFinite))) return;
+      var k = Object.prototype.hasOwnProperty.call(this.byId, m.id) ? this.byId[m.id] : null;
       if (!k) {
+        if (typeof m.w !== "number" || !(m.w >= 1 && m.w <= 80) || COLORS.indexOf(m.c) === -1) return;
         k = this.byId[m.id] = { id: m.id, c: m.c, w: m.w, p: [] };
         this.strokes.push(k);
       }
-      if (m.p) k.p = k.p.concat(m.p);
+      if (m.p && k.p.length + m.p.length <= MAX_POINTS && this.received + m.p.length <= MAX_RECEIVED) {
+        k.p = k.p.concat(m.p);
+        this.received += m.p.length;
+      }
       this.dirty();
     } else if (m.t === "x") {
       this.remove(m.id);
@@ -669,6 +701,7 @@
     var b = e.target.closest("[data-meet]");
     if (b) {
       if (b.dataset.meet === "stop-screen") s.screen(false);
+      if (b.dataset.meet === "show-video") { s.askVideo = false; s.render(); }
       return;
     }
     var t = e.target.closest("[data-focus]");

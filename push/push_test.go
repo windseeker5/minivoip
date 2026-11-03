@@ -51,7 +51,73 @@ func setup(t *testing.T, endpoint string) (*store.Store, *Sender) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.Allowed = nil // the fake services are on this machine
 	return st, s
+}
+
+func TestOnlyPushServicesGetRequests(t *testing.T) {
+	for endpoint, want := range map[string]bool{
+		"https://fcm.googleapis.com/fcm/send/x":                true,
+		"https://updates.push.services.mozilla.com/wpush/v2/x": true,
+		"https://web.push.apple.com/x":                         true,
+		"https://db5p.notify.windows.com/w/?token=x":           true,
+		"http://fcm.googleapis.com/x":                          false, // not https
+		"https://fcm.googleapis.com:8443/x":                    false,
+		"https://fcm.googleapis.com.evil.example/x":            false,
+		"https://evil.example/fcm.googleapis.com":              false,
+		"https://user@fcm.googleapis.com/x":                    false,
+		"https://192.168.1.254:8443/x":                         false,
+		"http://localhost:2019/stop":                           false,
+		"https://localhost/x":                                  false,
+		"":                                                     false,
+	} {
+		if got := AllowedEndpoint(endpoint); got != want {
+			t.Errorf("%q: %v", endpoint, got)
+		}
+	}
+	for endpoint, want := range map[string]bool{
+		"http://localhost:1234/sub":       true,
+		"http://localhost.evil.example/x": false,
+		"https://localhost:1234/x":        false,
+	} {
+		if got := LocalEndpoint(endpoint); got != want {
+			t.Errorf("local %q: %v", endpoint, got)
+		}
+	}
+}
+
+// A device saved with a bad address gets no request, and is forgotten.
+func TestBadDeviceIsForgotten(t *testing.T) {
+	var got atomic.Int32
+	srv := fakeService(t, http.StatusCreated, &got)
+	defer srv.Close()
+	st, s := setup(t, srv.URL+"/x")
+	s.Allowed = AllowedEndpoint
+	if n := s.ToLine("joesbnb", Notification{Kind: "test"}, time.Minute, false); n != 0 {
+		t.Fatalf("sent %d", n)
+	}
+	if got.Load() != 0 {
+		t.Fatal("the server sent a request to an address that isn't a push service")
+	}
+	if d, _ := st.DevicesForLine("joesbnb"); len(d) != 0 {
+		t.Fatalf("still has %d device(s)", len(d))
+	}
+}
+
+// The real client doesn't follow redirects: a push service never needs them.
+func TestNoRedirects(t *testing.T) {
+	var followed atomic.Int32
+	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { followed.Add(1) }))
+	defer target.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusTemporaryRedirect)
+	}))
+	defer srv.Close()
+	_, s := setup(t, srv.URL+"/x")
+	s.ToLine("joesbnb", Notification{Kind: "test"}, time.Minute, false)
+	if followed.Load() != 0 {
+		t.Fatal("the redirect was followed")
+	}
 }
 
 func TestKeysAreKept(t *testing.T) {

@@ -79,7 +79,7 @@ B&B and may become a SaaS.
   on and the whiteboard's lines. Nothing new goes through the server for calls.
 - Meeting rooms (Premium lines only): `/room/{line}` (`roomPage` in `web/dashboard.go`, `pages/room.templ`, `assets/js/room.js`,
   `assets/css/room.css`) and their socket `/ws/room` (`calls/room.go`, `Rooms`): guests wait until the line's
-  logged-in owner opens the room, then everyone connects to everyone (up to `RoomSize`, 4). The owner's apps get a
+  logged-in owner lets each one in (the host's door in `room.js`, who can also remove anyone), then everyone connects to everyone (up to `RoomSize`, 4, one seat kept for the owner). The owner's apps get a
   "room" message on the call socket with who waits (the app's alert and Room tab), and phones a "room" push
   (`RoomKnock`). Linked from the dashboard and the app's Room tab.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
@@ -113,7 +113,8 @@ B&B and may become a SaaS.
 - The Call button for a business's website: `assets/js/w.js`, served at `/w.js` (`main.go`); the dashboard shows
   the line to paste. It reads `GET /api/status/<line>` (`web/status.go`: `here` = Available, a ringing choice, and an
   open app or a push device; `pages.Presence`), and so does the call page (`data-here`, `cw-if-here`/`cw-if-away`).
-  On a computer the call page opens in a modal `<dialog>` with an iframe (dimmed, blurred page behind); call.js
+  On a computer, on another site, the call page opens in its own window, so the microphone permission is ours and not
+  that website's. On our own landing page it opens in a modal `<dialog>` with an iframe (dimmed, blurred page behind); call.js
   tells it to close, grow, or that a call is on (`postMessage` "close", "stage", "busy"). Links with
   `data-minivoip-call` open it too: the landing page loads `/w.js` for Ken's line. Tested by `site.mjs` ("website
   button": a fake business site on another port, a real call from the window; "landing": the window opens, Call is
@@ -129,15 +130,18 @@ B&B and may become a SaaS.
   frames the picture in a crop window first (a round guide; the logo fills its shape everywhere) (`logoCrop` in `pages/dashboard.templ`, `assets/js/logo.js`, Cropper.js
   1.6.2 copied into `assets/vendor/`, as in minipass, loaded by `logo.js` on the first pick); the browser sends a 512 px WebP, so big photos are fine. The file field is hidden behind one button (`logoPicker`).
 - Limits against robots (`web/limits.go`, `Limits`): calls, room knocks, voicemails, wrong passwords, sign ups and
-  "Get Premium" emails,
-  counted per visitor address in memory (the hub's `AllowCall`/`AllowVoicemail`, the rooms' `AllowKnock`). The address
-  is Caddy's `X-Forwarded-For`; visitors on this machine or the home network aren't limited, so `site.mjs` checks
+  "Get Premium" emails, call pages and sockets,
+  counted per visitor address (IPv6 by /64) in memory (the hub's `AllowCall`/`AllowVoicemail`, the rooms' `AllowKnock`). The address
+  is Caddy's `X-Forwarded-For`, believed only from this machine or `MINIVOIP_TRUSTED_PROXY`; visitors on this machine or the home network aren't limited, so `site.mjs` checks
   the limits with made-up addresses in that header. Past the voicemail limit the call page gets "limited".
 - Admin: `/admin/promo` (`web/admin.go`, `pages/admin.templ`), admins only (others get 404; linked from the account menu, never a tab): users with
-  `is_admin` (Ken's account has it), or emails in `MINIVOIP_ADMINS`. Promo codes (each gives a plan) and the
+  `is_admin` (Ken's account has it). Promo codes (each gives a plan; an empty field makes a random one) and the
   Accounts list, where Ken moves an account between Basic and Premium, and "Asked for Premium" (the landing page's emails).
-- Plans: `account.plan` is `basic` or `premium` (`store.Plan`, `store.Billing`; sign up takes the promo code's plan,
-  else Basic). `lines.Line.Premium` gates video in calls (`call.templ`, `app.templ` leave out Camera, Screen and
+- Fonts are served from this site: `assets/fonts/` and `assets/css/fonts.css`, never from Google.
+- Security rules (what is allowed and why, from the 2026-11-02 review): `docs/architecture.md` "Security rules";
+  `web/secure.go` (headers on every page, body limit), `web/limits.go`.
+- Sign up needs a promo code (`web.signup`): no free accounts until payments exist.
+- Plans: `account.plan` is `basic` or `premium` (`store.Plan`, `store.Billing`; sign up takes the promo code's plan). `lines.Line.Premium` gates video in calls (`call.templ`, `app.templ` leave out Camera, Screen and
   Whiteboard on Basic), the meeting room (`roomPage` 404s, `Rooms` gets `store.HasRoom`) and the dashboard's and
   app's room panels. Basic owners see a "Premium" tag there; visitors never see an upsell.
 - `android/`: the Android app (Kotlin, no Compose; see `android/README.md`): a web view on `/app` (the page finds it
@@ -152,6 +156,8 @@ B&B and may become a SaaS.
   `setting` table). `relay/hairpin.go` delivers relay-to-relay voice locally, because the TELUS router rewrites
   hairpin packets. `?relay=1` on `/app` or `/call/...` forces the relay; `window.minivoipCallStats()` shows the
   route and bytes received (the e2e test checks both). A phone needs HTTPS for the microphone.
+- The app listens on 127.0.0.1 only (`MINIVOIP_BIND` for a container, which then must set `MINIVOIP_TRUSTED_PROXY`).
+- The relay login reaches browsers only over the sockets (`accepted`, `welcome`) or for a logged-in owner (`/api/ice`).
 - Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy
   (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs.
 

@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"minivoip/assets"
 	"minivoip/calls"
@@ -19,6 +21,8 @@ import (
 )
 
 func main() {
+	// New files (database, recordings) are for this user only.
+	syscall.Umask(0o077)
 	mux := http.NewServeMux()
 	setupAssetsRoutes(mux)
 	db, err := store.Open(dbPath())
@@ -41,6 +45,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "push:", err)
 		os.Exit(1)
 	}
+	if isDevelopment() {
+		// The browser test's fake push service (web/push.go lets only this
+		// machine and the home network register it).
+		sender.Allowed = func(e string) bool { return push.AllowedEndpoint(e) || push.LocalEndpoint(e) }
+	}
 	hub.OnRing = sender.Ring
 	hub.OnMissed = sender.Missed
 	hub.OnAnswered = sender.Answered
@@ -51,9 +60,37 @@ func main() {
 	rooms.OriginPatterns = hub.OriginPatterns
 	rooms.OnKnock = sender.RoomKnock
 
-	site := &web.Server{Store: db, Hub: hub, Rooms: rooms, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, Admins: admins(), CallLine: callLine()}
+	site := &web.Server{Store: db, Hub: hub, Rooms: rooms, Push: sender, Dev: isDevelopment(), OnVoicemail: sender.Voicemail, CallLine: callLine()}
 	site.Relay = startRelay(db)
 	site.Routes(mux)
+	if p := os.Getenv("MINIVOIP_TRUSTED_PROXY"); p != "" {
+		web.TrustedProxies = strings.Split(p, ",")
+	}
+	web.ExemptHomeNetwork = isDevelopment()
+	// Open to the network with no named proxy, every visitor would count as
+	// one and share one set of limits.
+	if b := os.Getenv("MINIVOIP_BIND"); b != "" && !net.ParseIP(b).IsLoopback() && len(web.TrustedProxies) == 0 {
+		fmt.Fprintln(os.Stderr, "MINIVOIP_BIND is open to the network: set MINIVOIP_TRUSTED_PROXY to your proxy's address")
+		os.Exit(1)
+	}
+
+	// Logins that ran out and plans that changed end their open sockets.
+	go func() {
+		for range time.Tick(10 * time.Minute) {
+			hub.RecheckAll()
+			rooms.RecheckAll()
+		}
+	}()
+
+	// Old logins, voicemails and call history go away once a day.
+	go func() {
+		for {
+			if err := db.Cleanup(); err != nil {
+				fmt.Fprintln(os.Stderr, "cleanup:", err)
+			}
+			time.Sleep(24 * time.Hour)
+		}
+	}()
 
 	ln, err := listen()
 	if err != nil {
@@ -61,30 +98,45 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("Server is running on http://localhost:%d\n", ln.Addr().(*net.TCPAddr).Port)
-	if err := http.Serve(ln, mux); err != nil {
+	// Time limits, so a slow or silent connection can't stay forever. Sockets
+	// aren't affected: they leave the HTTP server once open.
+	srv := &http.Server{
+		Handler:           site.Secured(mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       5 * time.Minute,
+		WriteTimeout:      10 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
+	}
+	if err := srv.Serve(ln); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-// listen binds the port. An explicit PORT binds exactly (the templ proxy in
+// listen binds the port, on this machine only because Caddy is in front; a
+// container sets MINIVOIP_BIND=0.0.0.0, with MINIVOIP_TRUSTED_PROXY naming its
+// Caddy. An explicit PORT binds exactly (the templ proxy in
 // the Taskfile points at it, so silently moving would break hot reload);
 // without PORT it walks from 8090 to the next free port like node dev
 // servers do.
 func listen() (net.Listener, error) {
+	bind := os.Getenv("MINIVOIP_BIND")
+	if bind == "" {
+		bind = "127.0.0.1"
+	}
 	if env := os.Getenv("PORT"); env != "" {
 		port, err := strconv.Atoi(env)
 		if err != nil {
 			return nil, fmt.Errorf("invalid PORT %q", env)
 		}
-		ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+		ln, err := net.Listen("tcp", net.JoinHostPort(bind, strconv.Itoa(port)))
 		if err != nil {
 			return nil, fmt.Errorf("port %d is busy - stop the other app or run with another port, e.g. 'task dev PORT=%d'", port, port+1)
 		}
 		return ln, nil
 	}
 	for port := 8090; port < 8100; port++ {
-		ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+		ln, err := net.Listen("tcp", net.JoinHostPort(bind, strconv.Itoa(port)))
 		if err == nil {
 			return ln, nil
 		}
@@ -124,15 +176,6 @@ func setupAssetsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /sw.js", at("js/sw.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /manifest.webmanifest", at("brand/manifest.webmanifest", "application/manifest+json"))
 	mux.HandleFunc("GET /w.js", at("js/w.js", "text/javascript; charset=utf-8"))
-}
-
-// admins can manage promo codes: MINIVOIP_ADMINS (comma-separated emails).
-// Users marked is_admin in the database are admins too.
-func admins() []string {
-	if a := os.Getenv("MINIVOIP_ADMINS"); a != "" {
-		return strings.Split(a, ",")
-	}
-	return nil
 }
 
 // startRelay starts the built-in TURN relay on 3478 (voice on 49160-49200),

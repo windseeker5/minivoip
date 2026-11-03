@@ -18,10 +18,13 @@ COPY . .
 ENV CGO_ENABLED=0
 RUN task build
 
-FROM alpine:3.20.2
+FROM alpine:3.22
 WORKDIR /app
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates && adduser -D -u 10001 minivoip && mkdir data && chown minivoip data
 COPY --from=build /app/bin/app ./app
-ENV PORT=8090
+# All interfaces inside the container: its Caddy reaches it over the container
+# network. Set MINIVOIP_TRUSTED_PROXY to that Caddy's address, never publish 8090.
+ENV PORT=8090 MINIVOIP_BIND=0.0.0.0
 EXPOSE 8090
+USER minivoip
 CMD ["./app"]

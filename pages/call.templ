@@ -23,6 +23,7 @@ type callData struct {
 	Options       []callOption `json:"options"`
 	RingSeconds   int          `json:"ringSeconds"`    // the owner's phones ring this long, then voicemail
 	OwnerInitials string       `json:"ownerInitials"`  // the owner's face on the stage until their camera is on
+	Premium       bool         `json:"premium,omitempty"` // video, screens and the whiteboard; on Basic they're ignored
 	Logo          string       `json:"logo,omitempty"` // the business's logo, their face instead of the initials
 }
 
@@ -44,7 +45,7 @@ func promptURL(name string) string {
 
 func newCallData(l lines.Line, ringSeconds int) callData {
 	d := callData{Line: l.Name, Business: l.Business, Owner: ownerName(l), Greeting: l.Greeting,
-		GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), Voicemail: l.VoicemailWords(), VoicemailAudio: promptURL(l.VoicemailAudio), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l)), Logo: logoURL(l)}
+		Premium: l.Premium, GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), Voicemail: l.VoicemailWords(), VoicemailAudio: promptURL(l.VoicemailAudio), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l)), Logo: logoURL(l)}
 	for _, o := range l.Options {
 		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, SayAudio: promptURL(o.SayAudio), URL: o.URL})
 	}
@@ -181,7 +182,7 @@ templ callFoot() {
 templ Call(l lines.Line, ringSeconds int, here bool) {
 	{{ owner := ownerName(l) }}
 	@layouts.Plain("Call " + l.Business) {
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
+		<link rel="stylesheet" href="/assets/css/fonts.css"/>
 		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
 		<main class="cw">
@@ -387,7 +388,7 @@ templ Call(l lines.Line, ringSeconds int, here bool) {
 // website's pages). Same look as the app (app.css).
 templ AppLogin(f AccountForm) {
 	@layouts.Lean("minivoip", "") {
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
+		<link rel="stylesheet" href="/assets/css/fonts.css"/>
 		<link rel="stylesheet" href="/assets/css/app.css"/>
 		<div class="ap ap-login" data-app-login>
 			<main class="ap-login-in">

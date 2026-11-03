@@ -5,9 +5,11 @@
 // It puts a button in the bottom-right corner that says whether the owner is
 // here ("Talk to us now", their logo with a green dot) or away ("Leave us a
 // message", grey), from /api/status/<line> (web/status.go), checked again
-// every minute. A click opens the call page from our site: on a computer in a
-// window over the page, which dims and blurs behind it (it grows while a
-// camera, a screen or the whiteboard is on); on a phone, the whole screen.
+// every minute. A click opens the call page from our site: on a phone, the
+// whole screen; on a computer, in its own window, so the microphone permission
+// belongs to us and never to the website the button sits on. On our own landing
+// page it opens in a window over the page, which dims and blurs behind it (it
+// grows while a camera, a screen or the whiteboard is on).
 // Any link of the site with data-minivoip-call opens it too (our landing
 // page's "Call us now"), and the corner button steps aside while one of
 // those is on screen. Everything sits in a shadow root, so the website's
@@ -121,6 +123,13 @@
     var url = base + p.call;
     // A phone: the call page takes the whole screen; Back returns here.
     if (window.matchMedia(PHONE).matches) { location.href = url; return; }
+    // Another site: a window of its own, which that site can't reach.
+    if (base !== location.origin) {
+      var w = 480, h = Math.min(760, screen.availHeight - 60);
+      var at = ",left=" + Math.round(screen.availWidth / 2 - w / 2) + ",top=" + Math.round(screen.availHeight / 2 - h / 2);
+      window.open(url, "_blank", "popup,noopener,noreferrer,width=" + w + ",height=" + h + at);
+      return;
+    }
     var f = document.createElement("iframe");
     f.title = "Call " + p.business;
     f.allow = "microphone; camera; display-capture; autoplay";

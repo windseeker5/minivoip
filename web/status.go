@@ -30,6 +30,10 @@ func (s *Server) here(l lines.Line) bool {
 func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "no-store")
+	if s.lookupFull(r) {
+		http.Error(w, "Too many requests.", http.StatusTooManyRequests)
+		return
+	}
 	l, err := s.Store.LineByName(r.PathValue("line"))
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)

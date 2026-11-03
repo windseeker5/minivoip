@@ -16,3 +16,6 @@ shots/
 # Design review captures
 .impeccable/review/
 tests/e2e/shots/
+
+# Android's Firebase file, if one is ever downloaded
+android/app/google-services.json

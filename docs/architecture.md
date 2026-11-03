@@ -92,7 +92,7 @@ Joe pastes this one line into the website, just before `</body>`:
 <script src="https://minivoip.example/w.js" data-line="joesbnb" async></script>
 ```
 - The dashboard shows this line with Copy. It adds a button in the corner that says whether Joe is here ("Talk to us now") or away ("Leave us a message"), read from `GET /api/status/<line>` (open to any website) every minute. Here means: the Available switch is on, a choice rings, and a phone can ring (an open app, or one that gets pushes).
-- The call opens in a window over the page (a modal `<dialog>` with an `<iframe>` from **our** domain, allowed the microphone and camera), so the website never touches the microphone and needs nothing else installed. The page behind is dimmed and blurred. On a phone it opens our call page full screen. The site's own links with `data-minivoip-call` open the same window; the minivoip landing page uses that for "Call us now".
+- On another site, the call opens in its own browser window (security review, 2026-11-02: a permission given inside a frame belongs to the website around it). On our own landing page it opens in a window over the page (a modal `<dialog>` with an `<iframe>` from **our** domain, allowed the microphone and camera), so the website never touches the microphone and needs nothing else installed. The page behind is dimmed and blurred. On a phone it opens our call page full screen. The site's own links with `data-minivoip-call` open the same window; the minivoip landing page uses that for "Call us now".
 - Website builders all have a place for it: WordPress ("Custom HTML" block), Wix ("Embed code"), Squarespace ("Code" block), Shopify (theme code).
 - **Joe can't edit the website?** Use the call link `minivoip.example/joesbnb` instead, as a normal link, a QR code or a Google Maps "website" link.
 
@@ -151,8 +151,9 @@ Same rule as the voice: **the server only introduces people; everything else goe
   whiteboard's lines as they're drawn. Shared by the call window, the owner's app and the meeting room:
   `assets/js/meet.js` and `assets/css/stage.css`.
 - **Meeting rooms:** `/room/<line>`, its socket `/ws/room?line=` (`calls/room.go`). Guests wait until the owner (the
-  logged-in owner of the line) opens the room; the owner's open apps see who waits (a "room" message on the call
-  socket) and their phones get a "Someone is waiting in your meeting room" notification. Inside, everyone connects
+  logged-in owner of the line) lets them in, one by one, and the owner can remove anyone: knowing the address isn't
+  enough to hear a meeting. One seat stays the owner's. The owner's open apps see who waits (a "room" message on the
+  call socket) and their phones get a "Someone is waiting in your meeting room" notification. Inside, everyone connects
   to everyone (a mesh): a newcomer gets the list of people there and offers a connection to each. That keeps the
   server out of the video, so a room fits 4 people; bigger rooms would need a forwarding server.
 - Video through the relay costs more bandwidth than voice (roughly 1 to 2.5 Mbit/s per camera or screen, per person
@@ -174,24 +175,98 @@ sequenceDiagram
     A->J: voice, cameras, screens, whiteboard: direct (or via the relay)
 ```
 
+## Security rules (reviews of 2026-11-02)
+
+- **The call address stays short and public** (`/call/ken`): it's printed on the business's website anyway, so a random
+  one would protect nothing. The protection is what a stranger can do with it: ring within limits, leave a message
+  within limits. Never listen, never log in, never join a meeting without the owner saying yes.
+- **No account without a promo code** (`web.signup`), until payments exist. Codes can be random (empty field on the
+  admin page), and need 8 characters at least. A line name matching `MINIVOIP_CALL_LINE` is for admins only.
+- **Admins** are `user.is_admin` only, set with SQL.
+- **The server binds 127.0.0.1.** A container sets `MINIVOIP_BIND` and must name its Caddy in `MINIVOIP_TRUSTED_PROXY`
+  (addresses or networks), or the program refuses to start. Only this machine or a named proxy may say who the visitor
+  is (`clientIP`). Never publish 8090 directly. Private addresses are exempt from limits only in development
+  (`ExemptHomeNetwork`).
+- **Limits count before the work, in one step** (`Window.Take`; `Give` hands it back): requests sent at the same moment
+  can't slip through. At most half the CPU cores check passwords at once (`store.bcryptSlots`).
+- **Push only goes to the browser makers' push services** (`push.AllowedEndpoint`), with a time limit and no redirects.
+  Development allows `http://localhost`, only when registered from this machine or the home network (the browser test).
+- **The relay isn't free for all.** A caller gets a login only when the owner answers (`accepted`), a guest only when let
+  in (`welcome`), the owner by being logged in (`/api/ice`, 30 in 10 minutes); strangers get only the address helper.
+  12 connections per address and 36 in total, about 8 Mbit/s each way per connection, 200 different peers per client
+  (each costs memory), 20 TCP connections per address. Through our own public address, only live relay ports can be
+  reached, never this machine or the router (`relay/hairpin.go`).
+- **Recordings** have one of four types (`store.AudioType`), checked on upload and on serving, and are served sandboxed.
+  A recording belongs to its account (table `prompt`). 40 per account at most; unused ones go after a day.
+- **Voicemail:** the pass travels in a header and is checked before the body is read, then spent once the message
+  arrived, so a caller on a bad connection can retry. 10 passes an hour per visitor on a line, 2 uploads at once, 4 MB a
+  message, 300 messages a mailbox, 10 GB in all. Kept 90 days; past 200 on a line, the oldest **heard** ones go. An unheard
+  message is never dropped for space. Call history a year (`Store.Cleanup`, daily).
+- **Text** has limits: business 100, choice name 80, spoken message 2000, web address 2000, email 254, so one customer
+  can't make the public call page huge.
+- **Every response** has the browser rules (`web/secure.go`): scripts only from this site and none inline, `nosniff`, HSTS
+  over HTTPS, no framing, except `/call/` on our own pages. Requests are capped at 16 MB, plain forms at 64 KB. Sockets
+  write through their own queue and close without waiting (`calls/conn.go`), so a stuck browser can't hold anyone up; a
+  socket sending over 300 messages in 10 seconds is closed.
+- **The Call button on another site** opens the call in its own window (`w.js`), so the microphone permission belongs to
+  minivoip and never to that website, which has no hold on the window. Only our own landing page uses the window over the
+  page.
+- **In a call,** everything from the other person's browser is checked (`Link.receive`, `Board.receive` in `meet.js`). On a
+  Basic line, video, screens and the whiteboard are ignored on both sides. A guest's name comes from the server, and a
+  caller can't rename themselves.
+- **Meeting room door:** one seat for the owner; 10 waiting, 2 from one address, for 10 minutes; declined or removed waits 5
+  minutes to knock again. Owner status is checked again on joining, and open owner sockets every 10 minutes.
+- **Logins:** the database keeps only a hash of the session token. Change password logs out the other devices and stops
+  notifications to all of them; a socket whose login ended is closed. 5 wrong passwords from a visitor, 100 on an account,
+  in 15 minutes. A browser that already logged in to the account carries a signed mark (`mv_known`, a year) and skips the
+  account limit, so strangers with many addresses can't lock its owner out; a new browser can still wait out the 15 minutes.
+  The mark follows the account's password. Behind HTTPS both login cookies are named `__Host-` and the plain name is
+  ignored, so another dresdell.com site can't set them. Emails are plain letters only, so no look-alike account.
+- **IPv6:** a visitor is a /64, and a whole /48 shares a budget too: 3 times a visitor's on a line (calls, messages,
+  knocks), 10 times across the site (passwords, sign ups, lookups), 5 times for what is open at once.
+- **Past a line's wake budget** one call in 5 minutes still wakes the phones, so 20 addresses can't silence a line.
+- **A line takes 60 messages a day** from anyone, at most 300 or 400 MB, so filling a mailbox takes days and the owner sees
+  it coming; sizes are in the database, so the check never reads the disk while the call hub is locked.
+- **Relay:** 8 connections per login, and each login is its own, so one answered call can't take it from several
+  addresses. Together all connections stop at about 48 Mbit/s each way.
+- **Whiteboard:** 400,000 numbers from others per board, so a caller can't freeze the owner's tab.
+- **A caller's video and screen** wait for the owner's tap ("Show their video") in each call. Nothing from the owner
+  reaches a stranger unless the owner turns it on.
+- **Fonts** are served from this site (`assets/fonts/`, `assets/css/fonts.css`), so no outside site sees a visitor's address.
+- **Android, over the lock screen,** shows only the call; the lock comes back when there is none (8 seconds if it never
+  arrives), Back leaves, and the Answer pass works once. The web view stays hidden until the page has taken the call and
+  hidden its tabs; if that doesn't happen in 10 seconds, the app leaves.
+- **Not fixed, on purpose:** no email is checked at sign up and there is no "forgot password", because the server can't
+  send email yet. People in a call or a room see each other's internet address, because the connection is direct. There
+  is no "delete my account" yet.
+
 ## Limits against robots and pranks (2026-10-28)
 
 A call link is public, so anyone (robots too) can press Call. The server counts, per visitor address, in memory
-(`web/limits.go`, forgotten on restart):
+(`web/limits.go`, forgotten on restart; IPv6 visitors count by their /64, and a whole /48 shares a budget too):
 
 | What | Limit | Past it |
 |---|---|---|
-| A visitor ringing one line | 3 in 10 minutes | Voicemail without ringing, not in the call history |
-| Everyone ringing one line | 20 an hour | Same |
-| A guest knocking on a meeting room | 3 in 10 minutes | Still waits, but the owner's phone isn't woken again |
+| A visitor calling one line | 3 in 10 minutes, 12 a day | Voicemail without ringing, not in the call history |
+| Different networks waking one line's phones | 20 an hour (IPv6 by /48) | One call in 5 minutes still wakes them; the others ring open apps only, or with none open go to voicemail. The owner gets one "Many calls at once" notice an hour |
+| A guest knocking on a meeting room | 3 in 10 minutes, 20 an hour on the line | Still waits, but the owner's phone isn't woken again |
 | A visitor leaving messages on one line | 3 an hour | "Please try again later", no voicemail |
-| Everyone leaving messages on one line | 20 an hour | Same |
+| Different networks leaving messages on one line | 20 an hour | Same |
+| Messages left on one line, by anyone | 60 a day; the mailbox holds 300 or 400 MB | Same |
+| Voicemail passes to a visitor on one line | 10 an hour | Same |
+| Voicemail uploads under way from one visitor | 2 | Same |
 | Wrong passwords from one visitor | 5 in 15 minutes | Waits 15 minutes, even with the right password |
+| Wrong passwords on one account, from anywhere | 100 in 15 minutes | Waits 15 minutes |
 | New accounts from one visitor | 3 an hour | "Please try again in an hour" |
+| Refused sign ups from one visitor | 10 an hour | Same |
+| Call pages, status checks and sockets from one visitor | 300 in 10 minutes | "Too many requests" |
+| Sockets open from one visitor | 20 | "Too many connections" |
+| Relay logins to a logged-in owner | 30 in 10 minutes | Plain STUN: most calls still connect |
+| "Send a test" notifications from one account | 10 an hour | "That's enough tests for now" |
 
 The visitor's address comes from Caddy's `X-Forwarded-For` (Caddy writes it, so a visitor can't fake it). Visitors on
 the same machine or the home network aren't limited: the tests, and Ken's own phone. Not yet: a "verify you're
-human" check (an outside service, Ken's call) and limits on the relay.
+human" check (an outside service, Ken's call).
 
 ## The voice menu
 The owner records each prompt. Every option points to one action:

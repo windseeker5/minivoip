@@ -177,11 +177,30 @@ var migrations = []string{
 		voicemail_text = COALESCE((SELECT say FROM menu_option o WHERE o.line_id = line.id AND o.action = 'voicemail' AND o.say <> '' ORDER BY o.position LIMIT 1), ''),
 		voicemail_audio = COALESCE((SELECT say_audio FROM menu_option o WHERE o.line_id = line.id AND o.action = 'voicemail' AND o.say_audio <> '' ORDER BY o.position LIMIT 1), '');
 	`,
+	// 12: recordings belong to the account that made them, and a session
+	// keeps only the hash of its token (hashSessions converts the old ones).
+	`
+	CREATE TABLE prompt (
+		name        TEXT PRIMARY KEY,
+		account_id  INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+		created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	INSERT OR IGNORE INTO prompt (name, account_id)
+		SELECT greeting_audio, account_id FROM line WHERE greeting_audio <> ''
+		UNION SELECT voicemail_audio, account_id FROM line WHERE voicemail_audio <> ''
+		UNION SELECT o.say_audio, l.account_id FROM menu_option o JOIN line l ON l.id = o.line_id WHERE o.say_audio <> '';
+	ALTER TABLE session ADD COLUMN hashed INTEGER NOT NULL DEFAULT 0;
+	`,
+	// 13: how big each voicemail file is, for the mailbox limits
+	// (sizeVoicemails fills it in for the old ones).
+	`
+	ALTER TABLE voicemail ADD COLUMN size INTEGER NOT NULL DEFAULT 0;
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.
 func Open(path string) (*Store, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
 	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
@@ -190,7 +209,17 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	s := &Store{db: db, Dir: filepath.Dir(path)}
-	if err := s.migrate(); err != nil {
+	err = s.migrate()
+	if err == nil {
+		err = s.hashSessions()
+	}
+	if err == nil {
+		err = s.sizeVoicemails()
+	}
+	if err == nil {
+		err = os.Chmod(path, 0o600) // accounts and keys: nobody else on this machine reads them
+	}
+	if err != nil {
 		db.Close()
 		return nil, err
 	}

@@ -7,9 +7,11 @@ package push
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -48,8 +50,11 @@ var (
 type Sender struct {
 	Store   *store.Store
 	Subject string // "mailto:..." or https URL, sent to the push services
-	// Client is used for tests; nil means the default HTTP client.
+	// Client sends web push; New gives it a time limit and no redirects.
 	Client webpush.HTTPClient
+	// Allowed says whether a browser's push address may be sent to. New sets
+	// AllowedEndpoint; nil allows every address (tests).
+	Allowed func(endpoint string) bool
 
 	public, private string
 	fcm             *fcm
@@ -57,7 +62,11 @@ type Sender struct {
 
 // New loads the VAPID keys, making them the first time.
 func New(st *store.Store, subject string) (*Sender, error) {
-	s := &Sender{Store: st, Subject: subject, fcm: &fcm{dir: FirebaseDir(), client: &http.Client{Timeout: 15 * time.Second}}}
+	s := &Sender{Store: st, Subject: subject, Allowed: AllowedEndpoint, fcm: &fcm{dir: FirebaseDir(), client: &http.Client{Timeout: 15 * time.Second}}}
+	s.Client = &http.Client{
+		Timeout:       15 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
 	var err error
 	if s.public, err = st.Setting("vapid_public"); err != nil {
 		return nil, err
@@ -79,6 +88,36 @@ func New(st *store.Store, subject string) (*Sender, error) {
 	return s, nil
 }
 
+// pushHosts are the browser makers' push services: Chrome and other Chromium
+// browsers, Firefox, Safari, Edge. Exact name, or a name ending in ".<host>".
+var pushHosts = []string{"fcm.googleapis.com", "android.googleapis.com", "push.services.mozilla.com", "push.apple.com", "notify.windows.com"}
+
+// AllowedEndpoint says whether a browser's push address is really one of the
+// push services. The address comes from the browser, and the server sends to
+// it, so anything else could aim this server at the home network.
+func AllowedEndpoint(endpoint string) bool {
+	u, err := url.Parse(endpoint)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	for _, h := range pushHosts {
+		if host == h || strings.HasSuffix(host, "."+h) {
+			return true
+		}
+	}
+	return false
+}
+
+// LocalEndpoint says whether a push address is on this machine. Only the
+// browser test's fake push service, in development, from this machine.
+func LocalEndpoint(endpoint string) bool {
+	u, err := url.Parse(endpoint)
+	return err == nil && u.Scheme == "http" && u.User == nil && u.Hostname() == "localhost"
+}
+
+var errNotPush = errors.New("not a push service")
+
 // PublicKey goes to the browser to subscribe (applicationServerKey).
 func (s *Sender) PublicKey() string { return s.public }
 
@@ -91,6 +130,10 @@ func (s *Sender) Send(d store.Device, n Notification, ttl time.Duration, urgent 
 			s.Store.DeleteDevice(d.Endpoint)
 		}
 		return err
+	}
+	if s.Allowed != nil && !s.Allowed(d.Endpoint) {
+		s.Store.DeleteDevice(d.Endpoint)
+		return errNotPush
 	}
 	body, _ := json.Marshal(n)
 	urgency := webpush.UrgencyNormal

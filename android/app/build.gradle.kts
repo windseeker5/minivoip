@@ -19,8 +19,8 @@ android {
         applicationId = "com.kdresdell.minivoip"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
         // The minivoip server this app is the phone for.
         buildConfigField("String", "SERVER", "\"${localProperties.getProperty("SERVER", "https://voip.dresdell.com")}\"")
     }

@@ -1,6 +1,21 @@
 // Dashboard: the Home tab's windows, copy buttons, the logo button and step 2
 // of sign up. "What callers hear" has its own script, menu.js.
 
+// Logging out: this browser stops getting the business's notifications.
+document.querySelectorAll('form[action="/logout"]').forEach(function (form) {
+  form.addEventListener("submit", function (e) {
+    if (!navigator.serviceWorker) return;
+    e.preventDefault();
+    var done = function () { form.submit(); };
+    var giveUp = new Promise(function (ok) { setTimeout(ok, 2000); });
+    Promise.race([giveUp, navigator.serviceWorker.getRegistration().then(function (reg) {
+      return reg && reg.pushManager.getSubscription();
+    }).then(function (sub) {
+      return sub && fetch("/app/push/unsubscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+    })]).then(done, done);
+  });
+});
+
 // The Home tab's windows (website code, email line, meeting room, phone set
 // up) open from data-open; a click on the dimmed page around one closes it.
 document.querySelectorAll("[data-open]").forEach(function (btn) {

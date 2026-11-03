@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,8 +26,9 @@ func (s *Server) pushSubscribe(w http.ResponseWriter, r *http.Request, u store.U
 	err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&sub)
 	// The Android app sends its Firebase token as "fcm:<token>", no keys.
 	android := strings.HasPrefix(sub.Endpoint, push.FCMPrefix) && len(sub.Endpoint) > len(push.FCMPrefix)
-	if err != nil || !android && (!(strings.HasPrefix(sub.Endpoint, "https://") || s.Dev && strings.HasPrefix(sub.Endpoint, "http://localhost")) ||
-		sub.Keys.P256dh == "" || sub.Keys.Auth == "") {
+	_, local := clientIP(r)
+	service := push.AllowedEndpoint(sub.Endpoint) || s.Dev && local && push.LocalEndpoint(sub.Endpoint)
+	if err != nil || !android && (!service || sub.Keys.P256dh == "" || sub.Keys.Auth == "") {
 		http.Error(w, "Not a push subscription.", http.StatusBadRequest)
 		return
 	}
@@ -46,12 +48,16 @@ func (s *Server) pushUnsubscribe(w http.ResponseWriter, r *http.Request, u store
 		Endpoint string `json:"endpoint"`
 	}
 	json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&sub)
-	s.Store.DeleteDevice(sub.Endpoint)
+	s.Store.DeleteAccountDevice(u.AccountID, sub.Endpoint)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // pushTest sends "This is a test" to all of the account's devices.
 func (s *Server) pushTest(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.Limits.PushTests.Take(strconv.FormatInt(u.AccountID, 10)) {
+		http.Error(w, "That's enough tests for now.", http.StatusTooManyRequests)
+		return
+	}
 	l, err := s.Store.LineForAccount(u.AccountID)
 	if err != nil || s.Push == nil {
 		http.Error(w, "No line yet.", http.StatusBadRequest)

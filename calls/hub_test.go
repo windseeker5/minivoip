@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -271,4 +272,96 @@ func TestLimits(t *testing.T) {
 	expect(t, owner, "incoming")
 	send(t, owner, Message{Type: "decline", ID: id})
 	expect(t, visitor, "limited")
+}
+
+// A browser that sent junk and stopped answering can't hold the hub's lock
+// while its socket closes: everyone else's calls would freeze for seconds.
+func TestStuckSocketDoesNotFreezeTheHub(t *testing.T) {
+	var ended atomic.Bool
+	h := NewHub(func(string) bool { return true })
+	h.CanAnswer = func(r *http.Request, line string) bool { return !ended.Load() }
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/?line=joesbnb&role=owner"
+	c, _, err := websocket.Dial(context.Background(), url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.CloseNow()
+	for end := time.Now().Add(2 * time.Second); h.OwnersOnline("joesbnb") == 0 && time.Now().Before(end); {
+		time.Sleep(5 * time.Millisecond)
+	}
+	// Junk, and then this side never reads the server's close.
+	c.Write(context.Background(), websocket.MessageText, []byte("{not json"))
+	time.Sleep(50 * time.Millisecond)
+	ended.Store(true)
+	start := time.Now()
+	h.Recheck("joesbnb")
+	h.OwnersOnline("other")
+	if d := time.Since(start); d > time.Second {
+		t.Fatalf("the hub was held for %v", d)
+	}
+}
+
+// Past the line's budget, open apps ring but sleeping phones aren't woken; with
+// no app open, the caller gets voicemail right away.
+func TestPastBudgetOnlyOpenAppsRing(t *testing.T) {
+	var pushes atomic.Int32
+	h := NewHub(func(string) bool { return true })
+	h.AllowWake = func(*http.Request, string) bool { return false }
+	h.OnRing = func(line, id, opt string) func() { pushes.Add(1); return func() {} }
+	h.OnMissed = func(line, id string) { pushes.Add(1) }
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	dial := func(role string) *websocket.Conn {
+		c, _, err := websocket.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/?line=joesbnb&role="+role, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { c.CloseNow() })
+		return c
+	}
+	v := dial("visitor")
+	wsjson.Write(context.Background(), v, Message{Type: "call"})
+	if m := expect(t, v, "no-answer"); m.Token == "" {
+		t.Fatal("no voicemail pass")
+	}
+	o := dial("owner")
+	for end := time.Now().Add(2 * time.Second); h.OwnersOnline("joesbnb") == 0 && time.Now().Before(end); {
+		time.Sleep(5 * time.Millisecond)
+	}
+	wsjson.Write(context.Background(), v, Message{Type: "call"})
+	expect(t, v, "ringing")
+	expect(t, o, "incoming")
+	wsjson.Write(context.Background(), v, Message{Type: "hangup"})
+	expect(t, o, "missed")
+	if pushes.Load() != 0 {
+		t.Fatalf("%d pushes", pushes.Load())
+	}
+}
+
+// One voicemail pass per socket.
+func TestOnePassPerSocket(t *testing.T) {
+	h := NewHub(func(string) bool { return true })
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	v, _, err := websocket.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/?line=joesbnb&role=visitor", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer v.CloseNow()
+	wsjson.Write(context.Background(), v, Message{Type: "voicemail"})
+	first := expect(t, v, "voicemail").Token
+	wsjson.Write(context.Background(), v, Message{Type: "voicemail"})
+	second := expect(t, v, "voicemail").Token
+	if h.VoicemailTokenValid(first) || !h.VoicemailTokenValid(second) {
+		t.Fatal("only the newest pass works")
+	}
+	// Checking doesn't spend it; using does.
+	if !h.VoicemailTokenValid(second) {
+		t.Fatal("checking spent the pass")
+	}
+	if _, ok := h.UseVoicemailToken(second); !ok || h.VoicemailTokenValid(second) {
+		t.Fatal("using it should spend it")
+	}
 }

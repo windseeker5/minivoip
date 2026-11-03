@@ -3,16 +3,18 @@ package calls
 // Meeting rooms: each line has one, at /room/<line>. Like the call hub, the
 // server only passes messages; voice, video, screens and the whiteboard go
 // directly between the browsers, everyone connected to everyone (a mesh,
-// fine for a few people). Guests wait until the owner is in the room.
+// fine for a few people). Guests wait until the owner lets them in, one by
+// one: knowing the room's address isn't enough to hear a meeting.
 //
-// Browser -> server: join {name}, signal {to, data}
-// Server -> browser: welcome {id, peers}, waiting, full, joined {peer}, left {id}, signal {from, data}
+// Browser -> server: join {name}, signal {to, data}; the owner also admit {to},
+// deny {to}, remove {to}
+// Server -> browser: welcome {id, peers}, waiting, full, joined {peer}, left {id}, signal {from, data},
+// denied, removed, wait-over; to the owner door {peers: who waits}, seats-full
 //
 // A newcomer gets the people already in the room ("welcome") and offers a
 // connection to each of them; they answer.
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -26,8 +28,19 @@ import (
 )
 
 // RoomSize is how many people fit in a room: everyone sends their video to
-// everyone else, so a few people only.
+// everyone else, so a few people only. One seat is the owner's.
 const RoomSize = 4
+
+// A door keeps out robots: at most 10 guests wait, at most 2 of them from one
+// address, for 10 minutes. A socket that hasn't said who it is after a minute
+// is closed, and someone declined or removed waits 5 minutes to knock again.
+const (
+	maxWaiting      = 10
+	maxWaitingPerIP = 2
+	joinLimit       = time.Minute
+	waitLimit       = 10 * time.Minute
+	knockBan        = 5 * time.Minute
+)
 
 // RoomMessage is every message on a room's socket.
 type RoomMessage struct {
@@ -39,6 +52,7 @@ type RoomMessage struct {
 	Peer  *RoomPeer       `json:"peer,omitempty"`
 	Peers []RoomPeer      `json:"peers,omitempty"`
 	Data  json.RawMessage `json:"data,omitempty"`
+	ICE   json.RawMessage `json:"ice,omitempty"` // "welcome": the connection helpers, with a relay login
 }
 
 // RoomPeer is someone in a room.
@@ -50,30 +64,26 @@ type RoomPeer struct {
 
 type member struct {
 	RoomPeer
-	conn *websocket.Conn
-	req  *http.Request // who connected, for AllowKnock
+	*outbox
+	req *http.Request // who connected, for AllowKnock
+	key string        // the guest's address for the door's limits; "" isn't limited
 }
 
-func (m *member) send(msg RoomMessage) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := wsjson.Write(ctx, m.conn, msg); err != nil {
-		log.Printf("rooms: send %s: %v", msg.Type, err)
-	}
-}
+func (m *member) send(msg RoomMessage) { m.put(msg) }
 
 type room struct {
 	in      []*member // in the room, in the order they came in
-	waiting []*member // guests waiting for the owner
+	waiting []*member // guests waiting for the owner to let them in
 }
 
-func (r *room) hasOwner() bool {
+func (r *room) guests() int {
+	n := 0
 	for _, m := range r.in {
-		if m.Owner {
-			return true
+		if !m.Owner {
+			n++
 		}
 	}
-	return false
+	return n
 }
 
 // Rooms holds every line's meeting room.
@@ -99,13 +109,22 @@ type Rooms struct {
 	// (limits, web/limits.go); when not, the guest still waits. It runs
 	// with the rooms locked. Nil allows every knock.
 	AllowKnock func(r *http.Request, line string) bool
+	// GuestKey gives the address a guest counts under at the door; "" isn't
+	// limited (this machine). Nil limits nobody.
+	GuestKey func(r *http.Request) string
+	// ICE gives someone let in the connection helpers, with a relay login. It
+	// runs with the rooms locked. Nil sends none.
+	ICE func() json.RawMessage
+	// WaitLimit is how long a guest waits at the door (waitLimit when zero).
+	WaitLimit time.Duration
 
-	mu    sync.Mutex
-	rooms map[string]*room
+	mu     sync.Mutex
+	rooms  map[string]*room
+	banned map[string]time.Time // line + key -> no knocking until then
 }
 
 func NewRooms(lineExists func(name string) bool) *Rooms {
-	return &Rooms{LineExists: lineExists, rooms: map[string]*room{}}
+	return &Rooms{LineExists: lineExists, rooms: map[string]*room{}, banned: map[string]time.Time{}}
 }
 
 func (rs *Rooms) room(name string) *room {
@@ -165,12 +184,29 @@ func (rs *Rooms) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	conn.SetReadLimit(256 << 10) // offers with video are a few kB; keep it bounded
-	me := &member{RoomPeer: RoomPeer{ID: newID(), Owner: owner}, conn: conn, req: r}
+	conn.SetReadLimit(64 << 10) // offers with video are a few kB; keep it bounded
+	me := &member{RoomPeer: RoomPeer{ID: newID(), Owner: owner}, outbox: newOutbox(conn), req: r}
+	if rs.GuestKey != nil {
+		me.key = rs.GuestKey(r)
+	}
 	defer rs.leave(line, me)
+	// A socket that never says who it is goes away.
+	silent := time.AfterFunc(joinLimit, func() {
+		rs.mu.Lock()
+		defer rs.mu.Unlock()
+		if me.Name == "" {
+			me.kill()
+		}
+	})
+	defer silent.Stop()
+	var speed pace
 	for {
 		var m RoomMessage
 		if err := wsjson.Read(r.Context(), conn, &m); err != nil {
+			return
+		}
+		if !speed.ok() {
+			log.Printf("rooms: %s: too many messages from one socket, closing it", line)
 			return
 		}
 		rs.handle(line, me, m)
@@ -187,9 +223,22 @@ func (rs *Rooms) handle(line string, me *member, m RoomMessage) {
 			return // joined already
 		}
 		me.Name = cleanName(m.Name)
-		if !me.Owner && !r.hasOwner() {
+		// The login may have ended since this socket opened.
+		me.Owner = me.Owner && rs.IsOwner != nil && rs.IsOwner(me.req, line)
+		if !me.Owner {
+			if rs.isBanned(line, me.key) {
+				me.send(RoomMessage{Type: "denied"})
+				me.put(closeAfter{})
+				return
+			}
+			if len(r.waiting) >= maxWaiting || me.key != "" && waitingFrom(r.waiting, me.key) >= maxWaitingPerIP {
+				me.send(RoomMessage{Type: "full"})
+				me.put(closeAfter{})
+				return
+			}
 			r.waiting = append(r.waiting, me)
-			log.Printf("rooms: %s: %s is waiting", line, me.Name)
+			rs.expireWait(line, me)
+			log.Printf("rooms: %s: a guest is waiting", line)
 			me.send(RoomMessage{Type: "waiting"})
 			if rs.OnKnock != nil && (rs.AllowKnock == nil || rs.AllowKnock(me.req, line)) {
 				rs.OnKnock(line, me.Name)
@@ -198,15 +247,42 @@ func (rs *Rooms) handle(line string, me *member, m RoomMessage) {
 			return
 		}
 		rs.admit(line, r, me)
-		if me.Owner && len(r.waiting) > 0 {
-			// The owner opens the room: the guests waiting come in.
-			list := r.waiting
-			r.waiting = nil
-			for _, g := range list {
-				rs.admit(line, r, g)
-			}
-			rs.waitingChanged(line, r)
+		me.send(RoomMessage{Type: "door", Peers: peersOf(r.waiting)})
+
+	case "admit", "deny":
+		if !me.Owner || !in(r.in, me) {
+			return
 		}
+		g := find(r.waiting, m.To)
+		if g == nil {
+			return
+		}
+		if m.Type == "admit" && r.guests() >= rs.size()-1 {
+			me.send(RoomMessage{Type: "seats-full"})
+			return
+		}
+		r.waiting = without(r.waiting, g)
+		if m.Type == "admit" {
+			rs.admit(line, r, g)
+		} else {
+			rs.ban(line, g.key)
+			g.send(RoomMessage{Type: "denied"})
+			g.put(closeAfter{})
+		}
+		rs.waitingChanged(line, r)
+
+	case "remove":
+		if !me.Owner || !in(r.in, me) {
+			return
+		}
+		g := find(r.in, m.To)
+		if g == nil || g.Owner {
+			return
+		}
+		rs.drop(line, r, g)
+		rs.ban(line, g.key)
+		g.send(RoomMessage{Type: "removed"})
+		g.put(closeAfter{})
 
 	case "signal":
 		if !in(r.in, me) {
@@ -222,7 +298,7 @@ func (rs *Rooms) handle(line string, me *member, m RoomMessage) {
 
 // admit lets someone in, or says the room is full. Caller holds rs.mu.
 func (rs *Rooms) admit(line string, r *room, me *member) {
-	if len(r.in) >= rs.size() {
+	if len(r.in) >= rs.size() || !me.Owner && r.guests() >= rs.size()-1 {
 		me.send(RoomMessage{Type: "full"})
 		return
 	}
@@ -231,8 +307,12 @@ func (rs *Rooms) admit(line string, r *room, me *member) {
 		peers = append(peers, o.RoomPeer)
 	}
 	r.in = append(r.in, me)
-	log.Printf("rooms: %s: %s came in (%d in the room)", line, me.Name, len(r.in))
-	me.send(RoomMessage{Type: "welcome", ID: me.ID, Peers: peers})
+	log.Printf("rooms: %s: someone came in (%d in the room)", line, len(r.in))
+	welcome := RoomMessage{Type: "welcome", ID: me.ID, Peers: peers}
+	if rs.ICE != nil {
+		welcome.ICE = rs.ICE()
+	}
+	me.send(welcome)
 	p := me.RoomPeer
 	for _, o := range r.in {
 		if o != me {
@@ -250,23 +330,136 @@ func (rs *Rooms) leave(line string, me *member) {
 		r.waiting = without(r.waiting, me)
 		rs.waitingChanged(line, r)
 	}
-	if in(r.in, me) {
-		r.in = without(r.in, me)
-		log.Printf("rooms: %s: %s left (%d in the room)", line, me.Name, len(r.in))
-		for _, o := range r.in {
-			o.send(RoomMessage{Type: "left", ID: me.ID})
-		}
-	}
+	rs.drop(line, r, me)
 	if len(r.in) == 0 && len(r.waiting) == 0 {
 		delete(rs.rooms, line)
 	}
-	me.conn.CloseNow()
+	me.stop()
 }
 
+// drop takes someone out of the room and tells the others. Caller holds rs.mu.
+func (rs *Rooms) drop(line string, r *room, me *member) {
+	if !in(r.in, me) {
+		return
+	}
+	r.in = without(r.in, me)
+	log.Printf("rooms: %s: someone left (%d in the room)", line, len(r.in))
+	for _, o := range r.in {
+		o.send(RoomMessage{Type: "left", ID: me.ID})
+	}
+}
+
+// Recheck sends away an owner whose login ended (logged out, or the password
+// changed): they'd keep letting people in otherwise. A line that has no room
+// any more (moved to Basic) sends everyone away.
+func (rs *Rooms) Recheck(line string) {
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+	r := rs.rooms[line]
+	if r == nil {
+		return
+	}
+	gone := !rs.LineExists(line)
+	for _, m := range r.in {
+		if gone || m.Owner && (rs.IsOwner == nil || !rs.IsOwner(m.req, line)) {
+			m.kill()
+		}
+	}
+	if gone {
+		for _, m := range r.waiting {
+			m.kill()
+		}
+	}
+}
+
+// RecheckAll runs Recheck on every open room, for logins that ran out and
+// plans that changed.
+func (rs *Rooms) RecheckAll() {
+	rs.mu.Lock()
+	names := make([]string, 0, len(rs.rooms))
+	for name := range rs.rooms {
+		names = append(names, name)
+	}
+	now := time.Now()
+	for k, until := range rs.banned {
+		if now.After(until) {
+			delete(rs.banned, k)
+		}
+	}
+	rs.mu.Unlock()
+	for _, name := range names {
+		rs.Recheck(name)
+	}
+}
+
+// ban keeps someone declined or removed from knocking again for a while.
+func (rs *Rooms) ban(line, key string) {
+	if key != "" {
+		rs.banned[line+" "+key] = time.Now().Add(knockBan)
+	}
+}
+
+func (rs *Rooms) isBanned(line, key string) bool {
+	return key != "" && time.Now().Before(rs.banned[line+" "+key])
+}
+
+// expireWait sends a guest away if nobody answered in time.
+func (rs *Rooms) expireWait(line string, me *member) {
+	limit := rs.WaitLimit
+	if limit == 0 {
+		limit = waitLimit
+	}
+	time.AfterFunc(limit, func() {
+		rs.mu.Lock()
+		defer rs.mu.Unlock()
+		r := rs.rooms[line]
+		if r == nil || !in(r.waiting, me) {
+			return
+		}
+		r.waiting = without(r.waiting, me)
+		me.send(RoomMessage{Type: "wait-over"})
+		me.put(closeAfter{})
+		rs.waitingChanged(line, r)
+	})
+}
+
+func waitingFrom(list []*member, key string) int {
+	n := 0
+	for _, m := range list {
+		if m.key == key {
+			n++
+		}
+	}
+	return n
+}
+
+// waitingChanged tells the owner, in the room and on their apps, who waits.
 func (rs *Rooms) waitingChanged(line string, r *room) {
 	if rs.OnWaiting != nil {
 		rs.OnWaiting(line, names(r.waiting))
 	}
+	for _, m := range r.in {
+		if m.Owner {
+			m.send(RoomMessage{Type: "door", Peers: peersOf(r.waiting)})
+		}
+	}
+}
+
+func peersOf(list []*member) []RoomPeer {
+	out := []RoomPeer{}
+	for _, m := range list {
+		out = append(out, m.RoomPeer)
+	}
+	return out
+}
+
+func find(list []*member, id string) *member {
+	for _, m := range list {
+		if m.ID == id {
+			return m
+		}
+	}
+	return nil
 }
 
 func in(list []*member, m *member) bool {

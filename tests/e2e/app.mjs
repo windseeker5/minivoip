@@ -274,6 +274,57 @@ for (const [mine, want, update] of [["0.3", "minivoip for Android 0.3, the lates
   await ctx.close();
 }
 
+// --- Answering from the Android app's ring screen -------------------------
+// A browser never answers from the address: such a link could come from anyone,
+// and would turn on the microphone without a tap. The app hands the call over
+// once (takeAnswer; 0.3 only has the address).
+for (const [kind, bridge, url, answered] of [
+  ["browser", "", "/app?answer=c9", false],
+  ["android 0.3", "old", "/app?answer=c9", true],
+  ["android 0.4", "new", "/app", true],
+  ["android 0.4, a link", "new-none", "/app?answer=c9", false],
+]) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["microphone"] });
+  await ctx.addInitScript((bridge) => {
+    if (!bridge) return;
+    let pending = bridge === "new" ? "c9" : null;
+    window.__ended = 0;
+    window.MinivoipAndroid = { start() {}, settings() {}, clearRing() {}, callEnded() { window.__ended++; } };
+    if (bridge !== "old") window.MinivoipAndroid.takeAnswer = () => { const p = pending; pending = null; return p; };
+  }, bridge);
+  const sent = [];
+  let sock;
+  await ctx.routeWebSocket(/\/ws/, (ws) => { sock = ws; ws.onMessage((m) => sent.push(JSON.parse(m).type)); ws.send(JSON.stringify({ type: "ready" })); });
+  const page = await ctx.newPage();
+  await page.goto(BASE + url);
+  await page.waitForFunction(() => !location.search.includes("answer"));
+  await page.waitForTimeout(300);
+  sock.send(JSON.stringify({ type: "incoming", id: "c9" }));
+  await page.waitForTimeout(800);
+  check(sent.includes("accept") === answered, `${kind}: ${answered ? "answers the call" : "only rings, it doesn't answer"}`);
+  await ctx.close();
+}
+
+// Over the lock screen: only the call shows, and the lock comes back when the
+// call never arrives (the caller hung up as the owner tapped Answer).
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["microphone"] });
+  await ctx.addInitScript(() => {
+    let pending = "gone";
+    window.__ended = 0;
+    window.MinivoipAndroid = { start() {}, settings() {}, clearRing() {}, callEnded() { window.__ended++; }, takeAnswer() { const p = pending; pending = null; return p; } };
+  });
+  await ctx.routeWebSocket(/\/ws/, (ws) => { ws.send(JSON.stringify({ type: "ready" })); });
+  const page = await ctx.newPage();
+  await page.goto(BASE + "/app");
+  await page.waitForTimeout(300);
+  check(await page.locator(".ap.is-answering").count() === 1 && !(await page.isVisible(".ap-tabs")) && !(await page.isVisible('[data-tab="me"]')), "over the lock screen, the app's tabs and account are hidden");
+  await page.screenshot({ path: `${SHOTS}/app-over-lock.png` });
+  await page.waitForFunction(() => window.__ended > 0, null, { timeout: 10000 });
+  check(true, "a call that never arrives gives the phone back to its lock screen");
+  await ctx.close();
+}
+
 // --- Basic plan: no video tools, the Room tab says what Premium adds ------
 {
   const { page } = await open(390, 844, "/app?basic");

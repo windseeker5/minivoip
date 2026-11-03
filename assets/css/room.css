@@ -97,6 +97,18 @@
 .rm-chip svg { width: 1.125rem; height: 1.125rem; }
 .rm-alone { margin: 0 0 .75rem; padding: .75rem 1rem; border-radius: 1rem; background: var(--rm-soft); font-size: .9375rem; }
 .rm-alone p { margin: 0; overflow-wrap: anywhere; }
+/* The host's door: who waits to come in, and who to remove. */
+.rm-door { display: grid; gap: .5rem; margin: 0 0 .75rem; padding: .75rem 1rem; border-radius: 1rem; background: var(--rm-soft); font-size: .9375rem; }
+.rm-door-list { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.rm-door-row { display: flex; align-items: center; gap: .5rem; min-height: 2.75rem; }
+.rm-door-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rm-door-btn { height: 2.75rem; padding: 0 1rem; border: 0; border-radius: 999px; background: #fff; font-weight: 500 !important; }
+.rm-door-btn:hover { background: #ececee; }
+.rm-door-btn.is-yes { background: var(--rm-ink); color: #fff !important; }
+.rm-door-btn.is-yes:hover { background: #2c2c30; }
+.rm-door-note { margin: 0; color: var(--rm-muted); }
+.rm-chip[aria-pressed="true"] { background: var(--rm-ink); color: #fff !important; }
+.rm-chip[aria-pressed="true"]:hover { background: #2c2c30; }
 .rm-stage { display: flex; flex: 1; }
 .rm-meet-note { margin: .75rem 0 0; padding: .625rem .875rem; border-radius: .875rem; background: var(--rm-end-soft); font-size: .875rem; }
 

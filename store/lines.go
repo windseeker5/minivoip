@@ -3,17 +3,20 @@ package store
 import (
 	"database/sql"
 	"errors"
-	"os"
 	"strings"
 
 	"minivoip/lines"
 )
 
-var ErrNameTaken = errors.New("this line name is already taken")
+var (
+	ErrNameTaken = errors.New("this line name is already taken")
+	ErrHasLine   = errors.New("this account already has a line")
+)
 
 // CreateLine gives an account its line, with a starter menu: a greeting
 // and "1: talk to us". The owner edits both in the menu editor. owner_name
-// holds the business name: callers hear "Ringing Joe's B&B".
+// holds the business name: callers hear "Ringing Joe's B&B". One line per
+// account.
 func (s *Store) CreateLine(accountID int64, name, business string) error {
 	owner := business
 	tx, err := s.db.Begin()
@@ -21,6 +24,13 @@ func (s *Store) CreateLine(accountID int64, name, business string) error {
 		return err
 	}
 	defer tx.Rollback()
+	var has int
+	if err := tx.QueryRow("SELECT count(*) FROM line WHERE account_id = ?", accountID).Scan(&has); err != nil {
+		return err
+	}
+	if has > 0 {
+		return ErrHasLine
+	}
 	var taken int
 	if err := tx.QueryRow("SELECT count(*) FROM line WHERE name = ?", name).Scan(&taken); err != nil {
 		return err
@@ -133,7 +143,7 @@ func (s *Store) SaveMenu(accountID int64, l lines.Line) error {
 	}
 	for _, f := range append([]string{old.GreetingAudio, old.VoicemailAudio}, sayAudios(old.Options)...) {
 		if f != "" && !keep[f] {
-			os.Remove(s.PromptPath(f))
+			s.removePrompt(accountID, f)
 		}
 	}
 	return nil

@@ -36,26 +36,16 @@ templ page(title, description string, scripts bool) {
 			}
 			// Set the theme before the first paint: the saved choice, otherwise the
 			// system setting. The toggle in the nav writes the same key.
-			<script>
-				(function () {
-					try {
-						var t = localStorage.getItem("theme");
-						var dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-						document.documentElement.classList.toggle("dark", dark);
-					} catch (e) {}
-				})();
-			</script>
+			<script src="/assets/js/theme.js"></script>
 			// Onest, the site's typeface (--font-sans in globals.css).
-			<link rel="preconnect" href="https://fonts.googleapis.com"/>
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap"/>
+			<link rel="stylesheet" href="/assets/css/fonts.css"/>
 			<link rel="stylesheet" href="/assets/css/output.css"/>
 			// htmx is the stack's swap layer: blocks like dashboard-01 drive
 			// their partial updates (pagination, lazy drawers) through hx-*
 			// attributes against templ fragments. Swap in your own layer
 			// (Datastar etc.) by translating those attributes.
 			if scripts {
-				<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta6/dist/htmx.min.js"></script>
+				<script src="/assets/vendor/htmx-4.0.0-beta6.min.js"></script>
 				@components.Scripts()
 			}
 		</head>

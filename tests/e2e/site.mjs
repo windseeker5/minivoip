@@ -11,7 +11,9 @@
 //    the owner opens it, a third person, the whiteboard, leaving.
 // 4. Promo codes and plans: admins only; a Premium code, sign up with it, used
 //    up, revoke, switch an account between Basic and Premium.
-// 5. A stranger can't open the phone app; log out works.
+// 5. A stranger can't open the phone app; log out works. Security: no account
+//    without a promo code, the host lets each guest into the meeting room,
+//    Change password, a made-up recording type is refused.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
 //
 // BASE=https://voip.dresdell.com node tests/e2e/site.mjs  tests through Caddy.
@@ -50,6 +52,13 @@ const stamp = Date.now().toString(36);
 const EMAIL = `e2e-${stamp}@example.com`;
 const LINE = `e2e-${stamp}`;
 const PREMIUM_EMAIL = `e2e-${stamp}-premium@example.com`;
+// No account without a promo code: the test's own, removed at the end.
+const JOIN_CODE = `E2E-JOIN-${stamp.toUpperCase()}`;
+{
+  const db = new DatabaseSync(DB);
+  db.prepare("INSERT INTO promo_code (code, plan) VALUES (?, 'basic')").run(JOIN_CODE);
+  db.close();
+}
 const failures = [];
 
 // A fake push service: the test subscribes it as one of the owner's phones,
@@ -117,8 +126,9 @@ async function newPage(width = 1280, height = 900) {
   page.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
   page.on("console", (m) => {
     // The dev proxy's live-reload stream drops when the app restarts; not ours.
-    // A form sent back with an error answers 422 on purpose.
-    if (m.type() === "error" && !/_templ\/reload|status of 422/.test(m.text())) consoleErrors.push(`${step}: ${m.text()}`);
+    // A form sent back with an error answers 422 on purpose. An app whose login
+    // ended is refused its socket on purpose, then goes to the login screen.
+    if (m.type() === "error" && !/_templ\/reload|status of 422|role=owner.*code: 403|frame-ancestors|Refused to display/.test(m.text())) consoleErrors.push(`${step}: ${m.text()}`);
   });
   return page;
 }
@@ -211,6 +221,16 @@ try {
     await visitorSite.screenshot({ path: `${SHOTS}/landing-call.png` });
     await visitorSite.click(".close");
     check(await until(async () => visitorSite.frames().length === 1), "× closes it");
+    await visitorSite.click("[data-call-us]");
+    await until(async () => visitorSite.frames().find((f) => f.url().endsWith(callUs)), 10000);
+    const landingWindow = await visitorSite.evaluate(() => {
+      const d = document.querySelector("[data-minivoip]").shadowRoot.querySelector(".panel");
+      return { modal: d.matches(":modal"), blur: getComputedStyle(d, "::backdrop").backdropFilter, scroll: document.documentElement.style.overflow };
+    });
+    check(landingWindow.modal && /blur/.test(landingWindow.blur) && landingWindow.scroll === "hidden", `the window is modal: the page behind is dimmed, blurred and doesn't scroll (${JSON.stringify(landingWindow)})`);
+    await visitorSite.locator(".close").focus();
+    await visitorSite.keyboard.press("Escape");
+    check(await until(async () => visitorSite.frames().length === 1), "Esc closes it when no call is on");
   } else {
     check(await visitorSite.isVisible('a[href="#how"]'), "without a real line, the hero offers how it works");
   }
@@ -263,11 +283,16 @@ try {
   step = "sign up";
   await owner.goto(BASE + "/");
   await owner.click('nav a[href="/signup"]');
+  check(await owner.getAttribute("#promo", "required") !== null && await owner.isVisible("text=You need a promo code"), "the sign up page says a promo code is needed");
+  await owner.screenshot({ path: `${SHOTS}/signup.png` });
+  const noCode = await owner.request.post(BASE + "/signup", { form: { email: EMAIL, password: "e2e-password" }, maxRedirects: 0 });
+  check(noCode.status() === 422 && (await noCode.text()).includes("Enter your promo code"), "no promo code, no account");
   await owner.fill("#email", EMAIL);
   await owner.fill("#password", "e2e-password");
+  await owner.fill("#promo", JOIN_CODE);
   await owner.click("main button[type=submit]");
   await owner.waitForSelector("[data-business]");
-  check(true, "sign up leads to step 2, the business name");
+  check(true, "sign up with a code leads to step 2, the business name");
 
   step = "create line";
   await owner.fill("#business", "E2E Shop & Co");
@@ -451,7 +476,7 @@ try {
   check(await owner.isVisible("#button-code"), "Add a Call button opens the code to paste");
   await owner.mouse.click(5, 5);
   check(!(await owner.isVisible("#dlg-website")), "a click outside closes the window");
-  // A new account without a promo code is Basic: no meeting room.
+  // A new account with a Basic code is Basic: no meeting room.
   await owner.click('[data-open="dlg-room"]');
   check(await owner.isVisible("[data-room-locked]") && (await owner.locator("#room-link").count()) === 0, "a Basic dashboard says the meeting room comes with Premium");
   await owner.keyboard.press("Escape");
@@ -527,12 +552,16 @@ try {
   // show notifications, so the worker's own code runs in a page.
   {
     const logo = await owner.getAttribute("[data-phone]", "data-me-logo");
-    const p = await newPage(800, 600);
+    // bypassCSP: this test runs the worker's text as code, which pages may not do.
+    const p = await (await browser.newContext({ viewport: { width: 800, height: 600 }, bypassCSP: true })).newPage();
+    p.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
     await p.goto(BASE + "/login");
     const icons = await p.evaluate(async (logo) => {
       const shown = [];
       window.registration = { showNotification: (title, o) => { shown.push(o.icon); return Promise.resolve(); } };
-      const show = new Function((await (await fetch("/sw.js")).text()) + "; return show;")();
+      // The worker falls back to the plain picture after a second, and headless Chromium can take that long to draw.
+      const worker = (await (await fetch("/sw.js")).text()).replace("ok(url); }, 1000)", "ok(url); }, 8000)");
+      const show = new Function(worker + "; return show;")();
       await show({ icon: logo });
       await show({ icon: "/manifest.webmanifest" }); // not a picture
       const alpha = async (url) => {
@@ -545,7 +574,7 @@ try {
       };
       return Promise.all(shown.map(async (u) => ({ data: u.startsWith("data:image/png"), alpha: await alpha(u) })));
     }, logo);
-    await p.close();
+    await p.context().close();
     const round = (i) => i && i.data && i.alpha[0] === 0 && i.alpha[1] === 255;
     check(/^\/logo\//.test(logo) && round(icons[0]), `a notification shows the logo round, see-through corners (${JSON.stringify(icons[0])})`);
     check(round(icons[1]), `a logo that can't be read gives the round minivoip mark (${JSON.stringify(icons[1])})`);
@@ -786,59 +815,46 @@ try {
   check(await until(async () => (await awayPage.evaluate(() => document.querySelector("[data-call]").dataset.here)) === "true", 40000),
     "an open call page sees the owner come back, without a reload");
   await awayPage.context().close();
-  // A computer: the call opens in a window over the page, which dims and
-  // blurs behind it, and a real call works in it.
+  // A computer, on another site: the call opens in its own window, so the
+  // microphone permission is ours and never the website's, and a real call
+  // works in it. The site can't reach that window.
   await biz.reload();
   await until(async () => (await btnState(biz)) === "true");
-  await biz.click(".btn");
-  const panelFrame = await until(async () => biz.frames().find((f) => f.url().includes(`/call/${LINE}`)), 10000);
-  check(!!panelFrame, "a click opens the call page in a window on the website");
-  const callWindow = () => biz.evaluate(() => {
-    const d = document.querySelector("[data-minivoip]").shadowRoot.querySelector(".panel");
-    return { open: d.open, modal: d.matches(":modal"), blur: getComputedStyle(d, "::backdrop").backdropFilter, scroll: document.documentElement.style.overflow };
-  });
-  // What the call page tells the window (busy while a call is on).
-  await biz.evaluate(() => { window.__said = []; window.addEventListener("message", (e) => window.__said.push(e.data)); });
-  const cw = await callWindow();
-  check(cw.open && cw.modal && /blur/.test(cw.blur) && cw.scroll === "hidden", `the window is modal: the page behind is dimmed, blurred and doesn't scroll (${JSON.stringify(cw)})`);
-  await panelFrame.waitForSelector('[data-action="call"]:visible');
-  await biz.waitForTimeout(400);
-  await biz.screenshot({ path: `${SHOTS}/button-window.png` });
-  await panelFrame.click('[data-action="call"]:visible');
-  await panelFrame.waitForSelector('[data-key="1"]:visible');
-  await panelFrame.click('[data-key="1"]');
+  const [panel] = await Promise.all([biz.context().waitForEvent("page"), biz.click(".btn")]);
+  panel.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
+  await panel.waitForLoadState();
+  check(panel.url().includes(`/call/${LINE}`) && biz.frames().length === 1, "a click opens the call page in its own window, not inside the website");
+  check(await panel.evaluate(() => window.opener === null), "the website has no hold on that window");
+  await panel.waitForSelector('[data-action="call"]:visible');
+  await panel.screenshot({ path: `${SHOTS}/button-window.png` });
+  await panel.click('[data-action="call"]:visible');
+  await panel.waitForSelector('[data-key="1"]:visible');
+  await panel.click('[data-key="1"]');
   await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
   await owner.click('[data-action="accept"]');
-  check(await until(async () => (await panelFrame.evaluate(() => document.querySelector("[data-call]").dataset.state)) === "talking", 15000),
-    "a call from the website's panel connects (microphone allowed in the panel)");
-  await biz.screenshot({ path: `${SHOTS}/button-panel.png` });
-  await biz.mouse.click(30, 30);
-  await biz.waitForTimeout(300);
-  check((await callWindow()).open && (await panelFrame.evaluate(() => document.querySelector("[data-call]").dataset.state)) === "talking",
-    "a click on the dimmed page doesn't end a call");
-  await panelFrame.click('[data-action="hangup"]:visible');
+  check(await until(async () => (await panel.evaluate(() => document.querySelector("[data-call]").dataset.state)) === "talking", 15000),
+    "a call from the website's button connects");
+  await panel.click('[data-action="hangup"]:visible');
   await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
-  await panelFrame.waitForSelector('[data-show~="ended"]:visible');
-  await until(async () => biz.evaluate(() => window.__said.some((m) => m.type === "busy" && !m.on)));
-  await biz.mouse.click(30, 30);
-  check(await until(async () => biz.frames().length === 1) && (await callWindow()).scroll === "", "after the call, a click on the dimmed page closes the window and the page scrolls again");
+  await panel.close();
+  // Another site can't put the call window in a frame of its own.
+  await biz.evaluate((src) => { const f = document.createElement("iframe"); f.id = "steal"; f.src = src; document.body.append(f); }, `${BASE}/call/${LINE}`);
+  await biz.waitForTimeout(800);
+  const stolen = biz.frames().find((f) => f !== biz.mainFrame());
+  check(!stolen || !(await stolen.url()).includes("/call/") || !(await stolen.$("[data-call]").catch(() => null)), "another site can't frame the call window");
+  await biz.evaluate(() => document.getElementById("steal").remove());
   // The site's own link opens it too, and the corner button steps aside
-  // while that link is on screen; × and Esc close it.
+  // while that link is on screen.
   const aside = () => biz.evaluate(() => document.querySelector("[data-minivoip]").shadowRoot.querySelector(".mv").classList.contains("aside"));
   check(!(await aside()), "the corner button shows while the site's own call link is off screen");
   await biz.locator("#own-link").scrollIntoViewIfNeeded();
   check(await until(async () => (await aside()) && !(await biz.locator(".btn").isVisible())), "and steps aside while the link is on screen");
-  await biz.click("#own-link");
-  check(await until(async () => (await callWindow()).open) && biz.context().pages().length === 1, "the site's own Call us link opens the same window");
-  await biz.click(".close");
-  check(await until(async () => biz.frames().length === 1), "× closes the window");
+  const [ownWindow] = await Promise.all([biz.context().waitForEvent("page"), biz.click("#own-link")]);
+  await ownWindow.waitForLoadState();
+  check(ownWindow.url().includes(`/call/${LINE}`), "the site's own Call us link opens the same window");
+  await ownWindow.close();
   await biz.evaluate(() => window.scrollTo(0, 0));
   check(await until(async () => !(await aside())), "the corner button comes back once the link is scrolled away");
-  await biz.click(".btn");
-  await until(async () => (await callWindow()).open);
-  await biz.locator(".close").focus();
-  await biz.keyboard.press("Escape");
-  check(await until(async () => !(await callWindow()).open), "Esc closes the window when no call is on");
   await biz.context().close();
   // A phone: the call page takes the whole screen.
   const bizPhone = await newPage(390, 844);
@@ -891,9 +907,14 @@ try {
   await host.waitForTimeout(300);
   await host.screenshot({ path: `${SHOTS}/room-ready.png` });
   await host.click('[data-action="join"]');
-  await guest.waitForSelector(".rm-in:visible", { timeout: 10000 });
   await host.waitForSelector(".rm-in:visible", { timeout: 10000 });
-  check(true, "opening the room lets the waiting guest in");
+  await host.waitForSelector('[data-door] >> text=Ana Roy is waiting', { timeout: 5000 });
+  await host.waitForTimeout(500);
+  check(await guest.isVisible("text=Waiting for") && await guest.isHidden(".rm-in"), "opening the room doesn't let anyone in: the guest still waits");
+  await host.screenshot({ path: `${SHOTS}/room-door.png` });
+  await host.click('[data-door] [data-action="admit"]');
+  await guest.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  check(true, "the host lets the guest in");
   await owner.waitForSelector("[data-room-alert]", { state: "hidden", timeout: 5000 });
   check(true, "the app's waiting alert goes away");
   await guest.waitForTimeout(3000);
@@ -905,9 +926,14 @@ try {
   await bo.goto(BASE + `/room/${LINE}`);
   await bo.fill("[data-name]", "Bo");
   await bo.click('[data-action="join"]');
+  await bo.waitForSelector("text=Waiting for", { timeout: 10000 });
+  await host.waitForSelector("[data-door] >> text=Bo is waiting", { timeout: 5000 });
+  check(await bo.isHidden(".rm-in"), "a third person waits too, while the owner is there");
+  await host.click('[data-door] [data-action="admit"]');
   await bo.waitForSelector(".rm-in:visible", { timeout: 10000 });
   await bo.waitForFunction(() => /3 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 10000 });
-  check(/3 people/.test(await host.textContent("[data-people]")), "a third person comes straight in while the owner is there");
+  check(/3 people/.test(await host.textContent("[data-people]")), "and comes in when the host says yes");
+  check(await guest.locator('[data-action="people"], [data-door]').count() === 0, "a guest has no door and can't remove anyone");
   await bo.waitForTimeout(3000);
   const bs = await bo.evaluate(() => window.minivoipRoomStats());
   check(bs.length === 2 && bs.every((x) => x.bytesIn > 1000), `everyone hears everyone (${bs.map((x) => x.bytesIn).join(", ")} bytes)`);
@@ -931,6 +957,34 @@ try {
   await bo.click('.rm-controls [data-action="leave"]');
   await host.waitForFunction(() => /2 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
   check(await bo.isVisible("text=You left the room"), "Leave leaves; the others see one less");
+
+  step = "host declines and removes";
+  const eve = await newPage();
+  await eve.goto(BASE + `/room/${LINE}`);
+  await eve.fill("[data-name]", "Eve");
+  await eve.click('[data-action="join"]');
+  await host.waitForSelector("[data-door] >> text=Eve is waiting", { timeout: 5000 });
+  await host.click('[data-door] [data-action="deny"]');
+  await eve.waitForSelector("text=didn't let you in", { timeout: 5000 });
+  check(/2 people/.test(await host.textContent("[data-people]")), "the host declines someone: they never come in");
+  await eve.click('[data-show="left dropped"] [data-action="join"]');
+  await host.waitForSelector("[data-door] >> text=Eve is waiting", { timeout: 5000 });
+  await host.click('[data-door] [data-action="admit"]');
+  await eve.waitForSelector(".rm-in:visible", { timeout: 10000 });
+  await host.waitForFunction(() => /3 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+  await host.click('[data-action="people"]');
+  await host.waitForSelector("[data-door-in] >> text=Eve");
+  await host.screenshot({ path: `${SHOTS}/room-people.png` });
+  await host.setViewportSize({ width: 390, height: 844 });
+  check(await host.evaluate(() => document.documentElement.scrollWidth) <= 390, "phone width: the host's list doesn't scroll sideways");
+  await host.screenshot({ path: `${SHOTS}/room-people-phone.png` });
+  await host.setViewportSize({ width: 1280, height: 900 });
+  await host.click('[data-door-in] [aria-label="Remove Eve"]');
+  await eve.waitForSelector("text=removed you from the room", { timeout: 5000 });
+  await host.waitForFunction(() => /2 people/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+  check(await eve.isHidden(".rm-in"), "the host removes someone: they're out, and the others see one less");
+  await eve.screenshot({ path: `${SHOTS}/room-removed.png` });
+  await eve.context().close();
   await guest.click('.rm-controls [data-action="leave"]');
   await host.waitForFunction(() => /just you/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
   await host.click('.rm-controls [data-action="leave"]');
@@ -962,7 +1016,7 @@ try {
   check(await owner.isVisible(`[data-promo="${CODE}"] [data-plan-badge="premium"]`), "the code says it gives Premium");
   await owner.fill("#code", CODE);
   await owner.click("main button[type=submit]");
-  check(await owner.isVisible("text=already exists"), "the same code can't be made twice");
+  check(await owner.waitForSelector("text=already exists", { timeout: 5000 }).then(() => true, () => false), "the same code can't be made twice");
 
   step = "friend signs up with the code";
   const friend = await newPage();
@@ -1107,7 +1161,8 @@ try {
   // would send it.
   step = "limits";
   {
-    const visitorAddr = () => `2001:db8::${randomBytes(6).toString("hex").match(/.{4}/g).join(":")}`;
+    // A different network each: IPv6 visitors are counted by their /64.
+    const visitorAddr = () => `2001:db8:${randomBytes(6).toString("hex").match(/.{4}/g).join(":")}::1`;
     const as = async (addr) => {
       const ctx = await browser.newContext({ extraHTTPHeaders: { "X-Forwarded-For": addr } });
       return { ctx, page: await ctx.newPage() };
@@ -1126,9 +1181,17 @@ try {
     const maker = await as(visitorAddr());
     const made = [];
     for (let i = 1; i <= 4; i++) {
-      made.push((await maker.ctx.request.post(BASE + "/signup", { form: { email: `e2e-${stamp}-limit${i}@example.com`, password: "e2e-password" }, maxRedirects: 0 })).status());
+      made.push((await maker.ctx.request.post(BASE + "/signup", { form: { email: `e2e-${stamp}-limit${i}@example.com`, password: "e2e-password", promo: JOIN_CODE }, maxRedirects: 0 })).status());
     }
     check(made.join(",") === "303,303,303,429", `a 4th account in an hour from one visitor is refused (${made.join(",")})`);
+    // Guessing promo codes: 10 refused tries an hour from one visitor.
+    const codeGuesser = await as(visitorAddr());
+    const guesses = [];
+    for (let i = 1; i <= 11; i++) {
+      guesses.push((await codeGuesser.ctx.request.post(BASE + "/signup", { form: { email: `e2e-${stamp}-guess@example.com`, password: "e2e-password", promo: `E2E-GUESS-${i}` }, maxRedirects: 0 })).status());
+    }
+    check(guesses.slice(0, 10).every((s) => s === 422) && guesses[10] === 429, `promo codes can't be guessed: the 11th try is refused (${guesses[10]})`);
+    await codeGuesser.ctx.close();
     // "Get Premium": 3 emails an hour from one visitor.
     const asker = await as(visitorAddr());
     const asked = [];
@@ -1159,13 +1222,80 @@ try {
     for (let i = 0; i < 4; i++) passes.push((await ask({ type: "voicemail", option: "Limits" })).token);
     const sent = [];
     for (const token of passes) {
-      sent.push((await ringer.ctx.request.post(BASE + "/api/voicemail", { multipart: { token, duration_ms: "1000", audio: { name: "m.webm", mimeType: "audio/webm", buffer: Buffer.from("e2e message") } } })).status());
+      sent.push((await ringer.ctx.request.post(BASE + "/api/voicemail", { headers: { "X-Voicemail-Pass": token }, multipart: { duration_ms: "1000", audio: { name: "m.webm", mimeType: "audio/webm", buffer: Buffer.from("e2e message") } } })).status());
     }
     check(sent.join(",") === "204,204,204,429", `a 4th message in an hour is refused (${sent.join(",")})`);
+    // A recording of a made-up type is refused: it could open as a web page.
+    const hostile = await as(visitorAddr());
+    await hostile.page.goto(BASE + "/login");
+    const hostilePass = await hostile.page.evaluate((line) => new Promise((ok) => {
+      const ws = new WebSocket(location.origin.replace(/^http/, "ws") + "/ws?role=visitor&line=" + line);
+      ws.onopen = () => ws.send(JSON.stringify({ type: "voicemail" }));
+      ws.onmessage = (e) => { ok(JSON.parse(e.data).token); ws.close(); };
+    }), LINE);
+    const hostileUp = await hostile.ctx.request.post(BASE + "/api/voicemail", { headers: { "X-Voicemail-Pass": hostilePass }, multipart: { duration_ms: "1000", audio: { name: "m", mimeType: "audio/x,text/html", buffer: Buffer.from("<script>alert(1)</script>") } } });
+    check(hostileUp.status() === 415, `a recording of a made-up type is refused (${hostileUp.status()})`);
+    await hostile.ctx.close();
     const more = await ask({ type: "voicemail", option: "Limits" });
     check(more.type === "limited" && !more.token, "and the call page is told to try later, with no voicemail pass");
     for (const v of [guesser, someoneElse, maker, ringer]) await v.ctx.close();
   }
+
+  // Change password, from the account menu: the other devices log out.
+  step = "change password";
+  const otherDevice = await newPage();
+  await otherDevice.goto(BASE + "/login");
+  await otherDevice.fill("#email", EMAIL);
+  await otherDevice.fill("#password", "e2e-password");
+  await otherDevice.click("main button[type=submit]");
+  await otherDevice.waitForURL(/\/dashboard/);
+  await owner.goto(BASE + "/dashboard");
+  await owner.click("[data-account-button]:visible");
+  await owner.click('#account-menu a[href="/dashboard/password"]');
+  await owner.waitForSelector("#current");
+  await owner.fill("#current", "not-the-password");
+  await owner.fill("#new", "e2e-new-password");
+  await owner.click("main form[action='/dashboard/password'] button[type=submit]");
+  await owner.waitForSelector("text=current password isn't right");
+  check(true, "a wrong current password is refused");
+  await owner.fill("#current", "e2e-password");
+  await owner.fill("#new", "e2e-new-password");
+  await owner.screenshot({ path: `${SHOTS}/password.png`, fullPage: true });
+  await owner.click("main form[action='/dashboard/password'] button[type=submit]");
+  await owner.waitForSelector("[data-password-saved]");
+  check(true, "the password changes, and this device stays logged in");
+  await otherDevice.goto(BASE + "/dashboard");
+  check(new URL(otherDevice.url()).pathname === "/login", "the other device is logged out");
+  await otherDevice.context().close();
+  // An app left open on a device that logged out goes to the login screen.
+  {
+    const phone = await newPage(390, 844);
+    await phone.goto(BASE + "/login?next=/app");
+    await phone.fill("#email", EMAIL);
+    await phone.fill("#password", "e2e-new-password");
+    await phone.click("main button[type=submit]");
+    await phone.waitForSelector("[data-phone]");
+    await phone.waitForTimeout(500);
+    const thisLogin = await phone.context().cookies();
+    const outside = await newPage();
+    await outside.context().addCookies(thisLogin);
+    await outside.goto(BASE + "/dashboard");
+    await outside.click("[data-account-button]:visible");
+    await outside.click("#account-menu button[type=submit]");
+    await phone.waitForURL(/\/login\?next=\/app/, { timeout: 15000 });
+    check(true, "logging out closes that login's open app, which goes to the login screen");
+    await phone.context().close();
+    await outside.context().close();
+  }
+
+  step = "security headers";
+  const headers = (await owner.request.get(BASE + "/dashboard")).headers();
+  check(headers["x-content-type-options"] === "nosniff" && headers["x-frame-options"] === "DENY" && /frame-ancestors 'none'/.test(headers["content-security-policy"] || ""), "pages carry the browser's security rules");
+  check((await owner.request.get(BASE + `/call/${LINE}`)).headers()["x-frame-options"] === "SAMEORIGIN", "the call window only sits in our own pages");
+  check(/script-src 'self';/.test(headers["content-security-policy"] || ""), "scripts only come from this site, none inline");
+  const anonICE = await (await browser.newContext()).request.get(BASE + "/api/ice");
+  check(!(await anonICE.text()).includes("credential"), "a stranger gets no relay login");
+  check((await (await owner.request.get(BASE + "/api/ice")).text()).includes("credential"), "a logged-in owner does");
 
   step = "log out";
   await owner.goto(BASE + "/dashboard");
@@ -1197,6 +1327,7 @@ try {
   for (const p of logos) if (p.f) rmSync(join(dirname(DB), "logos", p.f), { force: true });
   db.prepare("DELETE FROM account WHERE name LIKE 'e2e-%@example.com'").run();
   db.prepare("DELETE FROM push_log WHERE line LIKE 'e2e-%'").run();
+  db.prepare("UPDATE account SET promo_code = NULL WHERE promo_code LIKE 'E2E-%'").run();
   db.prepare("DELETE FROM promo_code WHERE code LIKE 'E2E-%'").run();
   db.prepare("DELETE FROM premium_request WHERE email LIKE 'e2e-%@example.com'").run();
   db.close();

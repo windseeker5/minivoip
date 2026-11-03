@@ -1,6 +1,6 @@
 # Data dictionary
 
-Last update: 2026-10-25 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
+Last update: 2026-11-02 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
 
 ## account
 One customer (a business). Created at sign up.
@@ -9,7 +9,7 @@ One customer (a business). Created at sign up.
 |---|---|---|
 | `id` | integer, key | |
 | `name` | text | For now the sign-up email; a business name later |
-| `promo_code` | text, nullable → `promo_code.code` | The code used at sign up. Set = free forever (while the code isn't revoked) |
+| `promo_code` | text, nullable → `promo_code.code` | The code used at sign up, which is required since 2026-11-02. Set = free forever (while the code isn't revoked) |
 | `plan` | text: `basic` or `premium` | What the account gets. Basic: calls, voice menu, voicemail. Premium adds video, screen sharing, the whiteboard and the meeting room (`store.Plan`). From the promo code at sign up, else `basic`; admins switch it on `/admin/promo` |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 
@@ -22,17 +22,18 @@ A person who logs in. One per account for now (staff accounts later).
 | `account_id` | integer → `account.id` (delete cascades) | |
 | `email` | text, unique, case-insensitive | Login name |
 | `password_hash` | text | bcrypt hash; the password is never stored |
-| `is_admin` | integer 0/1 | Can manage promo codes (set it with SQL). Emails in `MINIVOIP_ADMINS` are admins too |
+| `is_admin` | integer 0/1 | Can manage promo codes (set it with SQL) |
 | `created_at` | text (UTC) | |
 
 ## session
-A login. The token is the `mv_session` cookie (HttpOnly, SameSite=Lax). Lasts 30 days.
+A login. The token is the `mv_session` cookie (`__Host-mv_session` behind HTTPS; HttpOnly, SameSite=Lax); the database keeps only its SHA-256, so a copy of the database can't log anyone in. Lasts 30 days; expired rows are deleted daily (`Store.Cleanup`).
 
 | Column | Type | Meaning |
 |---|---|---|
-| `token` | text, key | 64 random hex characters |
+| `token` | text, key | SHA-256 of the cookie's 64 random hex characters |
 | `user_id` | integer → `user.id` (delete cascades) | |
 | `expires_at` | text (UTC) | Ignored after this time |
+| `hashed` | integer 0/1 | 1: `token` is a hash (always, once the app has started on migration 12) |
 
 ## line
 A phone line: the call link `/call/<name>` and its voice menu. One per account.
@@ -93,6 +94,7 @@ A message a caller left. The audio file is `<data dir>/voicemail/<file>` (delete
 | `duration_ms` | integer | Length measured by the caller's browser |
 | `file` | text | File name under `voicemail/` (`msg-*.webm`, `.m4a` or `.ogg`) |
 | `content_type` | text | e.g. `audio/webm` |
+| `size` | integer | The file's size in bytes, for the mailbox limits (`Store.MailboxFull`) |
 | `listened` | integer 0/1 | 1 once the owner pressed play |
 | `created_at` | text (UTC) | |
 
@@ -142,7 +144,7 @@ Delivery receipts for push notifications, to find out whether a phone really ran
 | `phone_note` | text | `app on screen` or `app not on screen` |
 
 ## setting
-Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, made on first start; never change them or every phone must turn notifications on again) and `turn_secret` (signs the relay logins; made on first start).
+Server settings. Keys today: `vapid_public`, `vapid_private` (web push keys, made on first start; never change them or every phone must turn notifications on again) and `turn_secret` (signs the relay logins; made on first start) and `known_key` (signs the mark of a browser that has logged in; made on first need).
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -156,6 +158,15 @@ Emails left on the landing page's "Get Premium" form (`POST /premium`, at most 3
 |---|---|---|
 | `id` | integer, key | |
 | `email` | text, unique, case-insensitive | Asking twice keeps the first row |
+| `created_at` | text (UTC) | |
+
+## prompt
+Who owns each recorded message (files in `<data dir>/prompts/`): only that account can use it in a menu or delete it. At most 40 per account; recordings no menu uses go away after a day.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `name` | text, key | The file name, also the `line.greeting_audio`, `line.voicemail_audio` and `menu_option.say_audio` value |
+| `account_id` | integer → `account.id` (delete cascades) | |
 | `created_at` | text (UTC) | |
 
 ## Version history
@@ -172,3 +183,5 @@ Emails left on the landing page's "Get Premium" form (`POST /premium`, at most 3
 | 9 | 2026-10-27 | `line.logo` (in `<data dir>/logos/`, public at `/logo/<name>`, random names; a new logo or Remove deletes the old file) |
 | 10 | 2026-10-31 | `premium_request` (the landing page's "Get Premium" emails) |
 | 11 | 2026-11-02 | `line.voicemail_text`, `line.voicemail_audio` (the voicemail greeting; a `voicemail` choice's own message becomes it) |
+| 12 | 2026-11-02 | `prompt` (who owns each recording), `session.hashed` (tokens stored as a hash, old ones converted at start) |
+| 13 | 2026-11-03 | `voicemail.size` (old messages filled in at start) |

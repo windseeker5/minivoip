@@ -20,18 +20,22 @@ templ iconLeave() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"></path></svg>
 }
 
+templ iconPeople() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20a6 6 0 0 1 12 0M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.5a6 6 0 0 1 3 5.5"></path></svg>
+}
+
 templ iconCopy() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
 }
 
 // Room is a line's meeting room: /room/<line> (DESIGN.md "Meeting room").
 // First a "get ready" screen (name, microphone, camera), then the room: the
-// stage (meet.js) and the controls. Guests wait until the owner opens it.
+// stage (meet.js) and the controls. Guests wait until the owner lets them in.
 // room.js shows the parts whose data-show lists the state.
 templ Room(l lines.Line, isOwner bool, url string) {
 	{{ owner := ownerName(l) }}
 	@layouts.Plain(l.Business + " · Meeting room") {
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
+		<link rel="stylesheet" href="/assets/css/fonts.css"/>
 		<link rel="stylesheet" href="/assets/css/room.css"/>
 		<link rel="stylesheet" href="/assets/css/stage.css"/>
 		<main class="rm" data-room data-state="lobby">
@@ -67,7 +71,7 @@ templ Room(l lines.Line, isOwner bool, url string) {
 					<h1 class="rm-title" tabindex="-1" data-focus>{ l.Business }</h1>
 					<div class="rm-step" data-show="lobby joining">
 						if isOwner {
-							<p class="rm-text">You're the host. People who open your link wait here until you open the room.</p>
+							<p class="rm-text">You're the host. People who open your link wait until you let them in, one by one.</p>
 						} else {
 							<label class="rm-label" for="rm-name">Your name</label>
 							<input class="rm-input" id="rm-name" data-name autocomplete="name" maxlength="40" placeholder={ "So " + owner + " knows who you are" }/>
@@ -82,8 +86,8 @@ templ Room(l lines.Line, isOwner bool, url string) {
 						<p class="rm-note">Free, in your browser. It will ask to use your microphone; the camera only if you turn it on.</p>
 					</div>
 					<div class="rm-step" data-show="waiting" hidden>
-						<p class="rm-waiting"><i aria-hidden="true"></i>Waiting for { owner } to open the room…</p>
-						<p class="rm-text">You'll come in as soon as they do. Keep this page open.</p>
+						<p class="rm-waiting"><i aria-hidden="true"></i>Waiting for { owner } to let you in…</p>
+						<p class="rm-text">You'll come in as soon as they say yes. Keep this page open.</p>
 						<button type="button" class="rm-btn is-plain" data-action="leave">Leave</button>
 					</div>
 					<div class="rm-step" data-show="full" hidden>
@@ -108,11 +112,24 @@ templ Room(l lines.Line, isOwner bool, url string) {
 						<p class="rm-bar-name" tabindex="-1" data-focus>{ l.Business }</p>
 						<p class="rm-bar-sub" data-people>Meeting room</p>
 					</div>
+					if isOwner {
+						<button type="button" class="rm-chip" data-action="people" aria-pressed="false" aria-label="People">
+							@iconPeople()
+							<span>People</span>
+						</button>
+					}
 					<button type="button" class="rm-chip" data-action="copy">
 						@iconCopy()
 						<span>Copy link</span>
 					</button>
 				</header>
+				if isOwner {
+					<div class="rm-door" data-door hidden>
+						<ul class="rm-door-list" data-door-waiting aria-label="Waiting to come in"></ul>
+						<ul class="rm-door-list" data-door-in aria-label="In the room" hidden></ul>
+						<p class="rm-door-note" data-door-note role="status" hidden></p>
+					</div>
+				}
 				<div class="rm-alone" data-alone hidden>
 					<p>Nobody else is here yet. Send them the link: <b>{ url }</b></p>
 				</div>

@@ -4,28 +4,35 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"minivoip/calls"
 	"minivoip/pages"
 	"minivoip/store"
 )
 
+// voicemailPassHeader carries the one-time token, so it's checked before the
+// message is read: nobody fills the server's storage without a real pass.
+const voicemailPassHeader = "X-Voicemail-Pass"
+
 // uploadVoicemail takes a caller's recording. No login: the one-time token
-// from the call socket says which line it's for.
+// from the call socket says which line it's for. It is checked first and spent
+// once the message arrived, so a caller on a bad connection can try again.
 func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, store.MaxVoicemailBytes+1<<20)
-	if err := r.ParseMultipartForm(1 << 20); err != nil {
-		http.Error(w, "The message is too long.", http.StatusRequestEntityTooLarge)
-		return
-	}
-	pass, ok := s.Hub.UseVoicemailToken(r.FormValue("token"))
-	if !ok {
+	token := r.Header.Get(voicemailPassHeader)
+	if !s.Hub.VoicemailTokenValid(token) {
 		http.Error(w, "This voicemail link has expired. Please call again.", http.StatusForbidden)
 		return
 	}
-	if s.voicemailFull(r, pass.Line) {
-		http.Error(w, "You left a few messages already. Please try again later.", http.StatusTooManyRequests)
+	if ip, local := clientIP(r); !local {
+		if !s.Limits.Uploads.Take(ip) {
+			http.Error(w, "You left a few messages already. Please try again later.", http.StatusTooManyRequests)
+			return
+		}
+		defer s.Limits.Uploads.Done(ip)
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, store.MaxVoicemailBytes+1<<20)
+	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		http.Error(w, "The message is too long.", http.StatusRequestEntityTooLarge)
 		return
 	}
 	file, header, err := r.FormFile("audio")
@@ -34,20 +41,28 @@ func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	ct := strings.TrimSpace(strings.Split(header.Header.Get("Content-Type"), ";")[0])
-	if !strings.HasPrefix(ct, "audio/") && ct != "video/webm" {
+	ct := store.AudioType(header.Header.Get("Content-Type"))
+	if ct == "" {
 		http.Error(w, "That isn't a sound recording.", http.StatusUnsupportedMediaType)
 		return
 	}
-	if ct == "video/webm" {
-		ct = "audio/webm"
+	pass, ok := s.Hub.UseVoicemailToken(token)
+	if !ok {
+		http.Error(w, "This voicemail link has expired. Please call again.", http.StatusForbidden)
+		return
 	}
+	if !s.takeVoicemail(r, pass.Line) {
+		http.Error(w, "You left a few messages already. Please try again later.", http.StatusTooManyRequests)
+		return
+	}
+	// A message lasts two minutes; the browser only reports it.
 	ms, _ := strconv.ParseInt(r.FormValue("duration_ms"), 10, 64)
+	ms = min(max(ms, 0), 5*60*1000)
 	if _, err := s.Store.AddVoicemail(pass.Line, pass.Option, pass.CallID, ct, ms, file); err != nil {
+		s.giveVoicemail(r, pass.Line)
 		serverError(w, r, err)
 		return
 	}
-	s.voicemailSaved(r, pass.Line)
 	s.Hub.NotifyOwners(pass.Line, calls.Message{Type: "voicemail"})
 	if s.OnVoicemail != nil {
 		s.OnVoicemail(pass.Line)
@@ -89,6 +104,11 @@ func (s *Server) voicemailAudio(w http.ResponseWriter, r *http.Request, u store.
 		serverError(w, r, err)
 		return
 	}
+	// Anything stored before the upload checked its type plays as a recording.
+	if ct = store.AudioType(ct); ct == "" {
+		ct = "audio/webm"
+	}
+	sandboxed(w)
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	http.ServeFile(w, r, path)

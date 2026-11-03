@@ -349,3 +349,6 @@ body:has(> .ap), html:has(.ap) { background: #f6f6f7; color-scheme: light; }
 @media (prefers-reduced-motion: reduce) {
   .ap-call, .ap-answer, .ap-call-state .ap-dot, .ap-room-alert, .ap-call.is-ringing .ap-face > i { animation: none; }
 }
+
+/* Answering from the lock screen: only the call shows (phone.js). */
+.ap.is-answering > :not(.ap-call) { display: none !important; }

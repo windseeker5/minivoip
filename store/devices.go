@@ -15,12 +15,20 @@ type Device struct {
 	UserAgent string
 }
 
+// MaxDevices caps an account's devices; the oldest makes room for a new one.
+const MaxDevices = 10
+
 // SaveDevice adds or refreshes a push subscription for an account.
 func (s *Store) SaveDevice(accountID int64, d Device) error {
 	_, err := s.db.Exec(`INSERT INTO device (account_id, endpoint, p256dh, auth, user_agent) VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT (endpoint) DO UPDATE SET account_id = excluded.account_id, p256dh = excluded.p256dh,
 			auth = excluded.auth, user_agent = excluded.user_agent`,
 		accountID, d.Endpoint, d.P256dh, d.Auth, d.UserAgent)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`DELETE FROM device WHERE account_id = ?1 AND id NOT IN
+		(SELECT id FROM device WHERE account_id = ?1 ORDER BY id DESC LIMIT ?2)`, accountID, MaxDevices)
 	return err
 }
 
@@ -54,6 +62,13 @@ func (s *Store) DeviceCount(accountID int64) int {
 // the owner turned notifications off).
 func (s *Store) DeleteDevice(endpoint string) error {
 	_, err := s.db.Exec("DELETE FROM device WHERE endpoint = ?", endpoint)
+	return err
+}
+
+// DeleteAccountDevice forgets one of the account's subscriptions (the owner
+// turned notifications off or logged out on that device).
+func (s *Store) DeleteAccountDevice(accountID int64, endpoint string) error {
+	_, err := s.db.Exec("DELETE FROM device WHERE account_id = ? AND endpoint = ?", accountID, endpoint)
 	return err
 }
 

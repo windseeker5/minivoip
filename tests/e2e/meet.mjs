@@ -143,6 +143,10 @@ for (const [name, vw, vh] of [["phone", 390, 844], ["desk", 1280, 860]]) {
 
   // The visitor turns theirs on too.
   await visitor.click('[data-action="camera"]');
+  // It waits for the owner's tap: a stranger's picture never shows by itself.
+  check(await until(() => owner.isVisible('[data-tile="p:c1"] [data-meet="show-video"]')) && !(await stage(owner)).vids.some((x) => x.tile === "p:c1"), `${name}: the visitor's camera waits for the owner's tap`);
+  await owner.screenshot({ path: `${SHOTS}/meet-owner-${name}-ask.png` });
+  await owner.click('[data-tile="p:c1"] [data-meet="show-video"]');
   const o = await until(async () => { const s = await stage(owner); return s.vids.some((x) => x.tile === "p:c1" && x.w > 0) && s; });
   check(!!o, `${name}: the visitor's camera shows on the owner's screen`);
   check((await stage(visitor)).vids.some((x) => x.tile === "me"), `${name}: the visitor sees themselves in the corner`);
@@ -212,6 +216,48 @@ for (const [name, vw, vh] of [["phone", 390, 844], ["desk", 1280, 860]]) {
   await visitor.context().close();
 }
 await owner.context().close();
+
+// What the other person's browser sends can't break the stage: junk on the
+// data channel is ignored, and the camera button still tells the truth.
+{
+  const o = await context(1280, 860, "owner");
+  await o.goto(BASE + "/app");
+  await o.waitForFunction(() => document.querySelector("[data-phone]").dataset.online === "true");
+  const v = await context(1280, 800, "visitor");
+  await v.goto(BASE + "/call/auberge");
+  await v.click('[data-action="call"]:visible');
+  await v.waitForSelector('[data-key="1"]:visible');
+  await v.click('[data-key="1"]');
+  await o.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  await o.click('[data-action="accept"]');
+  await v.waitForFunction(() => document.querySelector("[data-call]").dataset.state === "talking", null, { timeout: 15000 });
+  await until(() => v.evaluate(() => { const s = document.querySelector("[data-stage]").meet; return s && Object.values(s.links).every((l) => l.dc.readyState === "open"); }));
+  await v.evaluate(() => {
+    const l = Object.values(document.querySelector("[data-stage]").meet.links)[0];
+    l.send({ t: "state", name: { toString: 1, valueOf: 1 }, initials: 7 });
+    l.send({ t: "s", id: "bad", c: "#0c0c0d", w: -5, p: [1, 2] });
+    l.send({ t: "s", id: "__proto__", c: "javascript:", w: 3, p: ["x"] });
+    l.send({ t: "state", name: "x".repeat(5000) });
+  });
+  await o.waitForTimeout(400);
+  const flood = await o.evaluate(() => {
+    const wb = document.querySelector("[data-stage]").meet.wb;
+    for (let i = 0; i < 100; i++) wb.receive({ t: "s", id: "flood" + i, c: wb.color, w: 3, p: Array(20000).fill(1) });
+    const kept = wb.received;
+    wb.receive({ t: "clear" });
+    return kept;
+  });
+  check(flood <= 400000, `a flood of whiteboard lines stops at the board's budget (${flood})`);
+  const name = await o.evaluate(() => Object.values(document.querySelector("[data-stage]").meet.links)[0].name);
+  check(name === "Caller", `the caller can't rename themselves on the owner's screen (${name})`);
+  check(await o.evaluate(() => document.querySelector("[data-stage]").meet.wb.strokes.length) === 0, "junk whiteboard strokes are ignored");
+  await o.click('[data-action="camera"]');
+  check(await until(async () => (await o.getAttribute('[data-action="camera"]', "aria-pressed")) === "true") && await o.isHidden("text=blocked the camera"), "after the junk, the Camera button still tells the truth");
+  await v.click('[data-action="hangup"]:visible');
+  await o.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
+  await v.context().close();
+  await o.context().close();
+}
 
 check(errors.length === 0, `no page errors${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();

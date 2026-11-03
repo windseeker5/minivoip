@@ -24,7 +24,7 @@
     $$("[data-back]").forEach(function (a) { a.href = document.referrer; a.hidden = false; });
   }
 
-  // Inside the Call button's window on a business's website (w.js): Back
+  // Inside the Call button's window on our landing page (w.js): Back
   // closes the window, the window grows while the stage is on, and it knows
   // when a call is on (then Esc or a click beside it doesn't close it).
   var embedded = window.parent !== window, stageWas = false, busyWas = false;
@@ -32,7 +32,7 @@
   function tellPage(m) {
     if (!embedded) return;
     m.minivoip = true;
-    window.parent.postMessage(m, "*");
+    window.parent.postMessage(m, location.origin);
   }
   if (embedded) {
     $$("[data-back]").forEach(function (a) {
@@ -337,7 +337,7 @@
       var m = JSON.parse(e.data);
       if (s !== seq) return;
       if (m.type === "ringing") callId = m.id;
-      else if (m.type === "accepted") connect(s);
+      else if (m.type === "accepted") connect(s, m.ice);
       else if (m.type === "answer" && pc) pc.setRemoteDescription({ type: "answer", sdp: m.sdp });
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
       else if (m.type === "no-answer" || m.type === "voicemail") voicemail(s, m.token);
@@ -478,10 +478,9 @@
     recState("Sending your message…", "");
     status("Sending your message…");
     var form = new FormData();
-    form.append("token", token);
     form.append("duration_ms", String(ms));
     form.append("audio", blob, "message" + (/mp4/.test(blob.type) ? ".m4a" : /ogg/.test(blob.type) ? ".ogg" : ".webm"));
-    fetch("/api/voicemail", { method: "POST", body: form }).then(function (r) {
+    fetch("/api/voicemail", { method: "POST", headers: { "X-Voicemail-Pass": token }, body: form }).then(function (r) {
       if (r.status === 429) { if (s === seq) limited(); return; }
       if (!r.ok) throw new Error(r.status);
       if (s === seq) end("sent", "Message sent to " + line.owner, "Thanks for calling " + line.business + ".");
@@ -497,31 +496,31 @@
     if (ws && ws.readyState === 1) ws.send(JSON.stringify(m));
   }
 
-  // iceConfig gets STUN and a relay login from the server; ?relay=1 forces
-  // the relay (for testing).
-  function iceConfig() {
-    return fetch("/api/ice").then(function (r) { return r.json(); }).catch(function () { return { iceServers: [] }; })
+  // iceConfig is what the server sent when the owner answered: STUN and a relay
+  // login. ?relay=1 forces the relay (for testing).
+  function iceConfig(ice) {
+    return (ice ? Promise.resolve(ice) : fetch("/api/ice").then(function (r) { return r.json(); }).catch(function () { return { iceServers: [] }; }))
       .then(function (c) {
         if (/[?&]relay=1/.test(location.search)) c.iceTransportPolicy = "relay";
         return c;
       });
   }
 
-  function connect(s) {
+  function connect(s, ice) {
     show("connecting");
     if (stopRing) { stopRing(); stopRing = null; }
     clearInterval(countIv);
     $("[data-ring-title]").textContent = "Connecting…";
     $("[data-ring-box]").hidden = true;
     status("Connecting…");
-    iceConfig().then(function (cfg) { if (s === seq) offer(s, cfg); });
+    iceConfig(ice).then(function (cfg) { if (s === seq) offer(s, cfg); });
   }
 
   function offer(s, cfg) {
     var remote;
     pc = new RTCPeerConnection(cfg);
     // The voice, plus cameras, screens and the whiteboard (meet.js).
-    meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: "Caller", initials: "" }, mic: mic, onChange: meetChanged });
+    meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: "Caller", initials: "" }, mic: mic, video: !!line.premium, onChange: meetChanged });
     link = meet.link("owner", pc, { name: line.owner, initials: line.ownerInitials, logo: line.logo, onAudio: function (stream) {
       var el = $("[data-remote]");
       remote = stream;

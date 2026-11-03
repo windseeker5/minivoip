@@ -14,9 +14,28 @@
   var wide = matchMedia("(min-width: 900px)");
   var android = window.MinivoipAndroid || null;
   // The Android app's ring screen answers by opening /app?answer=<call id>:
-  // answer that call as soon as the socket offers it.
-  var answerId = new URLSearchParams(location.search).get("answer");
-  if (answerId) history.replaceState(null, "", location.pathname + location.hash);
+  // answer that call as soon as the socket offers it. Only inside the app: in
+  // a browser such a link could come from anyone, and would turn on the
+  // microphone without a tap.
+  // The app from 0.4 hands it over once, through takeAnswer; 0.3 only has the
+  // address.
+  var askedAnswer = new URLSearchParams(location.search).get("answer");
+  var answerId = !android ? null : android.takeAnswer ? android.takeAnswer() || null : askedAnswer;
+  if (askedAnswer) history.replaceState(null, "", location.pathname + location.hash);
+
+  // Answering from the lock screen: only the call shows, never the tabs, and the
+  // lock screen comes back as soon as there's no call. If the call is gone
+  // before it arrives (the caller hung up), the timer does it.
+  var overLock = !!answerId;
+  if (overLock) {
+    root.classList.add("is-answering");
+    setTimeout(function () { if (answerId) { answerId = null; leftLockScreen(); } }, 8000);
+  }
+  function leftLockScreen() {
+    root.classList.remove("is-answering");
+    overLock = false;
+    if (android && android.callEnded) android.callEnded();
+  }
 
   function show(p) {
     var call = $("[data-call-screen]");
@@ -51,6 +70,11 @@
       online(false);
       if (ringingId) { stopRinging(); ringingId = null; show("ready"); }
       if (liveId) endCall();
+      // Logged out from here or another device (or the password changed): back
+      // to the login screen, instead of trying for ever.
+      fetch("/app/calls", { redirect: "manual" }).then(function (r) {
+        if (r.type === "opaqueredirect") location.href = "/login?next=/app";
+      }).catch(function () {});
       setTimeout(connectWs, wsDelay);
       wsDelay = Math.min(wsDelay * 2, 15000);
     };
@@ -58,7 +82,7 @@
       var m = JSON.parse(e.data);
       if (m.type === "incoming") incoming(m);
       else if (m.type === "missed" || m.type === "taken") {
-        if (ringingId === m.id) { stopRinging(); ringingId = null; show("ready"); }
+        if (ringingId === m.id) { stopRinging(); ringingId = null; show("ready"); leftLockScreen(); }
         refreshCalls();
       } else if (m.type === "offer") answer(m);
       else if (m.type === "ice" && pc && m.candidate) pc.addIceCandidate(m.candidate).catch(function () {});
@@ -379,8 +403,8 @@
         show("connecting");
         pc = new RTCPeerConnection(cfg);
         // The voice, plus cameras, screens and the whiteboard (meet.js).
-        meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials, logo: root.dataset.meLogo }, mic: mic, onChange: meetChanged });
-        link = meet.link(id, pc, { name: "Caller", onAudio: function (stream) {
+        meet = MinivoipMeet.Session({ video: root.dataset.premium === "true", askVideo: true, stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials, logo: root.dataset.meLogo }, mic: mic, onChange: meetChanged });
+        link = meet.link(id, pc, { name: "Caller", fixedName: true, onAudio: function (stream) {
           var el = $("[data-remote]");
           el.srcObject = stream;
           el.play().catch(function () {});
@@ -396,6 +420,7 @@
         send({ type: "accept", id: id });
       }).catch(function () {
         $("[data-status]").textContent = "Microphone blocked: allow it to answer.";
+        leftLockScreen();
       });
   }
 
@@ -443,6 +468,7 @@
     if (pc) { pc.close(); pc = null; }
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     liveId = null;
+    leftLockScreen();
     show("ready");
     refreshCalls();
   }
@@ -616,6 +642,20 @@
         return post("/app/push/unsubscribe", { endpoint: sub.endpoint }).then(function () { return sub.unsubscribe(); });
       }).then(function () { pushUI("off", "Off on this phone."); });
     }
+  });
+
+  // Logging out: this phone stops getting the business's notifications.
+  var logoutForm = document.querySelector('form[action="/logout"]');
+  if (logoutForm) logoutForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var forget = android
+      ? Promise.resolve(androidToken ? "fcm:" + androidToken : "")
+      : reg ? reg.pushManager.getSubscription().then(function (sub) { return sub ? sub.endpoint : ""; }) : Promise.resolve("");
+    var done = function () { logoutForm.submit(); };
+    var giveUp = new Promise(function (ok) { setTimeout(ok, 2000); });
+    Promise.race([giveUp, forget.then(function (endpoint) {
+      return endpoint ? post("/app/push/unsubscribe", { endpoint: endpoint }) : null;
+    })]).then(done, done);
   });
 
   // ----------------------------------------------------------- meeting room

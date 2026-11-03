@@ -74,4 +74,4 @@ Only the worries a first visitor really has (Ken, 2026-10-31). Real questions wi
 - Footer: minivoip, part of the mini family, with minipass and minicrm. Get the Android app. Contact: kdresdell@minipass.me
 
 ## Sign up page
-- Title: Get your line · Sub: No card needed for now. Got a promo code? Enter it below.
+- Title: Get your line · Sub: You need a promo code to get a line for now. No code yet? Write to kdresdell@minipass.me.

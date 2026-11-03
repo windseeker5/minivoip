@@ -12,19 +12,6 @@ import (
 	"minivoip/store"
 )
 
-// isAdmin: users marked in the database, or listed in Server.Admins.
-func (s *Server) isAdmin(u store.User) bool {
-	if u.IsAdmin {
-		return true
-	}
-	for _, a := range s.Admins {
-		if strings.EqualFold(strings.TrimSpace(a), u.Email) {
-			return true
-		}
-	}
-	return false
-}
-
 // admin is auth plus "admins only"; others get a plain 404.
 func (s *Server) admin(next func(http.ResponseWriter, *http.Request, store.User)) http.Handler {
 	return s.auth(func(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -37,7 +24,48 @@ func (s *Server) admin(next func(http.ResponseWriter, *http.Request, store.User)
 }
 
 func (s *Server) promoPage(w http.ResponseWriter, r *http.Request, u store.User) {
-	s.renderPromo(w, r, u, pages.PromoForm{}, r.URL.Query().Get("saved"))
+	s.renderPromo(w, r, u, pages.PromoForm{}, s.savedNote(r))
+}
+
+// savedNote says what was just done. The address only names it, and the words
+// come from here: nobody can put their own text in the page with a link.
+func (s *Server) savedNote(r *http.Request) string {
+	q := r.URL.Query()
+	switch q.Get("saved") {
+	case "ready", "revoked", "active":
+		code := q.Get("code")
+		list, err := s.Store.PromoCodes()
+		if err != nil {
+			return ""
+		}
+		for _, p := range list {
+			if p.Code != code {
+				continue
+			}
+			switch q.Get("saved") {
+			case "ready":
+				return code + " is ready: it gives " + p.Plan.Name() + ". Share it with the people you choose."
+			case "revoked":
+				return code + " is revoked: nobody can sign up with it, and its accounts are no longer free forever."
+			}
+			return code + " is active again."
+		}
+	case "plan":
+		id, err := strconv.ParseInt(q.Get("id"), 10, 64)
+		if err != nil {
+			return ""
+		}
+		accounts, err := s.Store.Accounts()
+		if err != nil {
+			return ""
+		}
+		for _, a := range accounts {
+			if a.ID == id {
+				return strings.Join(a.Emails, ", ") + " is on " + a.Plan.Name() + " now."
+			}
+		}
+	}
+	return ""
 }
 
 func (s *Server) renderPromo(w http.ResponseWriter, r *http.Request, u store.User, f pages.PromoForm, saved string) {
@@ -89,6 +117,9 @@ func (s *Server) createPromo(w http.ResponseWriter, r *http.Request, u store.Use
 	if f.Error == "" && !store.Plan(f.Plan).Valid() {
 		f.Error = "Pick the plan the code gives: Basic or Premium."
 	}
+	if f.Code == "" {
+		f.Code = store.NewPromoCode()
+	}
 	if f.Error == "" {
 		if err := store.CheckPromoCode(f.Code); err != nil {
 			f.Error = err.Error()
@@ -103,7 +134,7 @@ func (s *Server) createPromo(w http.ResponseWriter, r *http.Request, u store.Use
 			serverError(w, r, err)
 			return
 		default:
-			http.Redirect(w, r, "/admin/promo?saved="+url.QueryEscape(f.Code+" is ready: it gives "+store.Plan(f.Plan).Name()+". Share it with the people you choose."), http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/promo?saved=ready&code="+url.QueryEscape(f.Code), http.StatusSeeOther)
 			return
 		}
 	}
@@ -122,11 +153,11 @@ func (s *Server) revokePromo(w http.ResponseWriter, r *http.Request, u store.Use
 		serverError(w, r, err)
 		return
 	}
-	msg := code + " is active again."
+	kind := "active"
 	if revoked {
-		msg = code + " is revoked: nobody can sign up with it, and its accounts are no longer free forever."
+		kind = "revoked"
 	}
-	http.Redirect(w, r, "/admin/promo?saved="+url.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/promo?saved="+kind+"&code="+url.QueryEscape(code), http.StatusSeeOther)
 }
 
 // setPlan moves an account to Basic or Premium (the admin page's Accounts).
@@ -146,8 +177,7 @@ func (s *Server) setPlan(w http.ResponseWriter, r *http.Request, u store.User) {
 		serverError(w, r, err)
 		return
 	}
-	msg := r.FormValue("who") + " is on " + plan.Name() + " now."
-	http.Redirect(w, r, "/admin/promo?saved="+url.QueryEscape(strings.TrimSpace(msg)), http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/promo?saved=plan&id="+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
 // planText says what an account gets and pays, for the dashboard.

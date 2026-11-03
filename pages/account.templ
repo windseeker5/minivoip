@@ -70,18 +70,18 @@ templ Signup(f AccountForm) {
 	@accountShell("Get your line") {
 		@stepLabel("Step 1 of 2: your account")
 		<h1 class="text-2xl font-bold tracking-tight">Get your line</h1>
-		<p class="mt-1 text-sm text-muted-foreground">No card needed for now. Got a promo code? Enter it below.</p>
+		<p class="mt-1 text-sm text-muted-foreground">You need a promo code to get a line for now. No code yet? Write to <a href="mailto:kdresdell@minipass.me" class="underline underline-offset-4 hover:text-foreground">kdresdell@minipass.me</a>.</p>
 		<form method="post" action="/signup" class="mt-6 flex flex-col gap-4">
 			@formError(f.Error)
 			@formField("email", "Email") {
 				@input.Input(input.Props{Class: fieldClass, ID: "email", Name: "email", Type: "email", Value: f.Email, Required: true, Attributes: templ.Attributes{"autocomplete": "email"}})
 			}
 			@formField("password", "Password") {
-				@input.Input(input.Props{Class: fieldClass, ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "new-password", "minlength": "8"}})
-				<p class="text-xs text-muted-foreground">At least 8 characters.</p>
+				@input.Input(input.Props{Class: fieldClass, ID: "password", Name: "password", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "new-password", "minlength": "8", "maxlength": "72"}})
+				<p class="text-xs text-muted-foreground">8 to 72 characters.</p>
 			}
-			@formField("promo", "Promo code (optional)") {
-				@input.Input(input.Props{Class: fieldClass, ID: "promo", Name: "promo", Value: f.Promo, Attributes: templ.Attributes{"autocomplete": "off"}})
+			@formField("promo", "Promo code") {
+				@input.Input(input.Props{Class: fieldClass, ID: "promo", Name: "promo", Value: f.Promo, Required: true, Attributes: templ.Attributes{"autocomplete": "off"}})
 			}
 			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
 				Create my account

@@ -53,7 +53,7 @@ func iconLeave() templ.Component {
 	})
 }
 
-func iconCopy() templ.Component {
+func iconPeople() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -74,7 +74,7 @@ func iconCopy() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"9\" y=\"9\" width=\"11\" height=\"11\" rx=\"2.5\"></rect><path d=\"M5 15V6a2 2 0 0 1 2-2h9\"></path></svg>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"8\" r=\"3.5\"></circle><path d=\"M3 20a6 6 0 0 1 12 0M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.5a6 6 0 0 1 3 5.5\"></path></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -82,11 +82,7 @@ func iconCopy() templ.Component {
 	})
 }
 
-// Room is a line's meeting room: /room/<line> (DESIGN.md "Meeting room").
-// First a "get ready" screen (name, microphone, camera), then the room: the
-// stage (meet.js) and the controls. Guests wait until the owner opens it.
-// room.js shows the parts whose data-show lists the state.
-func Room(l lines.Line, isOwner bool, url string) templ.Component {
+func iconCopy() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -107,8 +103,41 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"9\" y=\"9\" width=\"11\" height=\"11\" rx=\"2.5\"></rect><path d=\"M5 15V6a2 2 0 0 1 2-2h9\"></path></svg>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// Room is a line's meeting room: /room/<line> (DESIGN.md "Meeting room").
+// First a "get ready" screen (name, microphone, camera), then the room: the
+// stage (meet.js) and the controls. Guests wait until the owner lets them in.
+// room.js shows the parts whose data-show lists the state.
+func Room(l lines.Line, isOwner bool, url string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var4 == nil {
+			templ_7745c5c3_Var4 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
 		owner := ownerName(l)
-		templ_7745c5c3_Var4 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -120,50 +149,50 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap\"><link rel=\"stylesheet\" href=\"/assets/css/room.css\"><link rel=\"stylesheet\" href=\"/assets/css/stage.css\"><main class=\"rm\" data-room data-state=\"lobby\"><p class=\"rm-sr\" data-status role=\"status\" aria-live=\"polite\"></p><section class=\"rm-ready\" data-show=\"lobby joining waiting full left dropped\" aria-label=\"Get ready\"><div class=\"rm-preview\"><div class=\"rm-self\" data-preview><video data-preview-video autoplay muted playsinline></video>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<link rel=\"stylesheet\" href=\"/assets/css/fonts.css\"><link rel=\"stylesheet\" href=\"/assets/css/room.css\"><link rel=\"stylesheet\" href=\"/assets/css/stage.css\"><main class=\"rm\" data-room data-state=\"lobby\"><p class=\"rm-sr\" data-status role=\"status\" aria-live=\"polite\"></p><section class=\"rm-ready\" data-show=\"lobby joining waiting full left dropped\" aria-label=\"Get ready\"><div class=\"rm-preview\"><div class=\"rm-self\" data-preview><video data-preview-video autoplay muted playsinline></video>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if isOwner && l.Logo != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<span class=\"rm-self-face has-logo\" data-preview-face aria-hidden=\"true\"><img src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<span class=\"rm-self-face has-logo\" data-preview-face aria-hidden=\"true\"><img src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(logoURL(l))
+				var templ_7745c5c3_Var6 string
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(logoURL(l))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 44, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 48, Col: 101}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" alt=\"\"></span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" alt=\"\"></span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"rm-self-face\" data-preview-face aria-hidden=\"true\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"rm-self-face\" data-preview-face aria-hidden=\"true\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if isOwner {
-					var templ_7745c5c3_Var6 string
-					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(initials(owner))
+					var templ_7745c5c3_Var7 string
+					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(initials(owner))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 48, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 52, Col: 26}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"rm-self-name\">You</span></div><div class=\"rm-toggles\"><button type=\"button\" class=\"rm-toggle\" data-action=\"pre-mute\" aria-pressed=\"false\" aria-label=\"Microphone\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"rm-self-name\">You</span></div><div class=\"rm-toggles\"><button type=\"button\" class=\"rm-toggle\" data-action=\"pre-mute\" aria-pressed=\"false\" aria-label=\"Microphone\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -171,7 +200,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button> <button type=\"button\" class=\"rm-toggle\" data-action=\"pre-camera\" aria-pressed=\"false\" aria-label=\"Camera\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button> <button type=\"button\" class=\"rm-toggle\" data-action=\"pre-camera\" aria-pressed=\"false\" aria-label=\"Camera\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -179,7 +208,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</button></div><p class=\"rm-cam-note\" data-cam-note role=\"status\" hidden></p></div><div class=\"rm-side\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</button></div><p class=\"rm-cam-note\" data-cam-note role=\"status\" hidden></p></div><div class=\"rm-side\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -187,76 +216,76 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"rm-kicker\">Meeting room</p><h1 class=\"rm-title\" tabindex=\"-1\" data-focus>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"rm-kicker\">Meeting room</p><h1 class=\"rm-title\" tabindex=\"-1\" data-focus>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 67, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 71, Col: 63}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</h1><div class=\"rm-step\" data-show=\"lobby joining\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if isOwner {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"rm-text\">You're the host. People who open your link wait here until you open the room.</p>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label class=\"rm-label\" for=\"rm-name\">Your name</label> <input class=\"rm-input\" id=\"rm-name\" data-name autocomplete=\"name\" maxlength=\"40\" placeholder=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("So " + owner + " knows who you are")
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 73, Col: 139}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<button type=\"button\" class=\"rm-btn is-primary\" data-action=\"join\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</h1><div class=\"rm-step\" data-show=\"lobby joining\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if isOwner {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "Open the room")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"rm-text\">You're the host. People who open your link wait until you let them in, one by one.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "Join")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"rm-label\" for=\"rm-name\">Your name</label> <input class=\"rm-input\" id=\"rm-name\" data-name autocomplete=\"name\" maxlength=\"40\" placeholder=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var9 string
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue("So " + owner + " knows who you are")
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 77, Col: 139}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\"> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</button><p class=\"rm-note\">Free, in your browser. It will ask to use your microphone; the camera only if you turn it on.</p></div><div class=\"rm-step\" data-show=\"waiting\" hidden><p class=\"rm-waiting\"><i aria-hidden=\"true\"></i>Waiting for ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button type=\"button\" class=\"rm-btn is-primary\" data-action=\"join\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(owner)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 85, Col: 73}
+			if isOwner {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "Open the room")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "Join")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</button><p class=\"rm-note\">Free, in your browser. It will ask to use your microphone; the camera only if you turn it on.</p></div><div class=\"rm-step\" data-show=\"waiting\" hidden><p class=\"rm-waiting\"><i aria-hidden=\"true\"></i>Waiting for ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " to open the room…</p><p class=\"rm-text\">You'll come in as soon as they do. Keep this page open.</p><button type=\"button\" class=\"rm-btn is-plain\" data-action=\"leave\">Leave</button></div><div class=\"rm-step\" data-show=\"full\" hidden><p class=\"rm-text\"><b>This room is full.</b> A meeting room fits 4 people. Try again in a little while.</p><button type=\"button\" class=\"rm-btn is-primary\" data-action=\"join\">Try again</button></div><div class=\"rm-step\" data-show=\"left dropped\" hidden><p class=\"rm-text\" data-left-text>You left the room.</p><button type=\"button\" class=\"rm-btn is-primary\" data-action=\"join\">Join again</button></div><div class=\"rm-help\" data-mic-help hidden role=\"alert\"><p>Your browser blocked the microphone, so nobody can hear you.</p><p>To allow it, tap the lock or settings icon next to the web address, then Microphone. Then join again.</p></div><p class=\"rm-foot\">Free meeting by <a href=\"/\" target=\"_blank\" rel=\"noopener\">minivoip</a></p></div></section><section class=\"rm-in\" data-show=\"in\" hidden aria-label=\"Meeting\"><header class=\"rm-bar\">")
+			var templ_7745c5c3_Var10 string
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(owner)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 89, Col: 73}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " to let you in…</p><p class=\"rm-text\">You'll come in as soon as they say yes. Keep this page open.</p><button type=\"button\" class=\"rm-btn is-plain\" data-action=\"leave\">Leave</button></div><div class=\"rm-step\" data-show=\"full\" hidden><p class=\"rm-text\"><b>This room is full.</b> A meeting room fits 4 people. Try again in a little while.</p><button type=\"button\" class=\"rm-btn is-primary\" data-action=\"join\">Try again</button></div><div class=\"rm-step\" data-show=\"left dropped\" hidden><p class=\"rm-text\" data-left-text>You left the room.</p><button type=\"button\" class=\"rm-btn is-primary\" data-action=\"join\">Join again</button></div><div class=\"rm-help\" data-mic-help hidden role=\"alert\"><p>Your browser blocked the microphone, so nobody can hear you.</p><p>To allow it, tap the lock or settings icon next to the web address, then Microphone. Then join again.</p></div><p class=\"rm-foot\">Free meeting by <a href=\"/\" target=\"_blank\" rel=\"noopener\">minivoip</a></p></div></section><section class=\"rm-in\" data-show=\"in\" hidden aria-label=\"Meeting\"><header class=\"rm-bar\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -264,20 +293,38 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"rm-bar-text\"><p class=\"rm-bar-name\" tabindex=\"-1\" data-focus>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"rm-bar-text\"><p class=\"rm-bar-name\" tabindex=\"-1\" data-focus>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
+			var templ_7745c5c3_Var11 string
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 108, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 112, Col: 66}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</p><p class=\"rm-bar-sub\" data-people>Meeting room</p></div><button type=\"button\" class=\"rm-chip\" data-action=\"copy\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</p><p class=\"rm-bar-sub\" data-people>Meeting room</p></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if isOwner {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<button type=\"button\" class=\"rm-chip\" data-action=\"people\" aria-pressed=\"false\" aria-label=\"People\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = iconPeople().Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<span>People</span></button> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<button type=\"button\" class=\"rm-chip\" data-action=\"copy\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -285,20 +332,30 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span>Copy link</span></button></header><div class=\"rm-alone\" data-alone hidden><p>Nobody else is here yet. Send them the link: <b>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span>Copy link</span></button></header>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(url)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 117, Col: 61}
+			if isOwner {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"rm-door\" data-door hidden><ul class=\"rm-door-list\" data-door-waiting aria-label=\"Waiting to come in\"></ul><ul class=\"rm-door-list\" data-door-in aria-label=\"In the room\" hidden></ul><p class=\"rm-door-note\" data-door-note role=\"status\" hidden></p></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"rm-alone\" data-alone hidden><p>Nobody else is here yet. Send them the link: <b>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</b></p></div><div class=\"rm-stage\" data-stage></div><p class=\"rm-meet-note\" data-meet-note role=\"status\" hidden></p><nav class=\"rm-controls\" aria-label=\"Meeting controls\"><button type=\"button\" class=\"rm-round\" data-action=\"mute\" aria-pressed=\"false\"><span>")
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(url)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 134, Col: 61}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</b></p></div><div class=\"rm-stage\" data-stage></div><p class=\"rm-meet-note\" data-meet-note role=\"status\" hidden></p><nav class=\"rm-controls\" aria-label=\"Meeting controls\"><button type=\"button\" class=\"rm-round\" data-action=\"mute\" aria-pressed=\"false\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -306,7 +363,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</span> <span>Mute</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"camera\" aria-pressed=\"false\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</span> <span>Mute</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"camera\" aria-pressed=\"false\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -314,7 +371,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span> <span>Camera</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"screen\" aria-pressed=\"false\" data-share-btn hidden><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span> <span>Camera</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"screen\" aria-pressed=\"false\" data-share-btn hidden><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -322,7 +379,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</span> <span>Screen</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"board\" aria-pressed=\"false\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span> <span>Screen</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"board\" aria-pressed=\"false\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -330,7 +387,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span> <span>Whiteboard</span></button> <button type=\"button\" class=\"rm-round is-end\" data-action=\"leave\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</span> <span>Whiteboard</span></button> <button type=\"button\" class=\"rm-round is-end\" data-action=\"leave\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -338,7 +395,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span> <span>Leave</span></button></nav></section><div data-audio hidden></div></main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span> <span>Leave</span></button></nav></section><div data-audio hidden></div></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -346,13 +403,13 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<script src=\"/assets/js/meet.js\" defer></script> <script src=\"/assets/js/room.js\" defer></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<script src=\"/assets/js/meet.js\" defer></script> <script src=\"/assets/js/room.js\" defer></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layouts.Plain(l.Business+" · Meeting room").Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layouts.Plain(l.Business+" · Meeting room").Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,7 +1,9 @@
 package store
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base32"
 	"errors"
 	"regexp"
 	"strings"
@@ -49,15 +51,23 @@ func (p PromoCode) Usable(now time.Time) bool {
 		(p.MaxUses == 0 || p.TimesUsed < p.MaxUses)
 }
 
-var promoRe = regexp.MustCompile(`^[A-Z0-9][A-Z0-9-]{1,28}[A-Z0-9]$`)
+var promoRe = regexp.MustCompile(`^[A-Z0-9][A-Z0-9-]{6,28}[A-Z0-9]$`)
 
 // CheckPromoCode says why a new code isn't acceptable, or nil. Codes are
 // stored in capitals; sign up accepts any case.
 func CheckPromoCode(code string) error {
 	if !promoRe.MatchString(code) {
-		return errors.New("Use 3 to 30 letters, numbers or dashes, like FAMILY or SPRING-2027.")
+		return errors.New("Use 8 to 30 letters, numbers or dashes, like FRIENDS-SPRING-2027, or leave it empty for a random code.")
 	}
 	return nil
+}
+
+// NewPromoCode makes a code nobody can guess, like MV-K7QX-2MPA-9TZC.
+func NewPromoCode() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	c := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)[:12]
+	return "MV-" + c[:4] + "-" + c[4:8] + "-" + c[8:]
 }
 
 // CreatePromoCode adds a code that gives plan. Dates are "YYYY-MM-DD" or ""

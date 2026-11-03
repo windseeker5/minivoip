@@ -27,7 +27,7 @@ type LineForm struct {
 // a native popover.
 templ dashShell(title, email, current string) {
 	@layouts.Lean(title+" · minivoip", "") {
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..700&family=Funnel+Sans:wght@400..600&display=swap"/>
+		<link rel="stylesheet" href="/assets/css/fonts.css"/>
 		<div class="dash min-h-dvh md:grid md:grid-cols-[248px_minmax(0,1fr)]">
 			<header class="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-background pr-2 pl-4 md:hidden">
 				@brand()
@@ -158,6 +158,10 @@ templ accountMenu(email string) {
 			<p class="truncate font-medium" data-account-email>{ email }</p>
 		</div>
 		<div class="flex flex-col border-t pt-1.5">
+			<a href="/dashboard/password" class={ menuItem }>
+				@icon.KeyRound(icon.Props{Class: "size-4 text-muted-foreground"})
+				Change password
+			</a>
 			<a href="/app" class={ menuItem }>
 				@icon.Smartphone(icon.Props{Class: "size-4 text-muted-foreground"})
 				Phone app
@@ -661,6 +665,33 @@ templ phoneSheet(h HomeTab) {
 }
 
 // Business is the Business tab: the logo, the name, the call link and the plan.
+// Password is "Change password", from the account menu: it also logs out the
+// account's other devices.
+templ Password(email, problem string, saved bool) {
+	@dashShell("Change password", email, "") {
+		<div class="max-w-md">
+			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Change password</h1>
+			<p class="mt-2 text-muted-foreground">Your other phones and computers will be logged out. They ring again once you log in on them.</p>
+			if saved {
+				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-password-saved>Your password is changed.</p>
+			}
+			<form method="post" action="/dashboard/password" class="mt-6 flex flex-col gap-4">
+				@formError(problem)
+				@formField("current", "Current password") {
+					@input.Input(input.Props{Class: fieldClass, ID: "current", Name: "current", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "current-password"}})
+				}
+				@formField("new", "New password") {
+					@input.Input(input.Props{Class: fieldClass, ID: "new", Name: "new", Type: "password", Required: true, Attributes: templ.Attributes{"autocomplete": "new-password", "minlength": "8", "maxlength": "72"}})
+					<p class="text-xs text-muted-foreground">8 to 72 characters.</p>
+				}
+				@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
+					Change password
+				}
+			</form>
+		</div>
+	}
+}
+
 templ Business(email string, l lines.Line, callURL, plan, note string) {
 	@dashShell("Business", email, "/dashboard/business") {
 		<div class="max-w-3xl">

@@ -11,7 +11,7 @@ key tags, lanterns) and no objects drawn as decoration: Ken rejected both.
 
 ## Tokens
 
-- **Type:** Onest (Google Fonts, loaded in `layouts/base.templ`, set as `--font-sans` in `assets/css/globals.css`).
+- **Type:** Onest (served from `assets/fonts/`, loaded in `layouts/base.templ`, set as `--font-sans` in `assets/css/globals.css`).
   Headings semibold with tight tracking: hero `text-6xl`/`4rem`, `tracking-[-0.035em]`; section titles
   `2.75rem`, `tracking-[-0.03em]` (the landing page uses Funnel, larger: 88px hero, 60px sections). Body 15 to 18px, `leading-relaxed`, muted colour for supporting text.
 - **Colour:** the shadcn neutral tokens in `globals.css` (light and dark). Ink buttons (`primary`), ink pills on the
@@ -162,7 +162,9 @@ styles and ours never mix; system fonts (the site's page doesn't load ours).
   the note says "We're away. Our menu answers, or leave a message." The menu still plays (hours, links, answers):
   a ringing choice says "Away now: leave a message" and goes to voicemail.
 - The note has an ×, remembered for the visit; it's hidden on phones. The status is read again every minute.
-- **Click:** on a computer, the call page opens in a 400px window in the middle of the page (Ken, 2026-10-29), a
+- **Click on another site (security review, 2026-11-02):** on a computer, the call page opens in its own 480px browser
+  window, so the microphone permission is minivoip's and not that website's, and the website can't reach it.
+- **Click on our own landing page:** the call page opens in a 400px window in the middle of the page (Ken, 2026-10-29), a
   modal dialog: the page behind is dimmed (ink at 45%) and blurred (6px) and doesn't scroll; the window rises in. It
   grows to almost the whole page while a camera, a screen or the whiteboard is on. × closes it (and ends a call);
   Esc or a click on the dimmed page close it too, but never while a call is on. The call page's own back arrow is
@@ -241,11 +243,15 @@ white, Funnel, ink, red only for Leave), not a new look.
 - **Get ready:** the camera preview (dark, 16:10 on a computer, 4:3 on a phone) with Mic and Camera buttons on it,
   beside the business's initials, "Meeting room", its name, "Your name" and a big ink Join (the owner: "Open the
   room", no name). On a computer, one white card on the grey ground; on a phone, stacked.
-- **Waiting:** an orange pulsing dot and "Waiting for <owner> to open the room…", with Leave.
+- **Waiting:** an orange pulsing dot and "Waiting for <owner> to let you in…", with Leave. Declined, removed or no answer:
+  "<owner> didn't let you in.", "<owner> removed you from the room." or "<owner> didn't answer.", with Join again.
 - **In the room:** a bar (initials, name, "Meeting room · 3 people", Copy link), "Nobody else is here yet" with the
-  link while alone, the stage, then Mute, Camera, Screen, Whiteboard and a red Leave.
+  link while alone, the stage, then Mute, Camera, Screen, Whiteboard and a red Leave. The host also gets the door, a
+  soft grey band above the stage: "Ana is waiting" with Decline and an ink Let in; a People chip in the bar opens the
+  list of who is in the room, each with Remove.
 - **The owner's app:** a Room tab (the link, Copy, "Open the room", three steps) and, when a guest waits, a dark pill
   on top of every tab, "Ana is waiting in your meeting room · Join".
+- **A caller's picture (2026-11-03):** in the owner's app, a caller's camera or screen shows only after a tap: the face stays, with a white "Show their video" pill under it. One tap shows everything for that call.
 - **Basic accounts** (2026-10-25): no room and no Camera, Screen or Whiteboard in calls, on either side (the visitor
   never sees an upsell). The owner's Room tab and the dashboard's Meeting room panel show a small ink "Premium" tag
   and one line on what it adds, "You're on Basic. Premium opens after the beta."

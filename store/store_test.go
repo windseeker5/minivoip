@@ -140,6 +140,9 @@ func TestPlansMigration(t *testing.T) {
 	s.db.Exec("DROP TABLE premium_request")
 	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_text")
 	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_audio")
+	s.db.Exec("DROP TABLE prompt")
+	s.db.Exec("ALTER TABLE session DROP COLUMN hashed")
+	s.db.Exec("ALTER TABLE voicemail DROP COLUMN size")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)
@@ -176,6 +179,9 @@ func TestVoicemailGreetingMigration(t *testing.T) {
 	s.db.Exec("PRAGMA user_version = 10")
 	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_text")
 	s.db.Exec("ALTER TABLE line DROP COLUMN voicemail_audio")
+	s.db.Exec("DROP TABLE prompt")
+	s.db.Exec("ALTER TABLE session DROP COLUMN hashed")
+	s.db.Exec("ALTER TABLE voicemail DROP COLUMN size")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)
@@ -451,4 +457,258 @@ func tinyPNG(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	return b.Bytes()
+}
+
+// A recording belongs to the account that made it: nobody else can put it in
+// their menu, or delete it by taking it out of one.
+func TestPromptsBelongToTheirAccount(t *testing.T) {
+	s := open(t)
+	joe, err := s.CreateAccount("joe@example.com", "long-enough", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ann, err := s.CreateAccount("ann@example.com", "long-enough", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.CreateLine(joe.AccountID, "joe", "Joe's")
+	s.CreateLine(ann.AccountID, "ann", "Ann's")
+	name, err := s.AddPrompt(joe.AccountID, "audio/webm", strings.NewReader("sound"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.OwnsPrompt(joe.AccountID, name) || s.OwnsPrompt(ann.AccountID, name) {
+		t.Fatal("ownership is wrong")
+	}
+	// Even if another menu held the name, saving it away leaves Joe's file.
+	l, _ := s.LineForAccount(ann.AccountID)
+	l.GreetingAudio = name
+	if err := s.SaveMenu(ann.AccountID, l); err != nil {
+		t.Fatal(err)
+	}
+	l.GreetingAudio = ""
+	if err := s.SaveMenu(ann.AccountID, l); err != nil {
+		t.Fatal(err)
+	}
+	if !s.OwnsPrompt(joe.AccountID, name) {
+		t.Fatal("Ann's menu deleted Joe's recording")
+	}
+	// Joe's own menu does delete it.
+	j, _ := s.LineForAccount(joe.AccountID)
+	j.GreetingAudio = name
+	s.SaveMenu(joe.AccountID, j)
+	j.GreetingAudio = ""
+	s.SaveMenu(joe.AccountID, j)
+	if s.OwnsPrompt(joe.AccountID, name) {
+		t.Fatal("Joe's unused recording stayed")
+	}
+}
+
+func TestPromptCap(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "long-enough", "")
+	for i := 0; i < MaxPrompts; i++ {
+		if _, err := s.AddPrompt(u.AccountID, "audio/webm", strings.NewReader("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.AddPrompt(u.AccountID, "audio/webm", strings.NewReader("x")); err != ErrTooManyPrompts {
+		t.Fatalf("got %v", err)
+	}
+	// Recordings no menu uses go away after a day.
+	if _, err := s.db.Exec("UPDATE prompt SET created_at = datetime('now', '-2 days')"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AddPrompt(u.AccountID, "audio/webm", strings.NewReader("x")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The database keeps only a hash of a login's token, and a login made before
+// that still works after the upgrade.
+func TestSessionTokensAreHashed(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "long-enough", "")
+	token, _, err := s.NewSession(u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored string
+	s.db.QueryRow("SELECT token FROM session").Scan(&stored)
+	if stored == token {
+		t.Fatal("the token is stored as it is")
+	}
+	if got, err := s.UserBySession(token); err != nil || got.ID != u.ID {
+		t.Fatalf("login: %v", err)
+	}
+	if _, err := s.UserBySession(stored); err == nil {
+		t.Fatal("a stolen database row must not log in")
+	}
+	if _, err := s.db.Exec("INSERT INTO session (token, user_id, expires_at) VALUES ('old-token', ?, datetime('now', '+1 day'))", u.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.hashSessions(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UserBySession("old-token"); err != nil {
+		t.Fatalf("an old login: %v", err)
+	}
+	if err := s.hashSessions(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UserBySession(token); err != nil {
+		t.Fatal("running it twice broke a login")
+	}
+}
+
+func TestChangePassword(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "old-password", "")
+	here, _, _ := s.NewSession(u.ID)
+	there, _, _ := s.NewSession(u.ID)
+	if err := s.ChangePassword(u.ID, "wrong", "new-password", here); err != ErrBadLogin {
+		t.Fatalf("wrong current password: %v", err)
+	}
+	if err := s.ChangePassword(u.ID, "old-password", "new-password", here); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Login("joe@example.com", "new-password"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Login("joe@example.com", "old-password"); err != ErrBadLogin {
+		t.Fatal("the old password still works")
+	}
+	if _, err := s.UserBySession(here); err != nil {
+		t.Fatal("this device was logged out")
+	}
+	if _, err := s.UserBySession(there); err == nil {
+		t.Fatal("the other device is still logged in")
+	}
+}
+
+// A code is checked before the email, so a stranger can't test emails.
+func TestBadCodeHidesWhetherEmailIsTaken(t *testing.T) {
+	s := open(t)
+	if _, err := s.CreateAccount("joe@example.com", "long-enough", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateAccount("joe@example.com", "long-enough", "NO-SUCH-CODE"); err != ErrBadPromo {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestCleanup(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "long-enough", "")
+	s.CreateLine(u.AccountID, "joe", "Joe's")
+	old, _ := s.AddVoicemail("joe", "", "", "audio/webm", 1000, strings.NewReader("x"))
+	kept, _ := s.AddVoicemail("joe", "", "", "audio/webm", 1000, strings.NewReader("x"))
+	s.db.Exec("UPDATE voicemail SET created_at = datetime('now', '-100 days') WHERE id = ?", old.ID)
+	path, _, _ := s.VoicemailFile(u.AccountID, old.ID)
+	s.db.Exec("INSERT INTO session (token, hashed, user_id, expires_at) VALUES ('gone', 1, ?, datetime('now', '-1 day'))", u.ID)
+	if err := s.Cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.VoicemailFile(u.AccountID, old.ID); err != ErrNotFound {
+		t.Fatalf("old voicemail: %v", err)
+	}
+	if _, err := os.Stat(path); err == nil {
+		t.Fatal("the old voicemail's file stayed")
+	}
+	if _, _, err := s.VoicemailFile(u.AccountID, kept.ID); err != nil {
+		t.Fatalf("new voicemail: %v", err)
+	}
+	var n int
+	s.db.QueryRow("SELECT count(*) FROM session WHERE token = 'gone'").Scan(&n)
+	if n != 0 {
+		t.Fatal("an expired login stayed")
+	}
+}
+
+// Space is never made by dropping a message nobody heard.
+func TestCleanupKeepsUnheardMessages(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "long-enough", "")
+	s.CreateLine(u.AccountID, "joe", "Joe's")
+	unheard, _ := s.AddVoicemail("joe", "", "", "audio/webm", 1000, strings.NewReader("x"))
+	heard, _ := s.AddVoicemail("joe", "", "", "audio/webm", 1000, strings.NewReader("x"))
+	s.MarkListened(u.AccountID, heard.ID)
+	for i := 0; i < VoicemailsKept+1; i++ {
+		if _, err := s.AddVoicemail("joe", "", "", "audio/webm", 1000, strings.NewReader("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.VoicemailFile(u.AccountID, unheard.ID); err != nil {
+		t.Fatal("an unheard message was dropped for space")
+	}
+	if _, _, err := s.VoicemailFile(u.AccountID, heard.ID); err != ErrNotFound {
+		t.Fatalf("the old heard message: %v", err)
+	}
+}
+
+// Mailbox limits count bytes too, and old messages get their size at start.
+func TestMailboxBytesAndOldSizes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "test.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	if err := s.CreateLine(u.AccountID, "joe", "Joe's"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AddVoicemail("joe", "", "", "audio/webm", 1000, strings.NewReader("hello")); err != nil {
+		t.Fatal(err)
+	}
+	var size int64
+	s.db.QueryRow("SELECT size FROM voicemail").Scan(&size)
+	if size != 5 {
+		t.Fatalf("size: %d", size)
+	}
+	s.db.Exec("UPDATE voicemail SET size = 0")
+	s.Close()
+	if s, err = Open(path); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	s.db.QueryRow("SELECT size FROM voicemail").Scan(&size)
+	if size != 5 {
+		t.Fatalf("size filled in at start: %d", size)
+	}
+	if s.MailboxFull("joe") {
+		t.Fatal("full too soon")
+	}
+	s.db.Exec("UPDATE voicemail SET size = ?", MaxMailboxBytes)
+	if !s.MailboxFull("joe") {
+		t.Fatal("past the line's bytes")
+	}
+	s.db.Exec("UPDATE voicemail SET size = ?", MaxMailboxBytes-1)
+	v2, _ := s.CreateAccount("sue@example.com", "password1", "")
+	if err := s.CreateLine(v2.AccountID, "sue", "Sue's"); err != nil {
+		t.Fatal(err)
+	}
+	s.db.Exec("UPDATE voicemail SET size = ?", MaxVoicemailDisk)
+	if !s.MailboxFull("sue") {
+		t.Fatal("past the disk limit, every line stops")
+	}
+}
+
+func TestMailboxFull(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "long-enough", "")
+	s.CreateLine(u.AccountID, "joe", "Joe's")
+	if s.MailboxFull("joe") {
+		t.Fatal("an empty mailbox")
+	}
+	var id int64
+	s.db.QueryRow("SELECT id FROM line").Scan(&id)
+	for i := 0; i < MaxMailbox; i++ {
+		s.db.Exec("INSERT INTO voicemail (line_id, file, content_type) VALUES (?, 'x', 'audio/webm')", id)
+	}
+	if !s.MailboxFull("joe") {
+		t.Fatal("the mailbox should be full")
+	}
 }

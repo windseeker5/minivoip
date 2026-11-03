@@ -62,6 +62,11 @@ func (s *Server) businessPage(w http.ResponseWriter, r *http.Request, u store.Us
 }
 
 func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User) {
+	// One line per account: the account already has its line.
+	if _, err := s.Store.LineForAccount(u.AccountID); err == nil {
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
 	// A logo comes with the form; one too big to read is a bad logo.
 	r.Body = http.MaxBytesReader(w, r.Body, store.MaxLogoBytes+1<<20)
 	var tooBig *http.MaxBytesError
@@ -82,6 +87,11 @@ func (s *Server) createLine(w http.ResponseWriter, r *http.Request, u store.User
 	logo, logoErr := logoFile(r)
 	if f.Business == "" {
 		f.Error = "Write your business name."
+	} else if len(f.Business) > maxBusiness {
+		f.Error = tooLongBusiness
+	} else if f.Name == s.CallLine && !u.IsAdmin {
+		f.Error = "That name is reserved. Pick another one."
+		f.Custom = true
 	} else if logoErr != nil {
 		f.Error = store.ErrBadLogo.Error() + " Or skip it: you can add it later."
 		f.Custom = custom
@@ -129,15 +139,26 @@ func (s *Server) menuPage(w http.ResponseWriter, r *http.Request, u store.User) 
 	render(w, r, pages.MenuEditor(u.Email, l))
 }
 
-// maxOptions keeps the spoken menu short enough to remember.
-const maxOptions = 9
+// maxOptions keeps the spoken menu short enough to remember. The other limits
+// keep one customer from making the public call page huge.
+const (
+	maxOptions  = 9
+	maxBusiness = 100
+	maxLabel    = 80
+	maxSpoken   = 2000
+	maxLinkURL  = 2000
+	maxMenuForm = 128 << 10
+
+	tooLongBusiness = "Use a business name of 100 characters or fewer."
+)
 
 // saveMenu saves "What callers hear" (assets/js/menu.js posts it without
 // leaving the page, on the dashboard and in the phone app): nothing back when
 // it's saved, otherwise what's wrong in plain words.
 func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxMenuForm)
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Bad form", http.StatusBadRequest)
+		http.Error(w, "That's too much text. Shorten your messages.", http.StatusBadRequest)
 		return
 	}
 	l, err := s.Store.LineForAccount(u.AccountID)
@@ -146,12 +167,12 @@ func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) 
 		return
 	}
 	l.Greeting = strings.TrimSpace(r.FormValue("greeting"))
-	l.GreetingAudio = s.recording(r.FormValue("greeting_audio"))
+	l.GreetingAudio = s.recording(u, r.FormValue("greeting_audio"))
 	l.VoicemailText = strings.TrimSpace(r.FormValue("voicemail_text"))
 	if l.VoicemailText == l.DefaultVoicemail() {
 		l.VoicemailText = "" // the standard words follow the business's name
 	}
-	l.VoicemailAudio = s.recording(r.FormValue("voicemail_audio"))
+	l.VoicemailAudio = s.recording(u, r.FormValue("voicemail_audio"))
 	l.Options = nil
 	keys, labels, actions, says, urls, audios := r.Form["key"], r.Form["label"], r.Form["action"], r.Form["say"], r.Form["url"], r.Form["say_audio"]
 	for i := range keys {
@@ -164,7 +185,7 @@ func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) 
 			Action:   lines.Action(actions[i]),
 			Say:      strings.TrimSpace(says[i]),
 			URL:      strings.TrimSpace(urls[i]),
-			SayAudio: s.recording(audios[i]),
+			SayAudio: s.recording(u, audios[i]),
 		}
 		if o.Key == "" && o.Label == "" {
 			continue // an empty row
@@ -189,13 +210,14 @@ func (s *Server) saveMenu(w http.ResponseWriter, r *http.Request, u store.User) 
 // saveBusiness changes the business's name. A greeting still in the starter
 // words follows it, so callers never hear the old name.
 func (s *Server) saveBusiness(w http.ResponseWriter, r *http.Request, u store.User) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxFormBody)
 	l, err := s.Store.LineForAccount(u.AccountID)
 	if err != nil {
 		serverError(w, r, err)
 		return
 	}
 	name := strings.TrimSpace(r.FormValue("business"))
-	if name == "" {
+	if name == "" || len(name) > maxBusiness {
 		http.Redirect(w, r, "/dashboard/business?note=noname", http.StatusSeeOther)
 		return
 	}
@@ -215,6 +237,8 @@ func checkMenu(l lines.Line) string {
 	switch {
 	case l.Greeting == "" && l.GreetingAudio == "":
 		return "Write or record a welcome message."
+	case len(l.Greeting) > maxSpoken || len(l.VoicemailText) > maxSpoken:
+		return "Keep your messages under 2000 characters."
 	case len(l.Options) == 0:
 		return "Add at least one choice."
 	case len(l.Options) > maxOptions:
@@ -229,6 +253,12 @@ func checkMenu(l lines.Line) string {
 			return "Key " + o.Key + " is used twice. Give each choice its own key."
 		case o.Label == "":
 			return "Give choice " + o.Key + " a name, like Bookings."
+		case len(o.Label) > maxLabel:
+			return "Keep the name of choice " + o.Key + " under 80 characters."
+		case len(o.Say) > maxSpoken:
+			return "Keep the message of choice " + o.Key + " under 2000 characters."
+		case len(o.URL) > maxLinkURL:
+			return "The web address of choice " + o.Key + " is too long."
 		case !o.Action.Valid():
 			return "Pick what choice " + o.Key + " does."
 		case o.Action == lines.Play && o.Say == "" && o.SayAudio == "":
@@ -241,9 +271,9 @@ func checkMenu(l lines.Line) string {
 	return ""
 }
 
-// recording keeps a submitted prompt name only if that recording exists.
-func (s *Server) recording(name string) string {
-	if s.Store.PromptExists(name) {
+// recording keeps a submitted prompt name only if it's this account's recording.
+func (s *Server) recording(u store.User, name string) string {
+	if s.Store.OwnsPrompt(u.AccountID, name) {
 		return name
 	}
 	return ""
@@ -259,12 +289,16 @@ func (s *Server) uploadPrompt(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	defer file.Close()
-	ct := strings.TrimSpace(strings.Split(header.Header.Get("Content-Type"), ";")[0])
-	if !strings.HasPrefix(ct, "audio/") && ct != "video/webm" {
+	ct := store.AudioType(header.Header.Get("Content-Type"))
+	if ct == "" {
 		http.Error(w, "That isn't a sound recording.", http.StatusUnsupportedMediaType)
 		return
 	}
-	name, err := s.Store.AddPrompt(ct, file)
+	name, err := s.Store.AddPrompt(u.AccountID, ct, file)
+	if errors.Is(err, store.ErrTooManyPrompts) {
+		http.Error(w, "You have many recordings waiting. Save your page, then try again tomorrow.", http.StatusTooManyRequests)
+		return
+	}
 	if err != nil {
 		http.Error(w, "The recording couldn't be saved. Try a shorter one.", http.StatusBadRequest)
 		return
@@ -280,11 +314,17 @@ func (s *Server) prompt(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	sandboxed(w)
+	w.Header().Set("Content-Type", store.PromptType(r.PathValue("name")))
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	http.ServeFile(w, r, path)
 }
 
 func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {
+	if s.lookupFull(r) {
+		http.Error(w, "Too many requests. Please try again in a few minutes.", http.StatusTooManyRequests)
+		return
+	}
 	l, err := s.Store.LineByName(r.PathValue("line"))
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
@@ -297,9 +337,13 @@ func (s *Server) callPage(w http.ResponseWriter, r *http.Request) {
 	render(w, r, pages.Call(l, int(s.Hub.RingTimeout/time.Second), s.here(l)))
 }
 
-// roomPage is a line's meeting room. Its owner opens it; guests wait until
-// then (calls/room.go). Only Premium lines have one.
+// roomPage is a line's meeting room. Guests wait until its owner lets them in
+// (calls/room.go). Only Premium lines have one.
 func (s *Server) roomPage(w http.ResponseWriter, r *http.Request) {
+	if s.lookupFull(r) {
+		http.Error(w, "Too many requests. Please try again in a few minutes.", http.StatusTooManyRequests)
+		return
+	}
 	l, err := s.Store.LineByName(r.PathValue("line"))
 	if errors.Is(err, store.ErrNotFound) || err == nil && !l.Premium {
 		http.NotFound(w, r)

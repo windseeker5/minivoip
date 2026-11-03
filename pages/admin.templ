@@ -106,7 +106,7 @@ templ PromoPage(email string, list []store.PromoCode, accounts []store.Account, 
 					}
 					<div class="grid gap-4 sm:grid-cols-5">
 						@formField("code", "Code") {
-							@input.Input(input.Props{ID: "code", Name: "code", Value: f.Code, Required: true, Placeholder: "FAMILY", Class: "uppercase", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "characters"}})
+							@input.Input(input.Props{ID: "code", Name: "code", Value: f.Code, Placeholder: "Empty: a random code", Class: "uppercase", Attributes: templ.Attributes{"autocomplete": "off", "autocapitalize": "characters"}})
 						}
 						@formField("plan", "Plan it gives") {
 							<select id="plan" name="plan" class={ selectClass }>
@@ -247,7 +247,6 @@ templ PromoPage(email string, list []store.PromoCode, accounts []store.Account, 
 									<td class="py-3 text-right">
 										<form method="post" action={ templ.SafeURL("/admin/accounts/" + strconv.FormatInt(a.ID, 10) + "/plan") }>
 											<input type="hidden" name="plan" value={ string(otherPlan(a.Plan)) }/>
-											<input type="hidden" name="who" value={ strings.Join(a.Emails, ", ") }/>
 											@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeSm}) {
 												Move to { otherPlan(a.Plan).Name() }
 											}

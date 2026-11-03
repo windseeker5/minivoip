@@ -2,7 +2,7 @@
 // screen tries the microphone and camera, then the room's socket
 // (calls/room.go) says who is there; this browser connects directly to each
 // of them, voice, cameras, screens and the whiteboard through meet.js.
-// Guests wait until the owner opens the room.
+// Guests wait until the owner lets them in; the owner's door lists who waits.
 (function () {
   var root = document.querySelector("[data-room]");
   if (!root) return;
@@ -12,7 +12,9 @@
 
   var state = "lobby";
   var ws, mic, cam, meet, myId, cfg, myName, muted = false;
-  var peers = {}; // id -> { pc, link, audio }
+  var peers = {}; // id -> { pc, link, audio, name, owner }
+  var waiting = []; // the host's door: { id, name }
+  var doorOpen = false;
 
   function show(s) {
     state = s;
@@ -86,24 +88,16 @@
     $("[data-mic-help]").hidden = true;
     show("joining");
     status("Joining…");
-    var ice = fetch("/api/ice").then(function (r) { return r.json(); }).catch(function () { return { iceServers: [] }; });
     var get = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
       ? navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       : Promise.reject(new Error("no microphone"));
     get.then(function (stream) {
       mic = stream;
-      return ice;
+      connect();
     }, function () {
       show("lobby");
       $("[data-mic-help]").hidden = false;
       status("Your browser blocked the microphone.");
-      return null;
-    }).then(function (c) {
-      if (!c) return;
-      cfg = c;
-      // ?relay=1 forces the relay (for testing).
-      if (/[?&]relay=1/.test(location.search)) cfg.iceTransportPolicy = "relay";
-      connect();
     });
   }
 
@@ -116,14 +110,25 @@
       var m = JSON.parse(e.data);
       if (m.type === "waiting") {
         show("waiting");
-        status("Waiting for " + room.owner + " to open the room.");
+        status("Waiting for " + room.owner + " to let you in.");
       } else if (m.type === "full") {
         stop();
         show("full");
         status("This room is full.");
+      } else if (m.type === "denied" || m.type === "removed" || m.type === "wait-over") {
+        stop();
+        var said = m.type === "denied" ? room.owner + " didn't let you in." : m.type === "removed" ? room.owner + " removed you from the room." : room.owner + " didn't answer. Try again in a little while.";
+        $("[data-left-text]").textContent = said;
+        show("left");
+        status(said);
+      } else if (m.type === "door") {
+        waiting = m.peers || [];
+        door();
+      } else if (m.type === "seats-full") {
+        doorNote("The room is full: a meeting room fits 4 people.");
       } else if (m.type === "welcome") enter(m);
-      else if (m.type === "joined") peer(m.peer, false);
-      else if (m.type === "left") gone(m.id);
+      else if (m.type === "joined") { doorNote(""); peer(m.peer, false); door(); }
+      else if (m.type === "left") { gone(m.id); door(); }
       else if (m.type === "signal") signal(m.from, m.data || {});
     };
     sock.onclose = function () {
@@ -139,6 +144,9 @@
 
   function enter(m) {
     myId = m.id;
+    // The relay login comes with being let in. ?relay=1 forces the relay (for testing).
+    cfg = m.ice || { iceServers: [] };
+    if (/[?&]relay=1/.test(location.search)) cfg.iceTransportPolicy = "relay";
     meet = MinivoipMeet.Session({ stage: $("[data-stage]"), me: { name: myName, initials: room.isOwner ? room.initials : initials(myName), logo: room.isOwner ? room.logo : "" },
       mic: mic, camera: cam, muted: muted, onChange: changed });
     cam = null; // the session has it now
@@ -157,11 +165,11 @@
     audio.autoplay = true;
     audio.setAttribute("playsinline", "");
     $("[data-audio]").append(audio);
-    var link = meet.link(p.id, pc, { name: p.name, initials: p.owner ? room.initials : initials(p.name), logo: p.owner ? room.logo : "", onAudio: function (stream) {
+    var link = meet.link(p.id, pc, { name: p.name, initials: p.owner ? room.initials : initials(p.name), logo: p.owner ? room.logo : "", fixedName: true, onAudio: function (stream) {
       audio.srcObject = stream;
       audio.play().catch(function () {});
     } });
-    peers[p.id] = { pc: pc, link: link, audio: audio };
+    peers[p.id] = { pc: pc, link: link, audio: audio, name: p.name, owner: p.owner };
     pc.onicecandidate = function (e) {
       if (e.candidate) send(p.id, { type: "ice", candidate: e.candidate.toJSON() });
     };
@@ -180,9 +188,61 @@
     var x = peers[id];
     if (!x) return;
     delete peers[id];
-    if (meet) meet.drop(id);
+    // Whatever the stage does, the connection closes.
+    try { if (meet) meet.drop(id); } catch (e) {}
     x.pc.close();
     x.audio.remove();
+  }
+
+  // ----------------------------------------------------------- the host's door
+
+  function doorRow(name, buttons) {
+    var li = document.createElement("li");
+    li.className = "rm-door-row";
+    var n = document.createElement("span");
+    n.className = "rm-door-name";
+    n.textContent = name;
+    li.append(n);
+    buttons.forEach(function (b) {
+      var x = document.createElement("button");
+      x.type = "button";
+      x.className = "rm-door-btn" + (b.yes ? " is-yes" : "");
+      x.dataset.action = b.action;
+      x.dataset.to = b.to;
+      x.textContent = b.label;
+      x.setAttribute("aria-label", b.label + " " + name);
+      li.append(x);
+    });
+    return li;
+  }
+
+  // door shows who waits to come in; "People" also lists who to remove.
+  function door() {
+    var box = $("[data-door]");
+    if (!box) return;
+    var list = $("[data-door-waiting]"), inRoom = $("[data-door-in]");
+    list.replaceChildren.apply(list, waiting.map(function (g) {
+      return doorRow(g.name + " is waiting", [{ action: "deny", to: g.id, label: "Decline" }, { action: "admit", to: g.id, label: "Let in", yes: true }]);
+    }));
+    list.hidden = !waiting.length;
+    var guests = Object.keys(peers).filter(function (id) { return !peers[id].owner; });
+    inRoom.replaceChildren.apply(inRoom, guests.map(function (id) {
+      return doorRow(peers[id].name, [{ action: "remove", to: id, label: "Remove" }]);
+    }));
+    inRoom.hidden = !doorOpen || !guests.length;
+    box.hidden = list.hidden && inRoom.hidden && $("[data-door-note]").hidden;
+    $('[data-action="people"]').setAttribute("aria-pressed", String(doorOpen));
+    if (waiting.length) status(waiting[0].name + " is waiting to come in.");
+  }
+  function doorNote(t) {
+    var n = $("[data-door-note]");
+    if (!n) return;
+    n.textContent = t;
+    n.hidden = !t;
+    door();
+  }
+  function doorSend(type, to) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: type, to: to }));
   }
 
   function send(to, data) {
@@ -216,11 +276,12 @@
     Object.keys(peers).forEach(gone);
     if (meet) {
       muted = meet.muted;
-      meet.end();
+      try { meet.end(); } catch (e) {}
       meet = null;
     }
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
     meetNote("");
+    waiting = [];
   }
 
   function leave() {
@@ -269,6 +330,8 @@
       case "join": join(); break;
       case "leave": leave(); break;
       case "copy": copy(b); break;
+      case "people": doorOpen = !doorOpen; door(); break;
+      case "admit": case "deny": case "remove": doorSend(b.dataset.action, b.dataset.to); break;
       case "mute": if (meet) meet.mute(!meet.muted); break;
       case "camera":
         if (!meet) break;

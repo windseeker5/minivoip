@@ -38,6 +38,7 @@ const (
 
 // Why a note was skipped or failed (note.reason); the dashboard words them.
 const (
+	NoteNoRecorder = "no_recorder"
 	NoteNotSetUp   = "not_set_up"
 	NoteNotPremium = "not_premium"
 	NoteMonthLimit = "month_limit"
@@ -102,6 +103,7 @@ type Note struct {
 	Audio       string   // file under the data folder; "" once transcribed
 	AudioType   string
 	Seconds     int64 // the recording's length: first as told, then as measured
+	Missed      int64 // seconds its browser reckons it didn't catch
 	Transcript  []NoteLine
 	Summary     string
 	NextActions []string
@@ -114,7 +116,7 @@ type Note struct {
 }
 
 const noteColumns = `id, account_id, line_id, kind, status, reason, language, audio, audio_type, seconds,
-	transcript, summary, next_actions, tries, people, call_id, COALESCE(voicemail_id, 0), created_at, COALESCE(done_at, '')`
+	transcript, summary, next_actions, tries, people, call_id, COALESCE(voicemail_id, 0), missed_seconds, created_at, COALESCE(done_at, '')`
 
 // noteListColumns leaves the transcripts out: a list doesn't show them, and a
 // year of meetings is a lot of words.
@@ -127,7 +129,7 @@ func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 	var n Note
 	var transcript, actions, people string
 	err := row.Scan(&n.ID, &n.AccountID, &n.LineID, &n.Kind, &n.Status, &n.Reason, &n.Language, &n.Audio, &n.AudioType, &n.Seconds,
-		&transcript, &n.Summary, &actions, &n.Tries, &people, &n.CallID, &n.VoicemailID, &n.CreatedAt, &n.DoneAt)
+		&transcript, &n.Summary, &actions, &n.Tries, &people, &n.CallID, &n.VoicemailID, &n.Missed, &n.CreatedAt, &n.DoneAt)
 	if err != nil {
 		return Note{}, err
 	}
@@ -379,7 +381,7 @@ func (s *Store) noteByCall(callID string) (Note, error) {
 // come one at a time; one sent again after a lost answer is already in. A
 // recording past the account's month, its own size, or already being written
 // down takes no more, and the app stops.
-func (s *Store) AppendRecording(accountID int64, callID string, part int, data []byte) error {
+func (s *Store) AppendRecording(accountID int64, callID string, part int, data []byte, missed int64) error {
 	s.recording.Lock()
 	defer s.recording.Unlock()
 	var id, size, month int64
@@ -421,14 +423,15 @@ func (s *Store) AppendRecording(accountID int64, callID string, part int, data [
 	}
 	_, err = s.db.Exec(`UPDATE note SET parts = parts + 1, audio_size = audio_size + ?,
 			seconds = CAST(strftime('%s', 'now') AS INTEGER) - CAST(strftime('%s', created_at) AS INTEGER),
+			missed_seconds = max(missed_seconds, ?),
 			next_try = datetime('now', ?)
-		WHERE id = ? AND status = 'waiting'`, len(data), fmt.Sprintf("+%d seconds", recordingGrace), id)
+		WHERE id = ? AND status = 'waiting'`, len(data), clampMissed(missed), fmt.Sprintf("+%d seconds", recordingGrace), id)
 	return err
 }
 
 // FinishRecording says the last piece is in: the note's turn comes now. A call
 // that ended before any piece arrived has nothing to say, and goes.
-func (s *Store) FinishRecording(accountID int64, callID string) error {
+func (s *Store) FinishRecording(accountID int64, callID string, missed int64) error {
 	res, err := s.db.Exec("DELETE FROM note WHERE call_id = ? AND account_id = ? AND status = 'waiting' AND parts = 0", callID, accountID)
 	if err != nil {
 		return err
@@ -436,7 +439,7 @@ func (s *Store) FinishRecording(accountID int64, callID string) error {
 	if n, _ := res.RowsAffected(); n > 0 {
 		return nil
 	}
-	res, err = s.db.Exec("UPDATE note SET next_try = datetime('now') WHERE call_id = ? AND account_id = ? AND status = 'waiting'", callID, accountID)
+	res, err = s.db.Exec("UPDATE note SET next_try = datetime('now'), missed_seconds = max(missed_seconds, ?) WHERE call_id = ? AND account_id = ? AND status = 'waiting'", clampMissed(missed), callID, accountID)
 	if err != nil {
 		return err
 	}
@@ -445,6 +448,9 @@ func (s *Store) FinishRecording(accountID int64, callID string) error {
 	}
 	return nil
 }
+
+// clampMissed keeps what a browser says to something a call could have missed.
+func clampMissed(n int64) int64 { return min(max(n, 0), NoteMonthSeconds) }
 
 // ClaimNote takes the oldest note whose turn has come and marks it working.
 func (s *Store) ClaimNote() (Note, bool, error) {

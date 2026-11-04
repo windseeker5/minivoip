@@ -256,6 +256,10 @@ var migrations = []string{
 	`
 	ALTER TABLE note ADD COLUMN people TEXT NOT NULL DEFAULT '';
 	`,
+	// 20: how much of a recording its browser reckons it missed.
+	`
+	ALTER TABLE note ADD COLUMN missed_seconds INTEGER NOT NULL DEFAULT 0;
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

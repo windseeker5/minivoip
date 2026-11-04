@@ -225,6 +225,22 @@ func TestRoomSaysNotesAreOn(t *testing.T) {
 	}
 }
 
+func TestNoteSaysWhatItMissed(t *testing.T) {
+	for missed, want := range map[int64]string{0: "", 4: "", 5: "About 1 minute wasn't recorded", 300: "About 5 minutes wasn't recorded"} {
+		got := noteMissed(store.Note{Status: store.NoteDone, Missed: missed})
+		if want == "" && got != "" || want != "" && !strings.HasPrefix(got, want) {
+			t.Errorf("%d: %q", missed, got)
+		}
+	}
+	if got := noteMissed(store.Note{Status: store.NoteWaiting, Missed: 300}); got != "" {
+		t.Errorf("still being written: %q", got)
+	}
+	page := render(t, NotePage("marie@example.com", store.Note{ID: 1, Kind: store.NoteCall, Status: store.NoteDone, Missed: 120, Summary: "Ok"}))
+	if !strings.Contains(page, "data-note-missed") {
+		t.Error("the note doesn't say what it missed")
+	}
+}
+
 func TestNotePeople(t *testing.T) {
 	if got := notePeople(store.Note{}); got != "" {
 		t.Errorf("no one: %q", got)

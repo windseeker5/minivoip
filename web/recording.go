@@ -51,6 +51,14 @@ func (s *Server) recordingStart(w http.ResponseWriter, r *http.Request, u store.
 		answer(false, reason)
 		return
 	}
+	// A browser that can't record says so with no type: the note tells the owner.
+	if r.URL.Query().Get("type") == "" {
+		if err := s.Store.SkipCallNote(l.Name, id, store.NoteNoRecorder); err != nil {
+			log.Printf("call %s: note: %v", id, err)
+		}
+		answer(false, store.NoteNoRecorder)
+		return
+	}
 	audioType := store.AudioType(r.URL.Query().Get("type"))
 	if audioType == "" {
 		http.Error(w, "That isn't a sound recording.", http.StatusUnsupportedMediaType)
@@ -106,6 +114,13 @@ func (s *Server) roomRecordingStart(w http.ResponseWriter, r *http.Request, u st
 		answer(false, reason, "")
 		return
 	}
+	if r.URL.Query().Get("type") == "" {
+		if err := s.Store.SkipRoomNote(l.Name, store.NoteNoRecorder, guests); err != nil {
+			log.Printf("room %s: note: %v", l.Name, err)
+		}
+		answer(false, store.NoteNoRecorder, "")
+		return
+	}
 	audioType := store.AudioType(r.URL.Query().Get("type"))
 	if audioType == "" {
 		http.Error(w, "That isn't a sound recording.", http.StatusUnsupportedMediaType)
@@ -125,6 +140,12 @@ func (s *Server) roomRecordingStart(w http.ResponseWriter, r *http.Request, u st
 	}
 }
 
+// missedSeconds is how much of the recording its browser reckons it didn't catch.
+func missedSeconds(r *http.Request) int64 {
+	n, _ := strconv.ParseInt(r.URL.Query().Get("missed"), 10, 64)
+	return n
+}
+
 // recordingPiece takes the next piece. 409 and 413 tell the app to stop.
 func (s *Server) recordingPiece(w http.ResponseWriter, r *http.Request, u store.User) {
 	part, err := strconv.Atoi(r.PathValue("part"))
@@ -138,7 +159,7 @@ func (s *Server) recordingPiece(w http.ResponseWriter, r *http.Request, u store.
 		http.Error(w, "This piece is too big.", http.StatusRequestEntityTooLarge)
 		return
 	}
-	err = s.Store.AppendRecording(u.AccountID, r.PathValue("id"), part, data)
+	err = s.Store.AppendRecording(u.AccountID, r.PathValue("id"), part, data, missedSeconds(r))
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 		http.NotFound(w, r)
@@ -155,7 +176,7 @@ func (s *Server) recordingPiece(w http.ResponseWriter, r *http.Request, u store.
 
 // recordingDone says the last piece is in, so the note's turn comes now.
 func (s *Server) recordingDone(w http.ResponseWriter, r *http.Request, u store.User) {
-	err := s.Store.FinishRecording(u.AccountID, r.PathValue("id"))
+	err := s.Store.FinishRecording(u.AccountID, r.PathValue("id"), missedSeconds(r))
 	if errors.Is(err, store.ErrRecordingStale) {
 		http.Error(w, "This recording is closed.", http.StatusConflict)
 		return

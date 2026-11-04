@@ -206,6 +206,12 @@ for the summary, and hours are counted only then.
   logged-in owner can start one, while they and a guest are in the room (`Rooms.Meeting`). With nobody left for a minute the
   recording ends, so an empty room costs nothing. The note keeps the names guests typed at the door (`note.people`), which
   are shown as plain text and given to Claude as data.
+- **Other browsers and locked phones** (`recorder.js`): it picks what the browser records (webm, Safari's mp4, ogg). A
+  browser that can't record at all leaves a note saying so. It counts what it may have missed: the page frozen for over 5
+  seconds, the phone cutting off the microphone, the sound engine stopped; each post says how many seconds, and the note
+  says "About 2 minutes wasn't recorded" (`note.missed_seconds`). Coming back to the page restarts the sound engine. The Android app (0.5)
+  keeps the microphone open with a foreground service while a call or meeting is on (`CallAlive`), which also keeps the
+  owner's voice in the call itself when the screen locks. **Only a real phone can show:** see "Real phones" in `notes-plan.md`.
 - **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing on every
   step of the call window, out loud before the menu (even a recorded one) and before the tone, written at the meeting room's
   door, in the room, and said to a guest pressing Join. In the account's language. A caller who presses a choice early

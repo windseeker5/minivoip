@@ -17,6 +17,7 @@ import android.os.Build
 object Ring {
     private const val CALLS = "calls"
     private const val MESSAGES = "messages"
+    const val ON_A_CALL = "on_a_call"
     private const val RING_ID = 1
     private const val MESSAGE_ID = 2
 
@@ -37,7 +38,10 @@ object Ring {
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
         val messages = NotificationChannel(MESSAGES, "Missed calls and voicemail", NotificationManager.IMPORTANCE_HIGH)
-        nm(ctx).createNotificationChannels(listOf(calls, messages))
+        val onACall = NotificationChannel(ON_A_CALL, "On a call", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "Shows while a call or a meeting keeps your microphone open."
+        }
+        nm(ctx).createNotificationChannels(listOf(calls, messages, onACall))
     }
 
     // ready: notifications are on and calls may fill the lock screen.

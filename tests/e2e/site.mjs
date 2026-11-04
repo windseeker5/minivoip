@@ -1190,8 +1190,9 @@ try {
     host2.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
     await host2.route(/\/room\/[^/]+\/recording/, (r) => { started++; r.fulfill({ json: { record: true, url: "/e2e-recording" } }); });
     await host2.route(/\/e2e-recording\//, (r) => {
-      if (r.request().url().endsWith("/done")) done++;
-      else parts[Number(r.request().url().split("/").pop())] = r.request().postDataBuffer();
+      const at = new URL(r.request().url()).pathname;
+      if (at.endsWith("/done")) done++;
+      else parts[Number(at.split("/").pop())] = r.request().postDataBuffer();
       r.fulfill({ status: 204 });
     });
     await host2.goto(BASE + `/room/${LINE}`);

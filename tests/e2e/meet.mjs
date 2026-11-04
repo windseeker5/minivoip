@@ -27,8 +27,8 @@ const cache = join(homedir(), ".cache/ms-playwright");
 const shell = readdirSync(cache).filter((d) => d.startsWith("chromium_headless_shell-")).sort().pop();
 
 // The fake upload: what the app's recorder sends for call c1.
-const rec = { mode: "on", started: 0, parts: [], done: 0, type: "" };
-const recReset = (mode) => Object.assign(rec, { mode, started: 0, parts: [], done: 0, type: "" });
+const rec = { mode: "on", started: 0, parts: [], done: 0, type: "", missed: 0 };
+const recReset = (mode) => Object.assign(rec, { mode, started: 0, parts: [], done: 0, type: "", missed: 0 });
 const types = { ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
 const server = createServer((req, res) => {
   const u = new URL(req.url, "http://x");
@@ -48,8 +48,10 @@ const server = createServer((req, res) => {
         rec.type = u.searchParams.get("type");
         if (rec.mode === "start-error") return send(500, "text/plain", "no");
         if (rec.mode === "limit") return send(200, "application/json", '{"record":false,"reason":"month_limit"}');
+        if (rec.type === "") return send(200, "application/json", '{"record":false,"reason":"no_recorder"}');
         return send(200, "application/json", '{"record":true}');
       }
+      rec.missed = Math.max(rec.missed, Number(u.searchParams.get("missed") || 0));
       if (tail === "/done") { rec.done++; return send(204, "text/plain", ""); }
       if (rec.mode === "upload-error") return send(500, "text/plain", "no");
       if (rec.mode === "refused" && rec.parts.length >= 1) return send(409, "text/plain", "no");
@@ -288,9 +290,10 @@ await owner.context().close();
 }
 
 // Notes on: a real call, recorded in the owner's app ---------------------------
-async function notesCall(mode, during) {
+async function notesCall(mode, during, before) {
   recReset(mode);
   const o = await context(1280, 860, "owner");
+  if (before) await o.addInitScript(before);
   await o.goto(BASE + "/app-notes");
   await o.waitForFunction(() => document.querySelector("[data-phone]").dataset.online === "true");
   const v = await context(390, 844, "visitor");
@@ -355,6 +358,89 @@ for (const [mode, words] of [["limit", "10 hours"], ["start-error", "Recording s
   });
   if (mode === "upload-error") check(await until(() => rec.done > 0, 3000) || rec.parts.length === 0, "upload-error: the failed pieces don't hold up the end of the call");
   errors.splice(before);
+  await v.context().close();
+  await o.context().close();
+}
+// Other browsers, and what a locked phone does -----------------------------------
+const hasMp4 = await owner_probe();
+async function owner_probe() {
+  const p = await context(800, 600, "owner");
+  await p.goto(BASE + "/app");
+  const ok = await p.evaluate(() => MediaRecorder.isTypeSupported("audio/mp4"));
+  await p.context().close();
+  return ok;
+}
+{
+  console.log(`--- other browsers (this one records mp4: ${hasMp4})`);
+  // Safari's choice: only mp4 on offer.
+  const { o, v } = await notesCall("on", async (o) => {
+    await o.waitForFunction(() => document.querySelector("[data-rec-note]").textContent !== "", null, { timeout: 5000 });
+    await o.waitForTimeout(3500);
+  }, () => { const real = MediaRecorder.isTypeSupported.bind(MediaRecorder); MediaRecorder.isTypeSupported = (t) => t === "audio/mp4" && real(t); });
+  await until(() => rec.done > 0);
+  if (hasMp4) {
+    check(rec.type === "audio/mp4", `with only mp4 on offer, it asks for mp4 (${rec.type})`);
+    const first = rec.parts[0];
+    check(first && first.subarray(4, 8).toString() === "ftyp", "the pieces start like an mp4 file");
+    const p = await peaks(o);
+    check(p.channels === 2 && p.owner[0] > 0.001 && p.caller[0] > 0.001, `the mp4 pieces make one file with both voices (${p.channels} channels)`);
+  } else check(rec.type === "", `no recording type left, it says so (${rec.type})`);
+  await v.context().close();
+  await o.context().close();
+}
+{
+  // A browser with no recorder: the owner is told, and the call goes on.
+  const { o, v } = await notesCall("on", async (o) => {
+    await o.waitForFunction(() => document.querySelector("[data-rec-note]").textContent !== "", null, { timeout: 5000 });
+    check(/can't record/.test(await o.textContent("[data-rec-note]")), "no recorder: the owner is told");
+    check(rec.type === "" && rec.parts.length === 0, "and nothing is sent");
+    await o.waitForTimeout(2000);
+  }, () => { delete window.MediaRecorder; });
+  await v.context().close();
+  await o.context().close();
+}
+{
+  // The page frozen, the microphone cut off, the sound engine stopped: each is
+  // counted as missed, and goes up with the pieces.
+  const before = () => {
+    window.__contexts = [];
+    const AC = window.AudioContext;
+    window.AudioContext = function (...a) { const c = new AC(...a); window.__contexts.push(c); return c; };
+    window.__mics = [];
+    const gum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = (c) => gum(c).then((s) => { window.__mics.push(s); return s; });
+    window.__recorders = [];
+    const MR = window.MediaRecorder;
+    window.MediaRecorder = function (...a) { const r = new MR(...a); window.__recorders.push(r); return r; };
+    window.MediaRecorder.isTypeSupported = MR.isTypeSupported.bind(MR);
+  };
+  const { o, v } = await notesCall("on", async (o) => {
+    await o.waitForSelector("[data-rec-note].is-on", { timeout: 5000 });
+    await o.evaluate(() => { const end = Date.now() + 6500; while (Date.now() < end); });
+    await o.waitForTimeout(2500);
+    check(rec.missed >= 6 && rec.missed <= 9, `a frozen page counts as missed (${rec.missed} s)`);
+    const afterFreeze = rec.missed;
+    await o.evaluate(() => window.__mics.at(-1).getAudioTracks()[0].dispatchEvent(new Event("mute")));
+    await o.waitForTimeout(3500);
+    await o.evaluate(() => window.__mics.at(-1).getAudioTracks()[0].dispatchEvent(new Event("unmute")));
+    await o.waitForTimeout(2000);
+    check(rec.missed >= afterFreeze + 3 && rec.missed <= afterFreeze + 5, `the phone cutting off the microphone counts too (${rec.missed} s)`);
+    const afterMic = rec.missed;
+    await o.evaluate(() => window.__contexts.at(-1).suspend());
+    await o.waitForTimeout(3500);
+    await o.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await o.waitForFunction(() => window.__contexts.at(-1).state === "running", null, { timeout: 3000 });
+    check(true, "coming back to the page starts the stopped sound engine again");
+    await o.waitForTimeout(2000);
+    check(rec.missed >= afterMic + 3 && rec.missed <= afterMic + 5, `so a stopped sound engine counts too (${rec.missed} s)`);
+    check(await o.isVisible("[data-rec-note].is-on"), "and the recording goes on");
+    // The browser stops the recorder by itself: what's in goes up, and it says so.
+    const had = rec.parts.length;
+    await o.evaluate(() => window.__recorders.at(-1).stop());
+    await o.waitForFunction(() => /Recording stopped/.test(document.querySelector("[data-rec-note]").textContent), null, { timeout: 3000 });
+    check(await until(() => rec.done === 1, 3000) && rec.parts.length >= had, "the browser stopping the recorder keeps what's in, and says so");
+  }, before);
+  check(rec.done === 1, `it doesn't say it's done twice (${rec.done})`);
   await v.context().close();
   await o.context().close();
 }

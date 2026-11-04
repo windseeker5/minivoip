@@ -424,28 +424,28 @@ func TestRecordingInPieces(t *testing.T) {
 	if _, ok, _ := s.ClaimNote(); ok {
 		t.Fatal("claimed before the last piece")
 	}
-	if err := s.AppendRecording(u.AccountID, "c1", 0, []byte("one ")); err != nil {
+	if err := s.AppendRecording(u.AccountID, "c1", 0, []byte("one "), 0); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendRecording(u.AccountID, "c1", 0, []byte("one ")); err != nil {
+	if err := s.AppendRecording(u.AccountID, "c1", 0, []byte("one "), 0); err != nil {
 		t.Fatalf("a piece sent again: %v", err)
 	}
-	if err := s.AppendRecording(u.AccountID, "c1", 5, []byte("x")); !errors.Is(err, ErrRecordingStale) {
+	if err := s.AppendRecording(u.AccountID, "c1", 5, []byte("x"), 0); !errors.Is(err, ErrRecordingStale) {
 		t.Fatalf("a piece from the future: %v", err)
 	}
-	if err := s.AppendRecording(sue.AccountID, "c1", 1, []byte("x")); !errors.Is(err, ErrNotFound) {
+	if err := s.AppendRecording(sue.AccountID, "c1", 1, []byte("x"), 0); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("someone else's: %v", err)
 	}
-	if err := s.AppendRecording(u.AccountID, "no-such-call", 0, []byte("x")); !errors.Is(err, ErrNotFound) {
+	if err := s.AppendRecording(u.AccountID, "no-such-call", 0, []byte("x"), 0); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("no such call: %v", err)
 	}
-	if err := s.AppendRecording(u.AccountID, "c1", 1, []byte("two")); err != nil {
+	if err := s.AppendRecording(u.AccountID, "c1", 1, []byte("two"), 0); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.FinishRecording(sue.AccountID, "c1"); !errors.Is(err, ErrRecordingStale) {
+	if err := s.FinishRecording(sue.AccountID, "c1", 0); !errors.Is(err, ErrRecordingStale) {
 		t.Fatalf("someone else finishing: %v", err)
 	}
-	if err := s.FinishRecording(u.AccountID, "c1"); err != nil {
+	if err := s.FinishRecording(u.AccountID, "c1", 0); err != nil {
 		t.Fatal(err)
 	}
 	claimed, ok, err := s.ClaimNote()
@@ -455,7 +455,7 @@ func TestRecordingInPieces(t *testing.T) {
 	if b, _ := os.ReadFile(s.NoteAudioPath(claimed)); string(b) != "one two" {
 		t.Fatalf("the file: %q", b)
 	}
-	if err := s.AppendRecording(u.AccountID, "c1", 2, []byte("late")); !errors.Is(err, ErrRecordingStale) {
+	if err := s.AppendRecording(u.AccountID, "c1", 2, []byte("late"), 0); !errors.Is(err, ErrRecordingStale) {
 		t.Fatalf("a piece after its turn: %v", err)
 	}
 	if err := s.SaveTranscript(claimed, []NoteLine{{Speaker: SpeakerOwner, Text: "Oui"}}, 9); err != nil {
@@ -471,7 +471,7 @@ func TestRecordingAfterACrash(t *testing.T) {
 	s := open(t)
 	u := notesAccount(t, s, "joe@example.com", "joes")
 	s.StartRecording("joes", "c1", "audio/webm")
-	s.AppendRecording(u.AccountID, "c1", 0, []byte("sound"))
+	s.AppendRecording(u.AccountID, "c1", 0, []byte("sound"), 0)
 	if _, ok, _ := s.ClaimNote(); ok {
 		t.Fatal("claimed too soon")
 	}
@@ -486,7 +486,7 @@ func TestRecordingWithNoPieces(t *testing.T) {
 	s := open(t)
 	u := notesAccount(t, s, "joe@example.com", "joes")
 	s.StartRecording("joes", "c1", "audio/webm")
-	if err := s.FinishRecording(u.AccountID, "c1"); err != nil {
+	if err := s.FinishRecording(u.AccountID, "c1", 0); err != nil {
 		t.Fatal(err)
 	}
 	if list, _ := s.Notes(u.AccountID); len(list) != 0 {
@@ -498,17 +498,17 @@ func TestRecordingLimits(t *testing.T) {
 	s := open(t)
 	u := notesAccount(t, s, "joe@example.com", "joes")
 	s.StartRecording("joes", "big", "audio/webm")
-	if err := s.AppendRecording(u.AccountID, "big", 0, make([]byte, MaxRecordingPiece+1)); !errors.Is(err, ErrRecordingFull) {
+	if err := s.AppendRecording(u.AccountID, "big", 0, make([]byte, MaxRecordingPiece+1), 0); !errors.Is(err, ErrRecordingFull) {
 		t.Fatalf("a piece too big: %v", err)
 	}
 	s.db.Exec("UPDATE note SET audio_size = ? WHERE call_id = 'big'", MaxRecordingBytes)
-	if err := s.AppendRecording(u.AccountID, "big", 0, []byte("x")); !errors.Is(err, ErrRecordingFull) {
+	if err := s.AppendRecording(u.AccountID, "big", 0, []byte("x"), 0); !errors.Is(err, ErrRecordingFull) {
 		t.Fatalf("a recording too big: %v", err)
 	}
 	s.db.Exec("UPDATE note SET audio_size = 0 WHERE call_id = 'big'")
 	s.ChargeNotes(u.AccountID, NoteMonthSeconds)
 	s.db.Exec("UPDATE note SET created_at = datetime('now', '-5 seconds') WHERE call_id = 'big'")
-	if err := s.AppendRecording(u.AccountID, "big", 0, []byte("x")); !errors.Is(err, ErrRecordingFull) {
+	if err := s.AppendRecording(u.AccountID, "big", 0, []byte("x"), 0); !errors.Is(err, ErrRecordingFull) {
 		t.Fatalf("past the month: %v", err)
 	}
 	s.db.Exec("UPDATE note SET audio_size = ? WHERE call_id = 'big'", int64(MaxRecordingDisk))
@@ -555,7 +555,7 @@ func TestSweepRecordings(t *testing.T) {
 	s := open(t)
 	u := notesAccount(t, s, "joe@example.com", "joes")
 	n, _ := s.StartRecording("joes", "c1", "audio/webm")
-	s.AppendRecording(u.AccountID, "c1", 0, []byte("sound"))
+	s.AppendRecording(u.AccountID, "c1", 0, []byte("sound"), 0)
 	mine := filepath.Join(s.Dir, n.Audio)
 	lost := filepath.Join(s.Dir, "notes", "call-lost.webm")
 	fresh := filepath.Join(s.Dir, "notes", "call-fresh.webm")
@@ -605,13 +605,13 @@ func TestRoomRecording(t *testing.T) {
 	if got, _ = s.NoteByID(u.AccountID, n.ID); len(got.People) != maxNotePeople {
 		t.Fatalf("a robot's names: %d", len(got.People))
 	}
-	if err := s.AppendRecording(sue.AccountID, n.CallID, 0, []byte("x")); !errors.Is(err, ErrNotFound) {
+	if err := s.AppendRecording(sue.AccountID, n.CallID, 0, []byte("x"), 0); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("someone else's piece: %v", err)
 	}
-	if err := s.AppendRecording(u.AccountID, n.CallID, 0, []byte("x")); err != nil {
+	if err := s.AppendRecording(u.AccountID, n.CallID, 0, []byte("x"), 0); err != nil {
 		t.Fatal(err)
 	}
-	s.FinishRecording(u.AccountID, n.CallID)
+	s.FinishRecording(u.AccountID, n.CallID, 0)
 	s.ClaimNote()
 	s.AddNotePerson("joes", "Late")
 	if got, _ = s.NoteByID(u.AccountID, n.ID); slices.Contains(got.People, "Late") {
@@ -633,5 +633,33 @@ func TestRoomRecording(t *testing.T) {
 	}
 	if list, _ = s.Notes(u.AccountID); len(list) != 2 {
 		t.Fatalf("Basic gets no note: %d", len(list))
+	}
+}
+
+// A browser's word on what it missed only grows, and stays within reason.
+func TestRecordingMissed(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	n, _ := s.StartRecording("joes", "c1", "audio/mp4")
+	if !strings.HasSuffix(n.Audio, ".m4a") {
+		t.Fatalf("Safari's recording: %q", n.Audio)
+	}
+	s.AppendRecording(u.AccountID, "c1", 0, []byte("x"), 12)
+	s.AppendRecording(u.AccountID, "c1", 1, []byte("x"), 5)
+	if got, _ := s.NoteByID(u.AccountID, n.ID); got.Missed != 12 {
+		t.Fatalf("missed: %d", got.Missed)
+	}
+	s.FinishRecording(u.AccountID, "c1", 40)
+	if got, _ := s.NoteByID(u.AccountID, n.ID); got.Missed != 40 {
+		t.Fatalf("at the end: %d", got.Missed)
+	}
+	m, _ := s.StartRecording("joes", "c2", "audio/webm")
+	s.AppendRecording(u.AccountID, "c2", 0, []byte("x"), -9)
+	if got, _ := s.NoteByID(u.AccountID, m.ID); got.Missed != 0 {
+		t.Fatalf("below zero: %d", got.Missed)
+	}
+	s.AppendRecording(u.AccountID, "c2", 1, []byte("x"), 1<<40)
+	if got, _ := s.NoteByID(u.AccountID, m.ID); got.Missed != NoteMonthSeconds {
+		t.Fatalf("too many: %d", got.Missed)
 	}
 }

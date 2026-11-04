@@ -9,8 +9,10 @@ ring like a phone call (ringtone until answered, call screen over the lock scree
   `phone.js` answers (only inside the app: a browser ignores `answer`); Decline posts
   `/app/calls/{id}/decline`.
 - `MainActivity`: the web view, microphone and camera (video calls, the meeting room), and `window.MinivoipAndroid`
-  (start, settings, clearRing, callEnded, takeAnswer). Only our own pages get the microphone and camera. Over the lock
+  (start, settings, clearRing, callEnded, callStarted, callStopped, takeAnswer). Only our own pages get the microphone and camera. Over the lock
   screen the page shows only the call, and Back leaves.
+- `CallAlive`: a service with a quiet "On a call" notification while a call or a meeting is on (`callStarted`,
+  `callStopped`): without it, Android cuts off the microphone when the screen locks, in the call and in the notes.
 - `Server`: posts with the web view's login cookie; starts Firebase with the settings from `GET /api/android/config`,
   so no `google-services.json` is built in.
 

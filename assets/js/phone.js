@@ -458,6 +458,8 @@
     timerIv = setInterval(function () {
       $("[data-timer]").textContent = mmss((Date.now() - start) / 1000);
     }, 500);
+    // The Android app keeps the microphone open if the screen locks now.
+    if (android && android.callStarted) android.callStarted();
     takeNotes();
   }
 
@@ -468,10 +470,11 @@
   }
   function takeNotes() {
     if (root.dataset.notes !== "true" || recorder || !remote || !window.MinivoipRecorder) return;
-    recorder = MinivoipRecorder.start({ url: "/app/calls/" + encodeURIComponent(liveId) + "/recording", voices: { owner: mic, caller: remote }, onState: recNote });
+    recorder = MinivoipRecorder.start({ url: "/app/calls/" + encodeURIComponent(liveId) + "/recording", voices: { owner: mic, caller: remote }, mine: "owner", onState: recNote });
   }
 
   function endCall() {
+    if (android && android.callStopped) android.callStopped();
     if (recorder) { recorder.stop(); recorder = null; }
     remote = null;
     recNote("");

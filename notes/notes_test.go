@@ -377,13 +377,13 @@ func TestCallFromStartToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.st.AppendRecording(s.acct, "c1", 0, []byte("sound"))
+	s.st.AppendRecording(s.acct, "c1", 0, []byte("sound"), 0)
 	path := s.st.NoteAudioPath(n)
 	s.drain()
 	if s.scribe.calls != 0 {
 		t.Fatal("written down before the last piece")
 	}
-	s.st.FinishRecording(s.acct, "c1")
+	s.st.FinishRecording(s.acct, "c1", 0)
 	s.drain()
 	done := s.note(t, n.ID)
 	if done.Status != store.NoteDone || s.scribe.calls != 1 || len(s.scribe.channels) != 2 {
@@ -817,9 +817,9 @@ func TestMeetingFromStartToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.st.AddNotePerson("joes", "Bo")
-	s.st.AppendRecording(s.acct, n.CallID, 0, []byte("sound"))
+	s.st.AppendRecording(s.acct, n.CallID, 0, []byte("sound"), 0)
 	path := s.st.NoteAudioPath(n)
-	s.st.FinishRecording(s.acct, n.CallID)
+	s.st.FinishRecording(s.acct, n.CallID, 0)
 	s.drain()
 	done := s.note(t, n.ID)
 	if done.Status != store.NoteDone || done.Kind != store.NoteRoom || s.scribe.channels != nil {

@@ -943,8 +943,38 @@ func TestRecordingRefused(t *testing.T) {
 		t.Fatalf("notes: %+v", list)
 	}
 
-	// The switch off: not a word.
+	// A browser that can't record: the note says so.
 	s.RefuseNotes = func(int64) string { return "" }
+	id, hangUp = answeredCall(t, srv, "joesbnb", token)
+	if w := post(h, "/app/calls/"+id+"/recording", nil, token); !strings.Contains(w.Body.String(), store.NoteNoRecorder) {
+		t.Fatalf("no recorder: %s", w.Body.String())
+	}
+	hangUp()
+	if list, _ = st.Notes(u.AccountID); list[0].Reason != store.NoteNoRecorder {
+		t.Fatalf("no recorder: %+v", list[0])
+	}
+	st.DeleteNote(u.AccountID, list[0].ID)
+
+	// Safari's recording is fine, and what a locked phone missed comes along.
+	id, hangUp = answeredCall(t, srv, "joesbnb", token)
+	if w := post(h, "/app/calls/"+id+"/recording?type=audio/mp4", nil, token); !strings.Contains(w.Body.String(), `"record":true`) {
+		t.Fatalf("mp4: %s", w.Body.String())
+	}
+	r := httptest.NewRequest("POST", "/app/calls/"+id+"/recording/0?missed=75", strings.NewReader("sound"))
+	r.Header.Set("Cookie", sessionCookie+"="+token)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("a piece: %d", rec.Code)
+	}
+	hangUp()
+	list, _ = st.Notes(u.AccountID)
+	if list[0].Missed != 75 || list[0].AudioType != "audio/mp4" {
+		t.Fatalf("mp4: %+v", list[0])
+	}
+	st.DeleteNote(u.AccountID, list[0].ID)
+
+	// The switch off: not a word.
 	st.SetTakeNotes(u.AccountID, false)
 	id, hangUp = answeredCall(t, srv, "joesbnb", token)
 	if a := start(id); !strings.Contains(a, `"record":false`) {

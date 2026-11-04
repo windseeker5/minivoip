@@ -163,6 +163,8 @@
     preview();
     show("in");
     status("You're in the meeting room.");
+    // In the Android app, the microphone stays open if the screen locks now.
+    if (window.MinivoipAndroid && MinivoipAndroid.callStarted) MinivoipAndroid.callStarted();
     // I'm the newcomer: I offer a connection to each person already here.
     (m.peers || []).forEach(function (p) { peer(p, true); });
     meet.render();
@@ -188,7 +190,7 @@
     if (!notes) {
       var voices = { me: mic };
       Object.keys(noteVoices).forEach(function (id) { voices[id] = noteVoices[id]; });
-      notes = MinivoipRecorder.start({ url: "/room/" + encodeURIComponent(room.line) + "/recording", voices: voices, mixed: true, onState: recNote });
+      notes = MinivoipRecorder.start({ url: "/room/" + encodeURIComponent(room.line) + "/recording", voices: voices, mixed: true, mine: "me", onState: recNote });
     }
   }
   function stopNotes() {
@@ -316,6 +318,7 @@
 
   // stop ends everything on this side.
   function stop() {
+    if (window.MinivoipAndroid && MinivoipAndroid.callStopped) MinivoipAndroid.callStopped();
     stopNotes();
     var sock = ws;
     ws = null;

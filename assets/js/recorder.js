@@ -11,11 +11,16 @@
 // at all, and maybe another url; pieces go to url/0, url/1 and so on, and url/done
 // says the last one is in. onState gets "on", "stopped", or the server's reason
 // for not recording; MinivoipRecorder.show puts that in words.
+//
+// A locked phone or a hidden page can lose sound: the microphone goes quiet, the
+// sound engine stops, or the page freezes. mine names the voice to watch, and each
+// post says how many seconds it reckons were missed, for the note to say so.
 (function () {
   var SLICE = 30000;     // ms of sound in a piece
   var WAITING = 20;      // pieces held back while the network is down, then it gives up
   var RETRY = 4000;      // ms between tries of a piece
   var BITRATE = 64000;   // plenty for two voices
+  var FROZEN = 5000;     // ms between ticks that mean the page was frozen
 
   function bestType() {
     if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
@@ -28,13 +33,38 @@
     var type = bestType(), slice = window.MinivoipRecorderSlice || SLICE;
     var base = o.url, voices = o.voices || {}, sources = {};
     var ac, mix, rec, part = 0, queue = [], sending = false, over = false, dead = false, begun = false, retryTimer;
+    var missed = 0, troubleSince = 0, micQuiet = false, lastTick = 0, tickTimer;
+
+    // ------------------------------------------------- what the recording misses
+
+    function trouble() {
+      var on = micQuiet || !!(ac && ac.state !== "running");
+      if (on && !troubleSince) troubleSince = Date.now();
+      if (!on && troubleSince) { missed += Date.now() - troubleSince; troubleSince = 0; }
+    }
+    function missedSeconds() {
+      return Math.round((missed + (troubleSince ? Date.now() - troubleSince : 0)) / 1000);
+    }
+    function tick() {
+      var now = Date.now();
+      if (now - lastTick > FROZEN && !troubleSince) missed += now - lastTick;
+      lastTick = now;
+    }
+    function micQuietIs(on) { return function () { micQuiet = on; trouble(); }; }
+    // Back from a locked phone or another app: the sound engine may need a nudge.
+    function backAgain() {
+      if (ac && !document.hidden && ac.state !== "running" && ac.state !== "closed") ac.resume().catch(function () {});
+    }
 
     function state(s) { try { if (o.onState) o.onState(s); } catch (e) {} }
 
     // Sound stops here, but what was recorded still goes up.
     function stopSound() {
+      clearInterval(tickTimer);
+      document.removeEventListener("visibilitychange", backAgain);
+      trouble();
       if (rec && rec.state !== "inactive") { try { rec.stop(); } catch (e) {} }
-      if (ac) { ac.close().catch(function () {}); ac = null; }
+      if (ac) { ac.onstatechange = null; ac.close().catch(function () {}); ac = null; trouble(); }
     }
     function giveUp() {
       if (over) return;
@@ -44,8 +74,16 @@
       state("stopped");
       finish();
     }
+    // The browser stopped the recorder itself: what's recorded still goes up.
+    function ended() {
+      if (over) return;
+      over = true;
+      stopSound();
+      state("stopped");
+      pump();
+    }
     function finish() {
-      if (begun) fetch(base + "/done", { method: "POST" }).catch(function () {});
+      if (begun) fetch(base + "/done?missed=" + missedSeconds(), { method: "POST" }).catch(function () {});
       begun = false;
     }
 
@@ -54,7 +92,7 @@
       if (!queue.length) { if (over) finish(); return; }
       if (queue.length > WAITING) return giveUp();
       sending = true;
-      fetch(base + "/" + part, { method: "POST", body: queue[0] }).then(function (r) {
+      fetch(base + "/" + part + "?missed=" + missedSeconds(), { method: "POST", body: queue[0] }).then(function (r) {
         sending = false;
         if (r.ok) { part++; queue.shift(); return pump(); }
         // The server won't take more: past a limit, or the note is gone.
@@ -102,7 +140,17 @@
         Object.keys(voices).forEach(plug);
         rec = new MediaRecorder(out.stream, { mimeType: type, audioBitsPerSecond: BITRATE });
         rec.ondataavailable = function (e) { if (e.data && e.data.size && !dead) { queue.push(e.data); pump(); } };
-        rec.onerror = giveUp;
+        rec.onerror = ended;
+        rec.onstop = ended;
+        ac.onstatechange = trouble;
+        var mine = voices[o.mine];
+        if (mine) mine.getAudioTracks().forEach(function (t) {
+          t.addEventListener("mute", micQuietIs(true));
+          t.addEventListener("unmute", micQuietIs(false));
+        });
+        document.addEventListener("visibilitychange", backAgain);
+        lastTick = Date.now();
+        tickTimer = setInterval(tick, 1000);
         rec.start(slice);
         state("on");
       } catch (e) {
@@ -147,6 +195,7 @@
     var words = {
       on: "Recording for your notes",
       not_set_up: "Notes aren't set up yet, " + not,
+      no_recorder: "This browser can't record, " + not,
       month_limit: "This month's 10 hours of notes are used, " + not,
       day_limit: "Too many notes today, " + not,
       stopped: "Recording stopped. Your " + what + " goes on.",

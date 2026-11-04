@@ -50,6 +50,8 @@ func noteBusy(n store.Note) bool {
 // noteProblem says why a note isn't whole, in the owner's words; "" when it is.
 func noteProblem(n store.Note) string {
 	switch n.Reason {
+	case store.NoteNoRecorder:
+		return "This browser can't record, so there's no note. Try Chrome, Edge, Firefox or Safari."
 	case store.NoteNotSetUp:
 		return "Notes aren't set up yet."
 	case store.NoteNotPremium:
@@ -79,6 +81,14 @@ func noteLine(n store.Note) string {
 		return p
 	}
 	return n.Summary
+}
+
+// noteMissed says what a recording didn't catch, when the browser noticed.
+func noteMissed(n store.Note) string {
+	if n.Missed < 5 || noteBusy(n) {
+		return ""
+	}
+	return "About " + hoursUsed(max(n.Missed, 60)) + " wasn't recorded: the phone was locked, or the app was in the background."
 }
 
 // notePeople names who came to a meeting, as they named themselves: "with Ana, Bo".
@@ -248,6 +258,9 @@ templ NotePage(email string, n store.Note) {
 				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>Being written. This takes a minute or two.</p>
 			} else if p := noteProblem(n); p != "" {
 				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>{ p }</p>
+			}
+			if m := noteMissed(n); m != "" {
+				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-missed>{ m }</p>
 			}
 			if n.Summary != "" {
 				<section class={ card + " mt-6" } lang={ string(n.Language) } data-note-summary>

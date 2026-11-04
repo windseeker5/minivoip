@@ -82,7 +82,7 @@ them: without keys, new notes say "Notes aren't set up yet", and everything is t
   `docs/architecture.md`: still no live audio, but recordings are uploaded when notes are on. Test in `meet.mjs`.
 - [x] **7. Meeting rooms.** Same recorder in the host's browser, mixing everyone in the room, joining and leaving included.
   Kind `room`, with the people's names. Guests are told at the door. Test with a real room in `site.mjs`.
-- [ ] **8. Android and other browsers.** Check the recorder's fallbacks in code: Safari records mp4, the Android web view
+- [x] **8. Android and other browsers.** Check the recorder's fallbacks in code: Safari records mp4, the Android web view
   must keep recording when the screen locks, or the note says what was missed. Fix what code and headless tests can
   reach, and list what only a real phone can show.
 - [ ] **9. The words.** `docs/landing-copy.md` first, then the page: notes are no longer "Soon", and the summary is in the
@@ -92,6 +92,21 @@ them: without keys, new notes say "Notes aren't set up yet", and everything is t
   and fix what it finds. If keys are set, one real French voicemail end to end, and read the result. Three full
   `site.mjs` runs. Update `AGENTS.md` Current state. Then end the loop and report in short plain English: what works,
   screenshots of the Notes tab, what isn't tested, what Ken must do (keys, one real call, a voicemail). Not shipped.
+
+## Real phones
+
+What only a real phone can show, once keys are set and Android 0.5 is on it:
+
+1. **Android, screen locks during a call:** does the caller still hear the owner, does the recording keep both voices, and
+   does the note stay silent about missing audio? 0.4 had no service for this, so the owner may have gone silent.
+2. **Android, answered from the lock screen:** Android must allow the microphone service from there; if it refuses, the call
+   goes on but the note should say what was missed.
+3. **Android, the "On a call" notification:** it shows during a call and goes after; a tap returns to the call.
+4. **iPhone or Safari on a Mac:** does a call record the caller's voice? Older Safari gave silence for a caller's voice
+   in this kind of recording. Do the mp4 pieces make one file ElevenLabs reads?
+5. **iPhone, screen locks:** Safari stops the page, so the call itself likely ends, as it does today. The note should say
+   what was missed.
+6. **Long calls:** a 30-minute call on a phone: battery, heat, every piece up.
 
 ## Log
 
@@ -104,3 +119,4 @@ them: without keys, new notes say "Notes aren't set up yet", and everything is t
 - 2026-11-04, step 5: callers are told (`lines.Notice`) in writing on each step, out loud before the menu and before the tone, at the room's door. Ken should read the exact words: FR "Votre conversation ou votre message sera enregistré et résumé automatiquement pour {business}.", EN "Your conversation or message will be recorded and summarized automatically for {business}." Choices: no consent button, as planned: a caller who doesn't agree hangs up; they don't name the outside services (ElevenLabs, Anthropic); told whenever the switch is on, even without keys or past the limit. The account's language applies, so an English caller to a French account gets French. Odd: the computer voice still reads owners' greetings as en-US even on French accounts, a French greeting sounds wrong; left, since existing accounts default to French with English starter words. **Final report: tell Ken to check the rules where he operates, this isn't legal advice.**
 - 2026-11-04, step 6: the app records answered calls (`assets/js/recorder.js`, `web/recording.go`, migration 18), the owner and the caller on separate channels, 30-second pieces, tied to the live call. Choices: separate channels cost double at Scribe (about $0.44 an hour instead of $0.22, so 20 hours a day is up to about $11), for reliable "You"/"Caller" labels; the hours shown count the call once. No keys or past a limit: not recorded at all, and the note says why. Scribe's multi-channel answer isn't verified against the real service: the client takes both documented shapes; step 10 checks if keys are set. Tested with a real WebRTC call in `meet.mjs` and a fake upload server, and the endpoints in Go; a real upload on the real server needs keys to be set, since without them nothing is recorded.
 - 2026-11-04, step 7: the host's browser records meetings (mixed on one channel), kind `room`, with who came (`note.people`, migration 19). Choices: recording starts with the first guest let in, not when the host opens the room; with nobody left for a minute it ends, and the next guest starts a new note, so an empty room costs nothing; speakers read "Person 1", since naming them would mean a channel each, at up to 4 times the price. `site.mjs` runs a real room with its real sound and catches the upload in the test, since without keys the server records nothing.
+- 2026-11-04, step 8: the recorder handles Safari's mp4 (a real mp4 recording passes in `meet.mjs`), no recorder at all (the note says so), and a stopped recorder (what's in goes up); the note says what it missed (migration 20). Android 0.5 adds a microphone service for locked screens (`CallAlive`), built but not published and not on a phone: Ken publishes it when shipping (`android/README.md`). The service also fixes something that wasn't about notes: on 0.4 a locked screen likely silenced the owner in the call. Worth knowing: "missed" is an estimate from the browser, and over-reports rather than under. What only a phone can show: "Real phones" above.

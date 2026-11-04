@@ -153,7 +153,7 @@ B&B and may become a SaaS.
   Whiteboard on Basic), the meeting room (`roomPage` 404s, `Rooms` gets `store.HasRoom`) and the dashboard's and
   app's room panels. Basic owners see a "Premium" tag there; visitors never see an upsell.
 - `android/`: the Android app (Kotlin, no Compose; see `android/README.md`): a web view on `/app` (the page finds it
-  as `window.MinivoipAndroid` in `phone.js`) plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
+  as `window.MinivoipAndroid` in `phone.js`), a service that keeps the microphone open when the screen locks during a call (`CallAlive`), plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
   call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,
   Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`; its
   version is in `data/android/version`, and the app's account page shows the installed version (`MinivoipAndroid.version()`)

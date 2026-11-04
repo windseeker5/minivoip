@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Notes are Premium's written record of a call, a meeting room or a voicemail:
@@ -67,7 +68,10 @@ const (
 	maxNoteAction  = 1000
 )
 
-var ErrNotPremium = errors.New("notes are for Premium accounts")
+var (
+	ErrNotPremium = errors.New("notes are for Premium accounts")
+	ErrNotesOff   = errors.New("this account's Take notes switch is off")
+)
 
 // NoteLine is one speaker's turn in a transcript, kept word for word as spoken.
 type NoteLine struct {
@@ -91,18 +95,26 @@ type Note struct {
 	Summary     string
 	NextActions []string
 	Tries       int
+	VoicemailID int64  // a voicemail's message; 0 if none or gone
 	CreatedAt   string // UTC "YYYY-MM-DD HH:MM:SS"
 	DoneAt      string
 }
 
 const noteColumns = `id, account_id, line_id, kind, status, reason, language, audio, audio_type, seconds,
-	transcript, summary, next_actions, tries, created_at, COALESCE(done_at, '')`
+	transcript, summary, next_actions, tries, COALESCE(voicemail_id, 0), created_at, COALESCE(done_at, '')`
+
+// noteListColumns leaves the transcripts out: a list doesn't show them, and a
+// year of meetings is a lot of words.
+var noteListColumns = strings.Replace(noteColumns, "transcript,", "'',", 1)
+
+// MaxNotesListed is how many notes the Notes tab lists.
+const MaxNotesListed = 500
 
 func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 	var n Note
 	var transcript, actions string
 	err := row.Scan(&n.ID, &n.AccountID, &n.LineID, &n.Kind, &n.Status, &n.Reason, &n.Language, &n.Audio, &n.AudioType, &n.Seconds,
-		&transcript, &n.Summary, &actions, &n.Tries, &n.CreatedAt, &n.DoneAt)
+		&transcript, &n.Summary, &actions, &n.Tries, &n.VoicemailID, &n.CreatedAt, &n.DoneAt)
 	if err != nil {
 		return Note{}, err
 	}
@@ -134,8 +146,9 @@ func (s *Store) addNote(lineName string, kind NoteKind, audio, audioType string,
 	var lineID, accountID int64
 	var plan Plan
 	var language Language
-	err := s.db.QueryRow(`SELECT l.id, a.id, a.plan, a.language FROM line l JOIN account a ON a.id = l.account_id
-		WHERE l.name = ?`, lineName).Scan(&lineID, &accountID, &plan, &language)
+	var takeNotes bool
+	err := s.db.QueryRow(`SELECT l.id, a.id, a.plan, a.language, a.take_notes FROM line l JOIN account a ON a.id = l.account_id
+		WHERE l.name = ?`, lineName).Scan(&lineID, &accountID, &plan, &language, &takeNotes)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrNotFound
 	}
@@ -144,6 +157,9 @@ func (s *Store) addNote(lineName string, kind NoteKind, audio, audioType string,
 	}
 	if plan != Premium {
 		return 0, ErrNotPremium
+	}
+	if !takeNotes {
+		return 0, ErrNotesOff
 	}
 	res, err := s.db.Exec("INSERT INTO note (account_id, line_id, kind, language, audio, audio_type, seconds, voicemail_id, status, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		accountID, lineID, kind, language, audio, audioType, seconds, voicemailID, status, reason)
@@ -179,7 +195,7 @@ func (s *Store) NoteVoicemail(v Voicemail) (bool, error) {
 		audio, status, reason = "", NoteSkipped, NoteDayLimit
 	}
 	_, err = s.addNote(line, NoteVoicemail, audio, v.ContentType, v.Seconds(), v.ID, status, reason)
-	if errors.Is(err, ErrNotPremium) {
+	if errors.Is(err, ErrNotPremium) || errors.Is(err, ErrNotesOff) {
 		return false, nil
 	}
 	return err == nil, err
@@ -281,9 +297,30 @@ func (s *Store) EndNote(n Note, status NoteStatus, reason string) error {
 	return nil
 }
 
-// Notes lists an account's notes, newest first.
+// TakeNotes says whether the account's "Take notes" switch is on.
+func (s *Store) TakeNotes(accountID int64) (bool, error) {
+	var on bool
+	err := s.db.QueryRow("SELECT take_notes FROM account WHERE id = ?", accountID).Scan(&on)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, ErrNotFound
+	}
+	return on, err
+}
+
+func (s *Store) SetTakeNotes(accountID int64, on bool) error {
+	res, err := s.db.Exec("UPDATE account SET take_notes = ? WHERE id = ?", on, accountID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// Notes lists an account's notes, newest first, without their transcripts.
 func (s *Store) Notes(accountID int64) ([]Note, error) {
-	rows, err := s.db.Query("SELECT "+noteColumns+" FROM note WHERE account_id = ? ORDER BY created_at DESC, id DESC", accountID)
+	rows, err := s.db.Query("SELECT "+noteListColumns+" FROM note WHERE account_id = ? ORDER BY created_at DESC, id DESC LIMIT ?", accountID, MaxNotesListed)
 	if err != nil {
 		return nil, err
 	}

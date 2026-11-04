@@ -1,0 +1,293 @@
+package pages
+
+import (
+	"math"
+	"strconv"
+	"strings"
+
+	"minivoip/components/button"
+	"minivoip/components/icon"
+	"minivoip/store"
+)
+
+// notesTab is the Notes tab's address.
+const notesTab = "/dashboard/notes"
+
+// NotesTab is what the Notes tab shows.
+type NotesTab struct {
+	Email     string
+	List      []store.Note
+	Seconds   int64 // audio used this month
+	Language  store.Language
+	TakeNotes bool
+}
+
+func noteKindName(k store.NoteKind) string {
+	switch k {
+	case store.NoteCall:
+		return "Call"
+	case store.NoteRoom:
+		return "Meeting room"
+	}
+	return "Voicemail"
+}
+
+func languageName(l store.Language) string {
+	if l == store.English {
+		return "English"
+	}
+	return "French"
+}
+
+func noteURL(n store.Note) templ.SafeURL {
+	return templ.SafeURL(notesTab + "/" + strconv.FormatInt(n.ID, 10))
+}
+
+func noteBusy(n store.Note) bool {
+	return n.Status == store.NoteWaiting || n.Status == store.NoteWorking
+}
+
+// noteProblem says why a note isn't whole, in the owner's words; "" when it is.
+func noteProblem(n store.Note) string {
+	switch n.Reason {
+	case store.NoteNotSetUp:
+		return "Notes aren't set up yet."
+	case store.NoteNotPremium:
+		return "Notes come with Premium."
+	case store.NoteMonthLimit:
+		return "No note: you had used this month's 10 hours."
+	case store.NoteDayLimit:
+		return "No note: too many were asked for today."
+	case store.NoteSilent:
+		return "Nothing was said, so there's no note."
+	case store.NoteNoAudio:
+		return "The recording was gone before it could be written down."
+	case store.NoteTranscribe:
+		return "We couldn't write this one down."
+	case store.NoteSummarize:
+		return "We wrote down what was said, but couldn't summarize it."
+	}
+	return ""
+}
+
+// noteLine is a row's second line: the summary's start, or how the note is doing.
+func noteLine(n store.Note) string {
+	if noteBusy(n) {
+		return "Being written. This takes a minute or two."
+	}
+	if p := noteProblem(n); p != "" {
+		return p
+	}
+	return n.Summary
+}
+
+// noteLength is a recording's length, like 12:05, if it's known.
+func noteLength(n store.Note) string {
+	if n.Seconds <= 0 {
+		return ""
+	}
+	return " · " + noteClock(float64(n.Seconds))
+}
+
+func noteClock(seconds float64) string {
+	s := int64(seconds)
+	return strconv.FormatInt(s/60, 10) + ":" + pad(s%60)
+}
+
+// hoursUsed says how much of the month's hours went, like "12 minutes" or "2.5 hours".
+func hoursUsed(seconds int64) string {
+	if seconds < 3600 {
+		m := int64(math.Ceil(float64(seconds) / 60))
+		if m == 1 {
+			return "1 minute"
+		}
+		return strconv.FormatInt(m, 10) + " minutes"
+	}
+	h := float64(min(seconds, store.NoteMonthSeconds)) / 3600
+	if h == 1 {
+		return "1 hour"
+	}
+	return strconv.FormatFloat(math.Round(h*10)/10, 'f', -1, 64) + " hours"
+}
+
+// speakerName turns the service's label into words: a voicemail has one voice,
+// the others "Person 1", "Person 2".
+func speakerName(k store.NoteKind, speaker string) string {
+	if k == store.NoteVoicemail {
+		return "Caller"
+	}
+	if n, err := strconv.Atoi(strings.TrimPrefix(speaker, "speaker_")); err == nil {
+		return "Person " + strconv.Itoa(n+1)
+	}
+	return "Someone"
+}
+
+// NotesLocked is the Notes tab on Basic. A former Premium account's notes stay
+// until their year is over, and it's told so.
+templ NotesLocked(email string, kept int) {
+	@dashShell("Notes", email, notesTab) {
+		<div class="max-w-3xl" data-notes-locked>
+			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Notes</h1>
+			<div class={ card + " mt-6" }>
+				@premiumTag("inline-block")
+				<p class="mt-3">After each call, meeting and voicemail: a one-page summary, what to do next, and who said what.</p>
+				<p class="mt-2 text-muted-foreground">You're on Basic. Premium opens after the beta.</p>
+				if kept > 0 {
+					<p class="mt-2 text-muted-foreground">Your { strconv.Itoa(kept) } saved notes stay for a year from the day they were written, and come back with Premium.</p>
+				}
+			</div>
+		</div>
+	}
+}
+
+// Notes is the Notes tab on Premium: the switch and the hours, then the list.
+// notes.js saves the switch, and reloads while a note is being written.
+templ Notes(d NotesTab) {
+	@dashShell("Notes", d.Email, notesTab) {
+		<div class="max-w-3xl" data-notes>
+			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Notes</h1>
+			<p class="mt-2 text-muted-foreground">After each call, meeting and voicemail: a one-page summary, what to do next, and who said what.</p>
+			<div class={ card + " mt-6 flex flex-col gap-5" }>
+				<form method="post" action="/dashboard/notes/switch" class="flex items-center justify-between gap-4" data-notes-switch>
+					<label for="take-notes" class="min-w-0">
+						<span class="block font-semibold">Take notes</span>
+						<span class="block text-sm text-muted-foreground">Callers are told first. Off: no new notes.</span>
+					</label>
+					<span class="relative grid h-11 w-12 flex-none place-items-center">
+						<input id="take-notes" type="checkbox" role="switch" name="on" value="1" checked?={ d.TakeNotes } class="peer absolute inset-0 z-10 m-0 cursor-pointer opacity-0"/>
+						<span class="h-6 w-10 rounded-full bg-muted-foreground/35 transition-colors peer-checked:bg-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-foreground"></span>
+						<span class="pointer-events-none absolute top-1/2 left-1.5 size-5 -translate-y-1/2 rounded-full bg-background transition-transform peer-checked:translate-x-4"></span>
+					</span>
+					<noscript>
+						@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline}) {
+							Save
+						}
+					</noscript>
+				</form>
+				<div class="border-t pt-5">
+					<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+						<p class="font-semibold">This month</p>
+						<p class="text-sm text-muted-foreground tabular-nums" data-notes-used>{ hoursUsed(d.Seconds) } of 10 hours used</p>
+					</div>
+					<progress value={ strconv.FormatInt(min(d.Seconds, store.NoteMonthSeconds), 10) } max={ strconv.Itoa(store.NoteMonthSeconds) } aria-label="Hours of notes used this month" class="mt-3 block h-1.5 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-foreground [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-foreground"></progress>
+					if d.Seconds >= store.NoteMonthSeconds {
+						<p class="mt-3 text-sm" role="status" data-notes-full>You've used this month's 10 hours. New calls, meetings and messages won't get a note, or be recorded for one, until next month.</p>
+					}
+				</div>
+				<p class="border-t pt-5 text-sm text-muted-foreground">
+					Written in { languageName(d.Language) }.
+					<a href="/dashboard/language" class="font-medium text-foreground underline underline-offset-4" data-notes-language>Change</a>
+				</p>
+			</div>
+			if len(d.List) == 0 {
+				<div class="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-10 text-center" data-notes-empty>
+					@icon.NotebookText(icon.Props{Class: "size-8 text-muted-foreground"})
+					<p class="font-medium">No notes yet</p>
+					<p class="max-w-xs text-sm text-muted-foreground">Your next call, meeting or voicemail will show up here.</p>
+				</div>
+			} else {
+				<ul class={ card + " mt-6 divide-y py-1 sm:py-1" }>
+					for _, n := range d.List {
+						<li data-note-row={ string(n.Status) } if noteBusy(n) { data-note-busy }>
+							<a href={ noteURL(n) } class="focus-inset -mx-2 flex items-center gap-3 rounded-lg px-2 py-3.5 hover:bg-muted">
+								<span class="grid size-9 flex-none place-items-center rounded-[10px] bg-muted">
+									@noteKindIcon(n.Kind)
+								</span>
+								<span class="min-w-0 flex-1">
+									<span class="flex flex-wrap items-baseline justify-between gap-x-3">
+										<span class="font-semibold">{ noteKindName(n.Kind) }</span>
+										<span class="text-sm text-muted-foreground tabular-nums">{ when(n.CreatedAt) }</span>
+									</span>
+									<span class="mt-0.5 line-clamp-2 text-sm text-muted-foreground" data-note-line>{ noteLine(n) }</span>
+								</span>
+								@icon.ChevronRight(icon.Props{Class: "size-4 flex-none text-muted-foreground"})
+							</a>
+						</li>
+					}
+				</ul>
+			}
+		</div>
+		<script src="/assets/js/notes.js" defer></script>
+	}
+}
+
+templ noteKindIcon(k store.NoteKind) {
+	switch k {
+		case store.NoteCall:
+			@icon.Phone(icon.Props{Class: "size-[18px]"})
+		case store.NoteRoom:
+			@icon.Video(icon.Props{Class: "size-[18px]"})
+		default:
+			@icon.Voicemail(icon.Props{Class: "size-[18px]"})
+	}
+}
+
+// NotePage is one note, on one page: summary, next actions, then who said what.
+// What people said goes through as plain text, like everything templ writes.
+templ NotePage(email string, n store.Note) {
+	@dashShell(noteKindName(n.Kind)+" note", email, notesTab) {
+		<div class="max-w-3xl" data-note={ strconv.FormatInt(n.ID, 10) } if noteBusy(n) { data-note-busy }>
+			<a href={ templ.SafeURL(notesTab) } class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0">
+				@icon.ArrowLeft(icon.Props{Class: "size-4"})
+				Notes
+			</a>
+			<h1 class="mt-2 text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">{ noteKindName(n.Kind) }</h1>
+			<p class="mt-1 text-muted-foreground tabular-nums">{ when(n.CreatedAt) }{ noteLength(n) }</p>
+			if noteBusy(n) {
+				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>Being written. This takes a minute or two.</p>
+			} else if p := noteProblem(n); p != "" {
+				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>{ p }</p>
+			}
+			if n.Summary != "" {
+				<section class={ card + " mt-6" } lang={ string(n.Language) } data-note-summary>
+					<h2 class="font-semibold">Summary</h2>
+					<p class="mt-2 leading-relaxed wrap-anywhere whitespace-pre-line">{ n.Summary }</p>
+				</section>
+				<section class={ card + " mt-4" } lang={ string(n.Language) } data-note-actions>
+					<h2 class="font-semibold">Next actions</h2>
+					if len(n.NextActions) == 0 {
+						<p class="mt-2 text-muted-foreground">Nothing to do.</p>
+					} else {
+						<ul class="mt-2 flex list-disc flex-col gap-1.5 pl-5 leading-relaxed wrap-anywhere">
+							for _, a := range n.NextActions {
+								<li>{ a }</li>
+							}
+						</ul>
+					}
+				</section>
+			}
+			if len(n.Transcript) > 0 {
+				<section class={ card + " mt-4" } data-note-transcript>
+					<h2 class="font-semibold">Who said what</h2>
+					<p class="mt-1 text-sm text-muted-foreground">Word for word, from a machine, so some words can be wrong.</p>
+					<div class="mt-3 divide-y">
+						for _, l := range n.Transcript {
+							<div class="grid gap-x-4 gap-y-0.5 py-3 sm:grid-cols-[7rem_minmax(0,1fr)]">
+								<p class="text-sm">
+									<span class="font-medium">{ speakerName(n.Kind, l.Speaker) }</span>
+									<span class="ml-1 text-muted-foreground tabular-nums">{ noteClock(l.Start) }</span>
+								</p>
+								<p class="leading-relaxed wrap-anywhere" data-note-said>{ l.Text }</p>
+							</div>
+						}
+					</div>
+				</section>
+			}
+			<div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+				if n.VoicemailID != 0 {
+					@button.Button(button.Props{Href: "/dashboard/voicemail", Variant: button.VariantOutline, Class: pill}) {
+						@icon.Voicemail()
+						Hear the message
+					}
+				}
+				<form method="post" action={ templ.SafeURL(notesTab + "/" + strconv.FormatInt(n.ID, 10) + "/delete") } class="ml-auto">
+					@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Class: pill}) {
+						@icon.Trash2()
+						Delete this note
+					}
+				</form>
+			</div>
+		</div>
+		<script src="/assets/js/notes.js" defer></script>
+	}
+}

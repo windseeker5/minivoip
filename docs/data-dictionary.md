@@ -12,6 +12,7 @@ One customer (a business). Created at sign up.
 | `promo_code` | text, nullable → `promo_code.code` | The code used at sign up, which is required since 2026-11-02. Set = free forever (while the code isn't revoked) |
 | `plan` | text: `basic` or `premium` | What the account gets. Basic: calls, voice menu, voicemail. Premium adds video, screen sharing, the whiteboard and the meeting room (`store.Plan`). From the promo code at sign up, else `basic`; admins switch it on `/admin/promo` |
 | `language` | text: `fr` or `en` | What the account's call notes are written in (`store.Language`). Chosen at sign up, French unless English is picked; changed at `/dashboard/language`, from the account menu. The site itself stays in English |
+| `take_notes` | integer (0 or 1) | The "Take notes" switch on the Notes tab, on by default. Off: no new notes (`store.ErrNotesOff`); notes already queued still finish |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 
 ## user
@@ -222,3 +223,4 @@ How much audio each account's notes covered each day (UTC). Apart from `note`, s
 | 14 | 2026-11-04 | `account.language` (`fr` or `en`; existing accounts get French) |
 | 15 | 2026-11-04 | `note`, `note_usage` (Premium notes and the hours they used) |
 | 16 | 2026-11-04 | `note.voicemail_id` |
+| 17 | 2026-11-04 | `account.take_notes` (the "Take notes" switch, on) |

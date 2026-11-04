@@ -764,6 +764,188 @@ func TestVoicemailNotes(t *testing.T) {
 	}
 }
 
+// get opens a page as a logged-in owner (or a visitor, with no cookie).
+func get(h http.Handler, path, cookie string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest("GET", path, nil)
+	if cookie != "" {
+		r.Header.Set("Cookie", sessionCookie+"="+cookie)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	return w
+}
+
+// writtenNote makes a finished note, with words a caller could have said.
+func writtenNote(t *testing.T, st *store.Store, line, said string) int64 {
+	t.Helper()
+	id, err := st.AddNote(line, store.NoteCall, "notes/gone.webm", "audio/webm", 65)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, ok, err := st.ClaimNote()
+	if !ok || err != nil || n.ID != id {
+		t.Fatalf("claim: %+v %v %v", n, ok, err)
+	}
+	if err := st.SaveTranscript(n, []store.NoteLine{{Speaker: "speaker_1", Start: 5, Text: said}}, 65); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.FinishNote(id, "Summary: "+said, []string{"Do: " + said}); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// Notes are for the line's own logged-in owner, on Premium, checked on the server.
+func TestNotesTab(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	sue, _ := st.CreateAccount("sue@example.com", "long-enough", "")
+	st.CreateLine(sue.AccountID, "sues", "Sue's")
+	st.SetPlan(sue.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	other, _, _ := st.NewSession(sue.ID)
+	id := writtenNote(t, st, "joesbnb", "Bonjour Joe")
+	path := "/dashboard/notes/" + itoa(id)
+
+	// Logged out: the login page, and nothing is said about the note.
+	for _, p := range []string{"/dashboard/notes", path} {
+		if w := get(h, p, ""); w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
+			t.Fatalf("%s, logged out: %d", p, w.Code)
+		}
+	}
+	if w := post(h, path+"/delete", nil, ""); w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
+		t.Fatalf("delete, logged out: %d", w.Code)
+	}
+	// Someone else: as if it weren't there.
+	if w := get(h, path, other); w.Code != http.StatusNotFound {
+		t.Fatalf("someone else's note: %d", w.Code)
+	}
+	if w := post(h, path+"/delete", nil, other); w.Code != http.StatusNotFound {
+		t.Fatalf("deleting someone else's note: %d", w.Code)
+	}
+	if w := get(h, "/dashboard/notes", other); strings.Contains(w.Body.String(), "Bonjour Joe") {
+		t.Fatal("someone else's list shows the note")
+	}
+	// The owner.
+	w := get(h, "/dashboard/notes", token)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Summary: Bonjour Joe") || !strings.Contains(w.Body.String(), "2 minutes of 10 hours used") {
+		t.Fatalf("the list: %d %s", w.Code, w.Body.String())
+	}
+	w = get(h, path, token)
+	body := w.Body.String()
+	for _, want := range []string{"Summary: Bonjour Joe", "Do: Bonjour Joe", "Person 2", "0:05", "1:05"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page doesn't say %q", want)
+		}
+	}
+	// Moved to Basic: the tab says so, the note stays, and only its delete works.
+	st.SetPlan(u.AccountID, store.Basic)
+	w = get(h, "/dashboard/notes", token)
+	if !strings.Contains(w.Body.String(), "data-notes-locked") || strings.Contains(w.Body.String(), "Bonjour Joe") {
+		t.Fatalf("the list on Basic: %s", w.Body.String())
+	}
+	if w := get(h, path, token); w.Code != http.StatusNotFound {
+		t.Fatalf("a note on Basic: %d", w.Code)
+	}
+	if w := post(h, "/dashboard/notes/switch", url.Values{"on": {"1"}}, token); w.Code != http.StatusNotFound {
+		t.Fatalf("the switch on Basic: %d", w.Code)
+	}
+	if !strings.Contains(get(h, "/dashboard", token).Body.String(), "data-premium-tag") {
+		t.Fatal("no Premium tag on Basic's menu")
+	}
+	st.SetPlan(u.AccountID, store.Premium)
+	if strings.Contains(get(h, "/dashboard/notes", token).Body.String(), "data-premium-tag") {
+		t.Fatal("a Premium tag on Premium's menu")
+	}
+	if w := post(h, path+"/delete", nil, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("delete: %d", w.Code)
+	}
+	if w := get(h, path, token); w.Code != http.StatusNotFound {
+		t.Fatalf("a deleted note: %d", w.Code)
+	}
+}
+
+// What a caller says stays text: it can't become part of the page.
+func TestNoteWordsArePlainText(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	said := `<img src=x onerror="alert(1)"><script>alert(2)</script>`
+	id := writtenNote(t, st, "joesbnb", said)
+	for _, p := range []string{"/dashboard/notes", "/dashboard/notes/" + itoa(id)} {
+		body := get(h, p, token).Body.String()
+		if strings.Contains(body, "<img src=x") || strings.Contains(body, "<script>alert") {
+			t.Fatalf("%s lets a caller's words into the page", p)
+		}
+		if !strings.Contains(body, "&lt;img src=x") {
+			t.Fatalf("%s doesn't show them as text", p)
+		}
+	}
+}
+
+func TestTakeNotesSwitchPage(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	if w := post(h, "/dashboard/notes/switch", nil, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("off: %d", w.Code)
+	}
+	if on, _ := st.TakeNotes(u.AccountID); on {
+		t.Fatal("still on")
+	}
+	if regexp.MustCompile(`id="take-notes"[^>]*checked`).MatchString(get(h, "/dashboard/notes", token).Body.String()) {
+		t.Fatal("the page shows it on")
+	}
+	if w := post(h, "/dashboard/notes/switch", url.Values{"on": {"1"}}, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("on: %d", w.Code)
+	}
+	if on, _ := st.TakeNotes(u.AccountID); !on {
+		t.Fatal("still off")
+	}
+	if !regexp.MustCompile(`id="take-notes"[^>]*checked`).MatchString(get(h, "/dashboard/notes", token).Body.String()) {
+		t.Fatal("the page shows it off")
+	}
+	r := httptest.NewRequest("POST", "/dashboard/notes/switch", strings.NewReader("on=0"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("Origin", "https://evil.example")
+	r.Header.Set("Cookie", sessionCookie+"="+token)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if on, _ := st.TakeNotes(u.AccountID); w.Code != http.StatusForbidden || !on {
+		t.Fatalf("from another site: %d, on %v", w.Code, on)
+	}
+}
+
+// A message on Premium links to its note, on the dashboard only.
+func TestMessagesLinkToTheirNote(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	v, err := st.AddVoicemail("joesbnb", "", "", "audio/webm", 9000, strings.NewReader("sound"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.NoteVoicemail(v)
+	if !strings.Contains(get(h, "/dashboard/voicemail", token).Body.String(), "data-note-link") {
+		t.Fatal("no link on the dashboard")
+	}
+	if strings.Contains(get(h, "/app/voicemails", token).Body.String(), "/dashboard/notes") {
+		t.Fatal("the app links to the dashboard")
+	}
+	st.SetPlan(u.AccountID, store.Basic)
+	if strings.Contains(get(h, "/dashboard/voicemail", token).Body.String(), "data-note-link") {
+		t.Fatal("a link on Basic")
+	}
+}
+
 func TestVoicemailUploads(t *testing.T) {
 	_, st, h := testSite(t)
 	srv := httptest.NewServer(h)

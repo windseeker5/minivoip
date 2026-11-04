@@ -17,6 +17,7 @@ type Voicemail struct {
 	DurationMS  int64
 	ContentType string
 	Listened    bool
+	NoteID      int64  // its Premium note, if any
 	CreatedAt   string // UTC "YYYY-MM-DD HH:MM:SS"
 }
 
@@ -154,7 +155,8 @@ func (s *Store) AddVoicemail(lineName, option, callID, contentType string, durat
 // Voicemails lists an account's messages, newest first.
 func (s *Store) Voicemails(accountID int64) ([]Voicemail, error) {
 	rows, err := s.db.Query(`
-		SELECT v.id, v.call_id, v.option, v.duration_ms, v.content_type, v.listened, v.created_at
+		SELECT v.id, v.call_id, v.option, v.duration_ms, v.content_type, v.listened,
+			COALESCE((SELECT max(n.id) FROM note n WHERE n.voicemail_id = v.id), 0), v.created_at
 		FROM voicemail v JOIN line l ON l.id = v.line_id
 		WHERE l.account_id = ? ORDER BY v.created_at DESC, v.id DESC`, accountID)
 	if err != nil {
@@ -164,7 +166,7 @@ func (s *Store) Voicemails(accountID int64) ([]Voicemail, error) {
 	var list []Voicemail
 	for rows.Next() {
 		var v Voicemail
-		if err := rows.Scan(&v.ID, &v.CallID, &v.Option, &v.DurationMS, &v.ContentType, &v.Listened, &v.CreatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.CallID, &v.Option, &v.DurationMS, &v.ContentType, &v.Listened, &v.NoteID, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, v)

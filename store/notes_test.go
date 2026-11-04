@@ -311,3 +311,72 @@ func TestVoicemailNotesPerDay(t *testing.T) {
 		t.Fatalf("another line: %+v", theirs)
 	}
 }
+
+func TestTakeNotesSwitch(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	sue := notesAccount(t, s, "sue@example.com", "sues")
+	if on, err := s.TakeNotes(u.AccountID); !on || err != nil {
+		t.Fatalf("on by default: %v %v", on, err)
+	}
+	if err := s.SetTakeNotes(u.AccountID, false); err != nil {
+		t.Fatal(err)
+	}
+	if on, _ := s.TakeNotes(u.AccountID); on {
+		t.Fatal("still on")
+	}
+	if on, _ := s.TakeNotes(sue.AccountID); !on {
+		t.Fatal("someone else's switch changed")
+	}
+	if ok, err := s.NoteVoicemail(voicemail(t, s, "joes", 9000)); ok || err != nil {
+		t.Fatalf("a voicemail with the switch off: %v %v", ok, err)
+	}
+	if _, err := s.AddNote("joes", NoteCall, "notes/a.webm", "audio/webm", 10); !errors.Is(err, ErrNotesOff) {
+		t.Fatalf("a call with the switch off: %v", err)
+	}
+	if list, _ := s.Notes(u.AccountID); len(list) != 0 {
+		t.Fatalf("notes: %+v", list)
+	}
+	if err := s.SetTakeNotes(999, true); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown account: %v", err)
+	}
+	if _, err := s.TakeNotes(999); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown account: %v", err)
+	}
+}
+
+func TestVoicemailsKnowTheirNote(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	v := voicemail(t, s, "joes", 9000)
+	short := voicemail(t, s, "joes", 500)
+	s.NoteVoicemail(v)
+	s.NoteVoicemail(short)
+	notes, _ := s.Notes(u.AccountID)
+	list, _ := s.Voicemails(u.AccountID)
+	if len(list) != 2 || list[1].NoteID != notes[0].ID || list[0].NoteID != 0 {
+		t.Fatalf("messages: %+v", list)
+	}
+	if notes[0].VoicemailID != v.ID {
+		t.Fatalf("the note's message: %d", notes[0].VoicemailID)
+	}
+}
+
+// The list leaves the words out; the page has them.
+func TestNotesListHasNoTranscripts(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	id, _ := s.AddNote("joes", NoteCall, "notes/a.webm", "audio/webm", 10)
+	n, _, _ := s.ClaimNote()
+	if err := s.SaveTranscript(n, []NoteLine{{Speaker: "speaker_0", Text: "Bonjour"}}, 10); err != nil {
+		t.Fatal(err)
+	}
+	s.FinishNote(id, "Joe", []string{"Call"})
+	list, err := s.Notes(u.AccountID)
+	if err != nil || len(list) != 1 || list[0].Transcript != nil || list[0].Summary != "Joe" || list[0].NextActions[0] != "Call" {
+		t.Fatalf("%+v %v", list, err)
+	}
+	if one, _ := s.NoteByID(u.AccountID, id); len(one.Transcript) != 1 {
+		t.Fatalf("the page: %+v", one)
+	}
+}

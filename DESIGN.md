@@ -79,10 +79,10 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
 #0b0b0c) with white cards (`card`: 16px radius, a 1px ring, `bg-card`).
 
 - **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, What callers hear, Messages
-  (orange count of new voicemails), Business, the open one shaded; at its foot a "Phone app" card and the account
+  (orange count of new voicemails), Notes (a "Premium" tag on Basic), Business, the open one shaded; at its foot a "Phone app" card and the account
   button (letter, "Your account", email). Its menu (a native popover) holds the email, Change password, Language of your notes, the phone app, Log out, and
   "minivoip admin" for staff only: minivoip's own admin is never a tab. On a phone a top bar (logo, account) and
-  the four tabs fixed at the bottom, like an app. A "Questions?" line closes each page.
+  the five tabs fixed at the bottom, like an app. A "Questions?" line closes each page.
 - **Home** (`Dashboard`): the title, then a peach band (#fff4ec) with the next setup step and its button, ticked from
   real data (a menu of its own, a phone that gets notifications, a logo; gone when all are done); a card with the
   business's badge, name and status (green dot: calls ring you; amber: away, or messages until the phone is set up)
@@ -98,6 +98,17 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
   (`--now`). **Copy** (`copyButton`) shows a check and "Copied"; screen readers hear it (`copyStatus`).
 - **On a phone** every button, tab and menu item is 44px tall (`tap`). **Keyboard focus, every page:** a 2px outline
   in the ink colour, 2px out (`:focus-visible` in `globals.css`), inside the menus (`.focus-inset`).
+
+## Notes (2026-11-04)
+
+`pages/notes.templ`, `/dashboard/notes`, dashboard only and for owners who aren't technical. **The tab:** one card with the
+"Take notes" switch (ink when on; it saves itself, `notes.js`), the month's hours over a thin ink bar, and the language
+with a Change link. Below it, hairline rows, newest first: an icon for the kind, Call / Meeting room / Voicemail, the
+date, and two lines at most of the summary or of how the note is doing, always in plain words ("Being written", "Notes
+aren't set up yet"). **One note,** on one page: Summary, Next actions, then "Who said what" (who and when on the left,
+the words on the right; on a phone one above the other), each its own white card, then Hear the message and Delete. The
+summary carries `lang`, so screen readers read French as French. A page with a note being written looks again every 15
+seconds. **On Basic** the tab is one card with the Premium tag. A voicemail in Messages has "Read the note".
 
 ## What callers hear (2026-11-02)
 

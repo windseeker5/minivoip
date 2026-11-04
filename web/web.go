@@ -126,6 +126,11 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /logo/{name}", s.logo)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))
+	mux.Handle("GET /dashboard/notes", s.auth(s.notesPage))
+	mux.Handle("POST /dashboard/notes/switch", s.auth(s.notesSwitch))
+	mux.Handle("GET /dashboard/notes/{id}", s.auth(s.notePage))
+	mux.Handle("POST /dashboard/notes/{id}/delete", s.auth(s.noteDelete))
+
 	mux.Handle("GET /voicemail/{id}/audio", s.auth(s.voicemailAudio))
 	mux.Handle("POST /voicemail/{id}/listened", s.auth(s.voicemailListened))
 	mux.Handle("POST /voicemail/{id}/delete", s.auth(s.voicemailDelete))
@@ -169,6 +174,7 @@ func (s *Server) auth(next func(http.ResponseWriter, *http.Request, store.User))
 		ctx := pages.WithViewer(context.WithValue(r.Context(), ctxKey{}, u), pages.Viewer{
 			Admin:       u.IsAdmin,
 			NewMessages: func() int { return s.Store.NewVoicemails(u.AccountID) },
+			Premium:     func() bool { return s.onPremium(u) },
 		})
 		next(w, r.WithContext(ctx), u)
 	})

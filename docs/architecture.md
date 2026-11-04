@@ -193,6 +193,9 @@ for the summary, and hours are counted only then.
 - **Voicemails** (`store.NoteVoicemail`, called after the upload): Premium only. Under 2 seconds gets no note, so
   silence costs nothing. A line's voicemails get 30 notes a day; after that the message says why it has none, so a robot
   can't use up the owner's hours or everyone's day. The message itself always arrives, and its audio stays.
+- **The Notes tab** (`web/notes.go`, `pages/notes.templ`) is for the account's logged-in owner on Premium, checked on the
+  server: someone else's note answers 404, and so does any note on Basic, whose tab shows only the Premium tag and how
+  many notes are saved. Delete works on any plan. The "Take notes" switch is per account.
 - **What people say is untrusted.** Claude gets no tools and only the one transcript, as JSON between tags (JSON writes
   `<` as `\u003c`, so a caller's words can't close the tag); its instructions say it's data, and its answer must fit a
   schema. The worst a caller can do is spoil the note of their own call. Transcripts never go in the logs, and the

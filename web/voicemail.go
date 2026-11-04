@@ -84,7 +84,7 @@ func (s *Server) voicemailPage(w http.ResponseWriter, r *http.Request, u store.U
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.VoicemailPage(u.Email, list))
+	render(w, r, pages.VoicemailPage(u.Email, list, s.onPremium(u)))
 }
 
 // voicemailFragment is the phone app's voicemail list alone, to refresh it.
@@ -97,13 +97,14 @@ func (s *Server) voicemailFragment(w http.ResponseWriter, r *http.Request, u sto
 	render(w, r, pages.AppVoicemails(list))
 }
 
-func voicemailID(r *http.Request) int64 {
+// pathID is the number in an address like /voicemail/{id}/audio; 0 if it isn't one.
+func pathID(r *http.Request) int64 {
 	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	return id
 }
 
 func (s *Server) voicemailAudio(w http.ResponseWriter, r *http.Request, u store.User) {
-	path, ct, err := s.Store.VoicemailFile(u.AccountID, voicemailID(r))
+	path, ct, err := s.Store.VoicemailFile(u.AccountID, pathID(r))
 	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -123,7 +124,7 @@ func (s *Server) voicemailAudio(w http.ResponseWriter, r *http.Request, u store.
 }
 
 func (s *Server) voicemailListened(w http.ResponseWriter, r *http.Request, u store.User) {
-	if err := s.Store.MarkListened(u.AccountID, voicemailID(r)); err != nil {
+	if err := s.Store.MarkListened(u.AccountID, pathID(r)); err != nil {
 		serverError(w, r, err)
 		return
 	}
@@ -131,7 +132,7 @@ func (s *Server) voicemailListened(w http.ResponseWriter, r *http.Request, u sto
 }
 
 func (s *Server) voicemailDelete(w http.ResponseWriter, r *http.Request, u store.User) {
-	err := s.Store.DeleteVoicemail(u.AccountID, voicemailID(r))
+	err := s.Store.DeleteVoicemail(u.AccountID, pathID(r))
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		serverError(w, r, err)
 		return

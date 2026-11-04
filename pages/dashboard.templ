@@ -49,6 +49,9 @@ templ dashShell(title, email, current string) {
 					@sideTab("/dashboard/voicemail", "Messages", current, newMessages(ctx)) {
 						@icon.Voicemail(icon.Props{Class: "size-[18px]"})
 					}
+					@sideTab(notesTab, "Notes", current, 0) {
+						@icon.NotebookText(icon.Props{Class: "size-[18px]"})
+					}
 					@sideTab("/dashboard/business", "Business", current, 0) {
 						@icon.Store(icon.Props{Class: "size-[18px]"})
 					}
@@ -81,7 +84,7 @@ templ dashShell(title, email, current string) {
 					Questions? <a href="mailto:kdresdell@minipass.me" class="underline underline-offset-4 hover:text-foreground">kdresdell@minipass.me</a>
 				</footer>
 			</div>
-			<nav aria-label="Dashboard" class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t bg-background px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+			<nav aria-label="Dashboard" class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-background px-1.5 pt-1.5 max-[359px]:px-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
 				@bottomTab("/dashboard", "Home", current, 0) {
 					@icon.House(icon.Props{Class: "size-[22px]"})
 				}
@@ -90,6 +93,9 @@ templ dashShell(title, email, current string) {
 				}
 				@bottomTab("/dashboard/voicemail", "Messages", current, newMessages(ctx)) {
 					@icon.Voicemail(icon.Props{Class: "size-[22px]"})
+				}
+				@bottomTab(notesTab, "Notes", current, 0) {
+					@icon.NotebookText(icon.Props{Class: "size-[22px]"})
 				}
 				@bottomTab("/dashboard/business", "Business", current, 0) {
 					@icon.Store(icon.Props{Class: "size-[22px]"})
@@ -116,6 +122,9 @@ templ sideTab(href, text, current string, count int) {
 		if count > 0 {
 			@countBadge(count, "ml-auto")
 		}
+		if href == notesTab && onBasic(ctx) {
+			@premiumTag("ml-auto")
+		}
 	</a>
 }
 
@@ -123,7 +132,7 @@ templ sideTab(href, text, current string, count int) {
 templ bottomTab(href, text, current string, count int) {
 	<a
 		href={ templ.SafeURL(href) }
-		class={ "focus-inset relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[11.5px] font-medium",
+		class={ "focus-inset relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[11.5px] font-medium whitespace-nowrap max-[359px]:text-[10.5px]",
 			templ.KV("text-foreground", href == current),
 			templ.KV("text-muted-foreground", href != current) }
 		if href == current {
@@ -136,6 +145,11 @@ templ bottomTab(href, text, current string, count int) {
 			@countBadge(count, "absolute top-0 left-[calc(50%+4px)]")
 		}
 	</a>
+}
+
+// premiumTag marks what Basic owners don't have yet. Callers never see it.
+templ premiumTag(class string) {
+	<span class={ "rounded-full bg-foreground px-2 py-0.5 text-xs font-semibold text-background", class } data-premium-tag>Premium</span>
 }
 
 // countBadge is the orange number of new messages.
@@ -633,7 +647,7 @@ templ roomSheet(h HomeTab) {
 			}
 		} else {
 			<p class="mt-2 text-muted-foreground" data-room-locked>
-				<span class="mr-1 rounded-full bg-foreground px-2 py-0.5 text-xs font-semibold text-background">Premium</span>
+				@premiumTag("mr-1")
 				Your own room for video meetings, plus a camera, screen sharing and a whiteboard in your calls. You're on Basic; Premium opens after the beta.
 			</p>
 		}

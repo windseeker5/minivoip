@@ -238,6 +238,10 @@ var migrations = []string{
 	ALTER TABLE note ADD COLUMN voicemail_id INTEGER REFERENCES voicemail(id) ON DELETE SET NULL;
 	CREATE INDEX note_voicemail ON note(voicemail_id);
 	`,
+	// 17: the "Take notes" switch, on unless the owner turns it off.
+	`
+	ALTER TABLE account ADD COLUMN take_notes INTEGER NOT NULL DEFAULT 1;
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

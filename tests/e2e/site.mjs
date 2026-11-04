@@ -6,6 +6,7 @@
 //    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
 //    then voicemail (unanswered call and a voicemail choice), its note, listen, delete.
+//    The Notes tab: Basic's Premium tag, the list, one note, the switch, delete.
 //    A new account is Basic (voice only, no meeting room); then Premium:
 //    video through the relay. The meeting room: a guest waits, the app says so,
 //    the owner opens it, a third person, the whiteboard, leaving.
@@ -470,7 +471,7 @@ try {
   await vmWords.context().close();
 
   const pagesIn = await crawl(owner, "/", "logged in");
-  for (const p of ["/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/business", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
+  for (const p of ["/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/notes", "/dashboard/business", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
   step = "dashboard";
   await owner.goto(BASE + "/dashboard");
   await owner.screenshot({ path: `${SHOTS}/dashboard.png`, fullPage: true });
@@ -511,7 +512,7 @@ try {
   check((await owner.request.get(BASE + `/room/${LINE}`)).status() === 404, "a Basic line has no meeting room page");
   const phoneSize = await newPage(390, 844);
   await phoneSize.context().addCookies(await owner.context().cookies());
-  for (const p of ["/", "/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/business", "/app", `/call/${LINE}`]) {
+  for (const p of ["/", "/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/notes", "/dashboard/business", "/app", `/call/${LINE}`]) {
     step = `phone width ${p}`;
     await phoneSize.goto(BASE + p);
     const wide = await phoneSize.evaluate(() => document.documentElement.scrollWidth);
@@ -520,7 +521,7 @@ try {
   await phoneSize.goto(BASE + "/dashboard");
   check(await phoneSize.isVisible("[data-setup-band] >> text=One step left: make your phone ring."), "on a phone the next setup step sits at the top");
   const tabs = await phoneSize.$$eval('nav[aria-label="Dashboard"]', (ns) => ns.filter((n) => n.offsetWidth).map((n) => { const r = n.getBoundingClientRect(); return [n.children.length, Math.round(r.bottom), getComputedStyle(n).position]; }));
-  check(JSON.stringify(tabs) === '[[4,844,"fixed"]]', `on a phone the four tabs sit at the bottom of the screen (${JSON.stringify(tabs)})`);
+  check(JSON.stringify(tabs) === '[[5,844,"fixed"]]', `on a phone the five tabs sit at the bottom of the screen (${JSON.stringify(tabs)})`);
   await phoneSize.click('[data-open="dlg-website"]');
   const sheet = await phoneSize.locator("#dlg-website").boundingBox();
   check(sheet && sheet.width === 390 && Math.round(sheet.y + sheet.height) === 844, `on a phone the windows rise from the bottom (${JSON.stringify(sheet)})`);
@@ -678,6 +679,16 @@ try {
   check(await owner.isVisible("[data-room-locked]") && (await owner.locator("[data-room-open]").count()) === 0, "a Basic app's Room tab says what Premium adds");
   await owner.click('[data-tab="calls"]');
 
+  // Basic sees the Notes tab with its Premium tag; the server refuses the rest.
+  step = "basic notes tab";
+  await owner.goto(BASE + "/dashboard");
+  check(await owner.isVisible('aside a[href="/dashboard/notes"] [data-premium-tag]'), "Basic's menu tags Notes as Premium");
+  await owner.click('aside a[href="/dashboard/notes"]');
+  await owner.waitForSelector("[data-notes-locked]");
+  check((await owner.locator("[data-notes-switch], [data-note-row]").count()) === 0, "Basic's Notes tab says what Premium adds, with no switch and no notes");
+  await owner.screenshot({ path: `${SHOTS}/notes-basic.png`, fullPage: true });
+  check((await owner.request.post(BASE + "/dashboard/notes/switch", { form: { on: "1" } })).status() === 404, "Basic can't work the switch");
+
   // From here the account is Premium (what the admin's "Move to Premium"
   // does; the admin part below clicks that button for another account).
   const planDB = new DatabaseSync(DB);
@@ -799,6 +810,111 @@ try {
   await owner.waitForFunction(() => document.querySelectorAll("[data-voicemail]").length === 1, null, { timeout: 5000 });
   check(true, "deleting a message removes it");
   check(voicemailNotes().length === 1, "deleting a message deletes its note");
+
+  // The Notes tab, with notes written straight into the database: with no keys
+  // nothing else writes them. A real one goes through in step 10 of the plan.
+  step = "notes tab";
+  {
+    const db = new DatabaseSync(DB);
+    const { account, line } = db.prepare("SELECT account_id AS account, id AS line FROM line WHERE name = ?").get(LINE);
+    const add = (kind, status, reason, extra = {}) => db.prepare(`INSERT INTO note (account_id, line_id, kind, status, reason, language, seconds, transcript, summary, next_actions, done_at)
+      VALUES (?, ?, ?, ?, ?, 'fr', ?, ?, ?, ?, datetime('now'))`).run(account, line, kind, status, reason, extra.seconds ?? 0, extra.transcript ?? "", extra.summary ?? "", extra.actions ?? "").lastInsertRowid;
+    add("voicemail", "skipped", "month_limit");
+    add("call", "skipped", "not_set_up");
+    add("voicemail", "skipped", "silent");
+    add("room", "failed", "summarize", { seconds: 1810, transcript: JSON.stringify([{ speaker: "speaker_0", start: 3, text: "On commence?" }]) });
+    add("call", "working", "", { seconds: 200 });
+    var writtenNote = add("call", "done", "", {
+      seconds: 725,
+      transcript: JSON.stringify([
+        { speaker: "speaker_0", start: 2, text: "Bonjour, ici Marie Tremblay, je voudrais une chambre pour trois nuits à partir du 14 décembre." },
+        { speaker: "speaker_1", start: 9.5, text: "Bonjour Marie. Il me reste la chambre bleue, à 145 dollars la nuit. Vous seriez combien?" },
+        { speaker: "speaker_0", start: 16, text: `Deux adultes et un chien. <img src=x onerror="document.title='hacked'"> Est-ce que le chien est accepté?` },
+        { speaker: "speaker_1", start: 24, text: "Oui, sans problème. Je vous envoie la confirmation par courriel." },
+      ]),
+      summary: "Marie Tremblay veut réserver une chambre pour trois nuits à partir du 14 décembre, pour deux adultes et un chien.\n\nLa chambre bleue est libre à 145 $ la nuit, et le chien est accepté. Marie attend une confirmation par courriel.",
+      actions: JSON.stringify(["Réserver la chambre bleue du 14 au 17 décembre", "Envoyer la confirmation à Marie par courriel"]),
+    });
+    db.prepare("INSERT INTO note_usage (account_id, day, seconds) VALUES (?, date('now'), 9000)").run(account);
+    db.close();
+    await owner.goto(BASE + "/dashboard");
+    check(!(await owner.isVisible('aside a[href="/dashboard/notes"] [data-premium-tag]')), "Premium's menu has no Premium tag on Notes");
+    await owner.click('aside a[href="/dashboard/notes"]');
+    await owner.waitForSelector("[data-notes]");
+    check(await owner.isChecked("#take-notes"), "Take notes is on by default");
+    check(/2\.5 hours of 10 hours used/.test(await owner.textContent("[data-notes-used]")), "the tab shows the hours used this month");
+    const lines = await owner.locator("[data-note-line]").allTextContents();
+    const clamp = await owner.locator("[data-note-line]").first().evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight));
+    check(clamp <= 2.1, `a long summary stops at two lines in the list (${clamp})`);
+    check(/^Marie Tremblay/.test(lines[0]), "the list is newest first, and shows the summary");
+    for (const words of ["Being written", "We wrote down what was said", "Nothing was said", "Notes aren't set up yet", "this month's 10 hours"]) {
+      check(lines.some((l) => l.includes(words)), `a note says: ${words}`);
+    }
+    await owner.screenshot({ path: `${SHOTS}/notes.png`, fullPage: true });
+    const notesPhone = await newPage(390, 844);
+    await notesPhone.context().addCookies(await owner.context().cookies());
+    await notesPhone.goto(BASE + "/dashboard");
+    await notesPhone.click('nav[aria-label="Dashboard"]:visible a[href="/dashboard/notes"]');
+    await notesPhone.waitForSelector("[data-notes]");
+    check((await notesPhone.evaluate(() => document.documentElement.scrollWidth)) <= 390, "phone width: the Notes tab doesn't scroll sideways");
+    await notesPhone.screenshot({ path: `${SHOTS}/notes-phone.png`, fullPage: true });
+    await notesPhone.setViewportSize({ width: 320, height: 640 });
+    const tabHeights = await notesPhone.$$eval('nav[aria-label="Dashboard"] a', (a) => a.filter((x) => x.offsetWidth).map((x) => x.offsetHeight));
+    check((await notesPhone.evaluate(() => document.documentElement.scrollWidth)) <= 320 && new Set(tabHeights).size === 1, `a small phone: five tabs still fit, each on one line (${tabHeights.join(",")})`);
+    await notesPhone.screenshot({ path: `${SHOTS}/notes-phone-small.png` });
+    await notesPhone.setViewportSize({ width: 390, height: 844 });
+    await notesPhone.goto(`${BASE}/dashboard/notes/${writtenNote}`);
+    await notesPhone.waitForSelector("[data-note-summary]");
+    check((await notesPhone.evaluate(() => document.documentElement.scrollWidth)) <= 390, "phone width: a note doesn't scroll sideways");
+    await notesPhone.screenshot({ path: `${SHOTS}/note-phone.png`, fullPage: true });
+    await notesPhone.context().close();
+
+    // One note: what a caller said stays text.
+    await owner.click(`a[href="/dashboard/notes/${writtenNote}"]`);
+    await owner.waitForSelector("[data-note-summary]");
+    check((await owner.textContent("[data-note-summary]")).includes("Marie Tremblay veut"), "the page starts with the summary");
+    check((await owner.locator("[data-note-actions] li").count()) === 2, "then the next actions");
+    const said = await owner.locator("[data-note-said]").allTextContents();
+    check(said.length === 4 && said[2].includes("<img src=x"), "then who said what, as plain text");
+    check((await owner.locator("[data-note-transcript] img").count()) === 0 && (await owner.title()) !== "hacked", "a caller's words can't become part of the page");
+    check(await owner.isVisible("[data-note-transcript] >> text=Person 2"), "speakers have plain names");
+    await owner.screenshot({ path: `${SHOTS}/note.png`, fullPage: true });
+    const noteStranger = await newPage();
+    check((await noteStranger.request.get(`${BASE}/dashboard/notes/${writtenNote}`, { maxRedirects: 0 })).status() === 303, "a stranger is sent to log in");
+    await noteStranger.context().close();
+    await owner.goto(BASE + "/dashboard/notes");
+    await owner.click("[data-notes-language]");
+    await owner.waitForSelector("[data-language-choice]");
+    check(true, "the tab links to the language of the notes");
+
+    // The switch saves itself, and stays off until it's turned on.
+    await owner.goto(BASE + "/dashboard/notes");
+    await Promise.all([owner.waitForNavigation(), owner.click("#take-notes")]);
+    check(!(await owner.isChecked("#take-notes")), "turning off Take notes stays off");
+    const switchDB = new DatabaseSync(DB, { readOnly: true });
+    check(switchDB.prepare("SELECT take_notes FROM account WHERE id = ?").get(account).take_notes === 0, "and the server has it");
+    switchDB.close();
+    await Promise.all([owner.waitForNavigation(), owner.click("#take-notes")]);
+    check(await owner.isChecked("#take-notes"), "turning it back on stays on");
+
+    // The voicemail's own note, from Messages, and back.
+    await owner.goto(BASE + "/dashboard/voicemail");
+    await owner.click("[data-note-link]");
+    await owner.waitForSelector("[data-note]");
+    check(true, "a message links to its note");
+    await owner.click('a[href="/dashboard/voicemail"]:visible >> text=Hear the message');
+    await owner.waitForSelector("[data-voicemail]");
+    check(true, "the note links back to the message");
+
+    // Delete: the note goes, the message stays.
+    await owner.goto(`${BASE}/dashboard/notes/${writtenNote}`);
+    await owner.click("main form[action$='/delete'] button[type=submit]");
+    await owner.waitForSelector("[data-notes]");
+    check((await owner.locator(`a[href="/dashboard/notes/${writtenNote}"]`).count()) === 0, "deleting a note removes it");
+    await owner.goto(BASE + "/dashboard/voicemail");
+    check((await owner.locator("[data-voicemail]").count()) === 1, "deleting a note leaves the messages alone");
+    check((await owner.request.get(`${BASE}/dashboard/notes/${writtenNote}`)).status() === 404, "a deleted note is gone");
+  }
 
   step = "away";
   await owner.goto(BASE + "/app");

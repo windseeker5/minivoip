@@ -241,6 +241,11 @@ try {
   const landingText = await visitorSite.textContent("body");
   check(landingText.includes("Let people call you from your website, in one click.") && landingText.includes("It filters. You answer. You show them."), "the landing page says what it does in one line");
   check(landingText.includes("$10") && !/free while in beta|free line/i.test(landingText), "Premium is $10 and Basic isn't sold as free");
+  check(/Notes after each call, meeting and voicemail/.test(landingText) && /up to 10 hours a month/.test(landingText) && !/\bSoon\b/.test(landingText), "notes are sold as built, in the dashboard, with their limit");
+  check(/Are calls recorded\?/.test(landingText), "the questions say plainly whether calls are recorded");
+  await visitorSite.locator("[data-premium-form]").scrollIntoViewIfNeeded();
+  await visitorSite.waitForTimeout(400);
+  await visitorSite.screenshot({ path: `${SHOTS}/landing-plans.png` });
   // "Get Premium": no payments yet, the email goes on the admin page's list.
   step = "get premium";
   await visitorSite.fill("#premium-email", PREMIUM_EMAIL);

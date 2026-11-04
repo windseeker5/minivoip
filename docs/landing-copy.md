@@ -1,10 +1,10 @@
 # Landing page copy
 
-Last update: 2026-11-01 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
+Last update: 2026-11-04 · Source of truth for the words on `/` (`pages/home.templ`). Context: [../.agents/product-marketing.md](../.agents/product-marketing.md).
 Look: "Voice" (with the Spectrum colour band and the Swiss code example), picked by Ken on 2026-10-25 from ten mocks (DESIGN.md "Landing page"). Changes to the words are noted below.
 
 ## The message (Ken, 2026-10-31)
-Lead with a real person, one click away: with AI answering everywhere, that's the surprise. The voice menu is the filter, not the headline. The story: **it filters** (the voice menu), **you answer** (phone, or computer with a headset), **you show them** (screen, whiteboard: the wow). AI only takes notes on Premium, later; it never talks in the owner's place. Basic is never sold as free; a promo code makes it free. The page also tests the market with Ken's friends and social network.
+Lead with a real person, one click away: with AI answering everywhere, that's the surprise. The voice menu is the filter, not the headline. The story: **it filters** (the voice menu), **you answer** (phone, or computer with a headset), **you show them** (screen, whiteboard: the wow). AI only takes notes, on Premium; it never talks in the owner's place. Basic is never sold as free; a promo code makes it free. The page also tests the market with Ken's friends and social network.
 
 ## Elevator sentence
 minivoip puts a Call button on your website. Your voice menu answers the easy questions. When a customer needs you, your phone and your computer ring, and you can share your screen or draw together in seconds. No phone line, nothing to install.
@@ -46,8 +46,8 @@ Ken, 2026-11-01: say plainly what it is for the owner, so anyone gets it. No app
 - **Basic** · $2 / month · A business line without giving out your cell.
   Call button, call link and QR code · Voice menu in your own voice · Sends callers to the right page of your site · Rings your phone and your computer · Voicemail with an alert. CTA: Get my line
 - **Premium** · $10 / month · Talk, show, close the deal.
-  Everything in Basic · Share your screen in seconds · Draw together on a whiteboard · Video, and a meeting room for your team · *Soon:* Notes taken for you, with a summary in your app after each call.
-  No payments yet, so Premium starts with an email: "Leave your email. I'll set you up and tell you when the call notes are ready." [you@business.com] **Get Premium** → "Thanks! I'll write to you soon to set up Premium." (`POST /premium`, the admin page's "Asked for Premium".)
+  Everything in Basic · Share your screen in seconds · Draw together on a whiteboard · Video, and a meeting room for your team · Notes after each call, meeting and voicemail: a summary, what to do next, who said what. In your dashboard, up to 10 hours a month.
+  No payments yet, so Premium starts with an email: "Leave your email. I'll write back and set you up." [you@business.com] **Get Premium** → "Thanks! I'll write to you soon to set up Premium." (`POST /premium`, the admin page's "Asked for Premium".)
 - Note: Got a promo code? Enter it when you sign up and it's free.
 - Basic never gets video, whiteboard or AI (Ken, 2026-10-24). The AI front desk is kept off the page (2026-10-31): the pitch is a real person.
 
@@ -65,6 +65,7 @@ Only the worries a first visitor really has (Ken, 2026-10-31). Real questions wi
 - **Can people call me from a regular phone?** Not yet. Calls come from your website, your call link or a QR code. A real phone number is planned as an add-on.
 - **Will my phone ring like a normal call?** On Android, yes: the minivoip app rings with your ringtone and shows the call screen, even when your phone is locked. Computers ring while the app is open. On iPhone, for now you get a notification with a sound and answer by tapping it; a ringing iPhone app is next.
 - **Does the visitor need to install anything?** No. They click the button and talk from their browser, after allowing the microphone.
+- **Are calls recorded?** On Basic, never: only the voicemails people leave you. On Premium, yes while your notes are on, and you can turn them off. Callers are told first, in writing and out loud. The sound goes to two outside services to be written down and summarized, and a call's recording is then deleted. Your notes stay in your dashboard for a year, or until you delete them. (2026-11-04: notes can record calls, so the page says so before anyone asks.)
 - Ending: Another question? Press Call and ask me. [Call] (minivoip's own line, in the call window; without the line: "Another question? Write to me", an email link)
 
 ## Final call and footer

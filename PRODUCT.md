@@ -22,7 +22,7 @@ minivoip gives a small business a "Call us" button for its website (plus a call 
 ## Positioning
 Elevator sentence (agreed 2026-10-24): "minivoip puts a Call button on your website. Your voice menu answers the common questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line, nothing to install." Basic: "Your website answers the phone for you." Premium: "From a question to a live demo, in one click." Ken is customer number one (minipass and his other businesses).
 
-It rings the cell phone the owner already has, with the owner's own voice, and needs no phone line, number or SIM. The call goes directly between the visitor's browser and the owner's phone, so there is nothing to pay per minute and nothing recorded. Flat, very low price, made for very small Canadian businesses.
+It rings the cell phone the owner already has, with the owner's own voice, and needs no phone line, number or SIM. The call goes directly between the visitor's browser and the owner's phone, so there is nothing to pay per minute. Calls are recorded only on Premium with notes on, and callers are told first. Flat, very low price, made for very small Canadian businesses.
 
 ## Operating Context
 - Visitors click a button on the owner's website (WordPress, Wix, Squarespace, Shopify) or open the call link from Google Maps, Facebook, an email signature or a QR code on the door.
@@ -31,7 +31,7 @@ It rings the cell phone the owner already has, with the owner's own voice, and n
 
 ## Capabilities and Constraints
 - Positioning frame: a virtual receptionist for the website that rings the owner's cell. Use receptionist language, never IVR/PBX/VoIP.
-- Built 2026-10-25 (Premium, for now free for everyone like the rest of the beta): video, screen sharing and a shared whiteboard in a call, and a meeting room per line (up to 4 people, guests wait until the owner opens it). Planned, not built: the AI front desk answering from the owner's FAQ, recording and meeting notes. Since 2026-10-31 the landing page sells Premium as built, with only the AI call notes marked "Soon".
+- Built 2026-10-25 (Premium, for now free for everyone like the rest of the beta): video, screen sharing and a shared whiteboard in a call, and a meeting room per line (up to 4 people, guests wait until the owner opens it). Built 2026-11-04: notes after each call, meeting and voicemail (a summary, next actions, who said what), in the dashboard. Planned, not built: the AI front desk answering from the owner's FAQ. The landing page sells Premium as built.
 - Voice menu options: ring, play a message, voicemail, open a link, sub-menu. Opening hours.
 - Several phones per line; all ring, first to answer wins.
 - Voicemail after 30 s without answer, with a push notification.

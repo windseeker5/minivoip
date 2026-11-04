@@ -16,8 +16,8 @@ Last update: 2026-10-28 · Design: [architecture.md](architecture.md) · Goal: [
   phone full screen.
 - **Premium, first pieces** (2026-10-25): in a call, both sides can turn on their camera, show their screen (on a
   computer) and draw on a shared whiteboard. Each line has a meeting room, `/room/<line>`, for up to 4 people;
-  guests wait until the owner opens it, and the owner's app says who is waiting. Not yet: recording and meeting
-  notes, the AI front desk.
+  guests wait until the owner opens it, and the owner's app says who is waiting. Notes (2026-11-04, `notes-plan.md`). Not yet: the AI front
+  desk.
 - **Plans** (2026-10-25, branch `plans`): every account is Basic or Premium. Video, screens, the whiteboard and the
   meeting room are Premium only. A promo code gives the plan Ken picks; his admin page switches any account. No
   payments yet: everyone is free in the beta.

@@ -67,7 +67,9 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
 computer, at the top on a phone (the keyboard never covers it). Onest, the site's shadcn tokens. Fields are 40px,
 as tall as the ink button. Form fields follow the site's theme, not the computer's (`color-scheme` in
 `globals.css`), and a field the browser fills in (saved email, password) keeps its own white look: Ken saw Chrome
-draw them dark grey-blue on a dark computer with the site set to light.
+draw them dark grey-blue on a dark computer with the site set to light. Sign up ends with the language of the notes:
+two choices side by side (`languageChoice`, as tall as the fields, an ink outline on the one chosen), Français first
+and already chosen. The same choice is on "Language of your notes", from the account menu.
 
 ## Dashboard (redesigned 2026-11-01: proposition 2, "menu on the side")
 
@@ -78,7 +80,7 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
 
 - **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, What callers hear, Messages
   (orange count of new voicemails), Business, the open one shaded; at its foot a "Phone app" card and the account
-  button (letter, "Your account", email). Its menu (a native popover) holds the email, the phone app, Log out, and
+  button (letter, "Your account", email). Its menu (a native popover) holds the email, Change password, Language of your notes, the phone app, Log out, and
   "minivoip admin" for staff only: minivoip's own admin is never a tab. On a phone a top bar (logo, account) and
   the four tabs fixed at the bottom, like an app. A "Questions?" line closes each page.
 - **Home** (`Dashboard`): the title, then a peach band (#fff4ec) with the next setup step and its button, ticked from

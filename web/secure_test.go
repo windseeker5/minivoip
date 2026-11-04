@@ -10,6 +10,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -85,6 +86,74 @@ func TestSignupNeedsACode(t *testing.T) {
 	form.Set("promo", "friends-2027")
 	if w := post(h, "/signup", form, ""); w.Code != http.StatusSeeOther {
 		t.Fatalf("with a code: %d", w.Code)
+	}
+}
+
+// Sign up keeps the language chosen, French unless English was picked, and a
+// made-up one is French too.
+func TestSignupLanguage(t *testing.T) {
+	for sent, want := range map[string]store.Language{"": store.French, "fr": store.French, "en": store.English, "de": store.French} {
+		_, st, h := testSite(t) // each its own site: sign ups per address are limited
+		st.CreatePromoCode("FRIENDS-2027", store.Basic, 0, "", "")
+		form := url.Values{"email": {"joe@example.com"}, "password": {"long-enough"}, "promo": {"FRIENDS-2027"}, "language": {sent}}
+		if w := post(h, "/signup", form, ""); w.Code != http.StatusSeeOther {
+			t.Fatalf("%q: %d", sent, w.Code)
+		}
+		u, err := st.Login("joe@example.com", "long-enough")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if l, _ := st.Language(u.AccountID); l != want {
+			t.Errorf("%q: got %q", sent, l)
+		}
+	}
+	// The form comes back with the choice kept when something else is wrong.
+	_, st, h := testSite(t)
+	st.CreatePromoCode("FRIENDS-2027", store.Basic, 0, "", "")
+	w := post(h, "/signup", url.Values{"email": {"a@example.com"}, "password": {"short"}, "promo": {"FRIENDS-2027"}, "language": {"en"}}, "")
+	if !regexp.MustCompile(`value="en"\s+checked`).MatchString(w.Body.String()) {
+		t.Fatal("the choice of English was lost")
+	}
+}
+
+func TestChangeLanguage(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	other, _ := st.CreateAccount("sam@example.com", "long-enough", "")
+	token, _, _ := st.NewSession(u.ID)
+	if w := post(h, "/dashboard/language", url.Values{"language": {"en"}}, ""); w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
+		t.Fatalf("logged out: %d %s", w.Code, w.Header().Get("Location"))
+	}
+	if l, _ := st.Language(u.AccountID); l != store.French {
+		t.Fatalf("changed while logged out: %q", l)
+	}
+	if w := post(h, "/dashboard/language", url.Values{"language": {"de"}}, token); w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("a made-up language: %d", w.Code)
+	}
+	if l, _ := st.Language(u.AccountID); l != store.French {
+		t.Fatalf("a made-up language changed it: %q", l)
+	}
+	if w := post(h, "/dashboard/language", url.Values{"language": {"en"}}, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("saving: %d", w.Code)
+	}
+	if l, _ := st.Language(u.AccountID); l != store.English {
+		t.Fatalf("saved: %q", l)
+	}
+	if l, _ := st.Language(other.AccountID); l != store.French {
+		t.Fatalf("someone else's account changed: %q", l)
+	}
+	// From another website, the same post is refused.
+	r := httptest.NewRequest("POST", "/dashboard/language", strings.NewReader("language=fr"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("Origin", "https://evil.example")
+	r.Header.Set("Cookie", sessionCookie+"="+token)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("from another site: %d", rec.Code)
+	}
+	if l, _ := st.Language(u.AccountID); l != store.English {
+		t.Fatalf("another site changed it: %q", l)
 	}
 }
 

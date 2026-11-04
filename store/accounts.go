@@ -130,6 +130,41 @@ func (s *Store) Login(email, password string) (User, error) {
 	return u, nil
 }
 
+// Language is what an account's call notes are written in. It doesn't translate
+// the site, which stays in English.
+type Language string
+
+const (
+	French  Language = "fr"
+	English Language = "en"
+)
+
+func (l Language) Valid() bool { return l == French || l == English }
+
+// Language says what the account's notes are written in.
+func (s *Store) Language(accountID int64) (Language, error) {
+	var l Language
+	err := s.db.QueryRow("SELECT language FROM account WHERE id = ?", accountID).Scan(&l)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return l, err
+}
+
+func (s *Store) SetLanguage(accountID int64, l Language) error {
+	if !l.Valid() {
+		return errors.New("unknown language " + string(l))
+	}
+	res, err := s.db.Exec("UPDATE account SET language = ? WHERE id = ?", l, accountID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // LoginSecret is what identifies an account and its current password, for
 // signing things tied to them; "" for an unknown email.
 func (s *Store) LoginSecret(email string) string {

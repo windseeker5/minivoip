@@ -162,6 +162,10 @@ templ accountMenu(email string) {
 				@icon.KeyRound(icon.Props{Class: "size-4 text-muted-foreground"})
 				Change password
 			</a>
+			<a href="/dashboard/language" class={ menuItem }>
+				@icon.Languages(icon.Props{Class: "size-4 text-muted-foreground"})
+				Language of your notes
+			</a>
 			<a href="/app" class={ menuItem }>
 				@icon.Smartphone(icon.Props{Class: "size-4 text-muted-foreground"})
 				Phone app
@@ -686,6 +690,26 @@ templ Password(email, problem string, saved bool) {
 				}
 				@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
 					Change password
+				}
+			</form>
+		</div>
+	}
+}
+
+// Language is "Language of your notes", from the account menu.
+templ Language(email string, current store.Language, problem string, saved bool) {
+	@dashShell("Language of your notes", email, "") {
+		<div class="max-w-md">
+			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Language of your notes</h1>
+			<p class="mt-2 text-muted-foreground">Premium writes the summary and the next actions of your calls in this language. What people said stays in the words they used, and this site stays in English.</p>
+			if saved {
+				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-language-saved>Your language is saved.</p>
+			}
+			<form method="post" action="/dashboard/language" class="mt-6 flex flex-col gap-4">
+				@formError(problem)
+				@languageChoice("Write my notes in", current)
+				@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
+					Save
 				}
 			</form>
 		</div>

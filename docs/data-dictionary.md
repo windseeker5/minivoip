@@ -1,6 +1,6 @@
 # Data dictionary
 
-Last update: 2026-11-02 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
+Last update: 2026-11-04 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
 
 ## account
 One customer (a business). Created at sign up.
@@ -11,6 +11,7 @@ One customer (a business). Created at sign up.
 | `name` | text | For now the sign-up email; a business name later |
 | `promo_code` | text, nullable → `promo_code.code` | The code used at sign up, which is required since 2026-11-02. Set = free forever (while the code isn't revoked) |
 | `plan` | text: `basic` or `premium` | What the account gets. Basic: calls, voice menu, voicemail. Premium adds video, screen sharing, the whiteboard and the meeting room (`store.Plan`). From the promo code at sign up, else `basic`; admins switch it on `/admin/promo` |
+| `language` | text: `fr` or `en` | What the account's call notes are written in (`store.Language`). Chosen at sign up, French unless English is picked; changed at `/dashboard/language`, from the account menu. The site itself stays in English |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 
 ## user
@@ -185,3 +186,4 @@ Who owns each recorded message (files in `<data dir>/prompts/`): only that accou
 | 11 | 2026-11-02 | `line.voicemail_text`, `line.voicemail_audio` (the voicemail greeting; a `voicemail` choice's own message becomes it) |
 | 12 | 2026-11-02 | `prompt` (who owns each recording), `session.hashed` (tokens stored as a hash, old ones converted at start) |
 | 13 | 2026-11-03 | `voicemail.size` (old messages filled in at start) |
+| 14 | 2026-11-04 | `account.language` (`fr` or `en`; existing accounts get French) |

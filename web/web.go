@@ -91,6 +91,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /logout", s.logout)
 	mux.Handle("GET /dashboard/password", s.auth(s.passwordPage))
 	mux.Handle("POST /dashboard/password", s.auth(s.changePassword))
+	mux.Handle("GET /dashboard/language", s.auth(s.languagePage))
+	mux.Handle("POST /dashboard/language", s.auth(s.saveLanguage))
 	mux.HandleFunc("POST /premium", s.askPremium)
 
 	mux.Handle("GET /dashboard", s.auth(s.dashboard))
@@ -287,7 +289,10 @@ func (s *Server) signupPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBody)
-	f := pages.AccountForm{Email: strings.TrimSpace(r.FormValue("email")), Promo: strings.TrimSpace(r.FormValue("promo"))}
+	f := pages.AccountForm{Email: strings.TrimSpace(r.FormValue("email")), Promo: strings.TrimSpace(r.FormValue("promo")), Language: store.Language(r.FormValue("language"))}
+	if !f.Language.Valid() {
+		f.Language = store.French
+	}
 	password := r.FormValue("password")
 	if !s.sameSite(r) {
 		f.Error = "This form came from another site."
@@ -321,6 +326,10 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 			return
 		default:
 			s.signupDone(r, true)
+			// A failure here leaves a working French account, changed from the account menu.
+			if err := s.Store.SetLanguage(u.AccountID, f.Language); err != nil {
+				log.Printf("signup: language: %v", err)
+			}
 			if err := s.startSession(w, r, u); err != nil {
 				serverError(w, r, err)
 				return
@@ -472,6 +481,35 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request, u store.
 	}
 	w.WriteHeader(http.StatusUnprocessableEntity)
 	render(w, r, pages.Password(u.Email, msg, false))
+}
+
+func (s *Server) languagePage(w http.ResponseWriter, r *http.Request, u store.User) {
+	l, err := s.Store.Language(u.AccountID)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	render(w, r, pages.Language(u.Email, l, "", r.URL.Query().Get("saved") == "1"))
+}
+
+func (s *Server) saveLanguage(w http.ResponseWriter, r *http.Request, u store.User) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxFormBody)
+	l := store.Language(r.FormValue("language"))
+	if !l.Valid() {
+		current, err := s.Store.Language(u.AccountID)
+		if err != nil {
+			serverError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		render(w, r, pages.Language(u.Email, current, "Choose French or English.", false))
+		return
+	}
+	if err := s.Store.SetLanguage(u.AccountID, l); err != nil {
+		serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/dashboard/language?saved=1", http.StatusSeeOther)
 }
 
 // relayLogin is the connection helpers with a two-hour relay login. The relay

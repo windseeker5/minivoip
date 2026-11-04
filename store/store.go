@@ -196,6 +196,10 @@ var migrations = []string{
 	`
 	ALTER TABLE voicemail ADD COLUMN size INTEGER NOT NULL DEFAULT 0;
 	`,
+	// 14: the language of an account's call notes. Existing accounts get French.
+	`
+	ALTER TABLE account ADD COLUMN language TEXT NOT NULL DEFAULT 'fr' CHECK (language IN ('fr', 'en'));
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

@@ -13,7 +13,8 @@
 //    up, revoke, switch an account between Basic and Premium.
 // 5. A stranger can't open the phone app; log out works. Security: no account
 //    without a promo code, the host lets each guest into the meeting room,
-//    Change password, a made-up recording type is refused.
+//    Change password, a made-up recording type is refused. The language of the
+//    notes: French at sign up unless English is picked, changed from the account menu.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
 //
 // BASE=https://voip.dresdell.com node tests/e2e/site.mjs  tests through Caddy.
@@ -287,6 +288,24 @@ try {
   await owner.screenshot({ path: `${SHOTS}/signup.png` });
   const noCode = await owner.request.post(BASE + "/signup", { form: { email: EMAIL, password: "e2e-password" }, maxRedirects: 0 });
   check(noCode.status() === 422 && (await noCode.text()).includes("Enter your promo code"), "no promo code, no account");
+  check(await owner.isChecked('input[name=language][value=fr]') && !await owner.isChecked('input[name=language][value=en]'), "sign up has French already selected");
+  // A refused form keeps the language chosen.
+  await owner.check('input[name=language][value=en]');
+  await owner.fill("#email", EMAIL);
+  await owner.fill("#password", "e2e-password");
+  await owner.fill("#promo", "NOT-A-REAL-CODE");
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector("text=promo code isn't valid");
+  check(await owner.isChecked('input[name=language][value=en]'), "a refused sign up keeps the language chosen");
+  await owner.check('input[name=language][value=fr]');
+  {
+    const phone = await newPage(390, 844);
+    await phone.goto(BASE + "/signup");
+    const wide = await phone.evaluate(() => document.documentElement.scrollWidth);
+    check(wide <= 390, `phone width: sign up doesn't scroll sideways (${wide}px)`);
+    await phone.screenshot({ path: `${SHOTS}/signup-phone.png`, fullPage: true });
+    await phone.context().close();
+  }
   await owner.fill("#email", EMAIL);
   await owner.fill("#password", "e2e-password");
   await owner.fill("#promo", JOIN_CODE);
@@ -1025,8 +1044,16 @@ try {
   await friend.fill("#email", FRIEND);
   await friend.fill("#password", "e2e-password");
   await friend.fill("#promo", CODE.toLowerCase());
+  await friend.check('input[name=language][value=en]');
   await friend.click("main button[type=submit]");
   await friend.waitForSelector("[data-business]");
+  {
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const lang = email => db.prepare("SELECT a.language FROM account a JOIN user u ON u.account_id = a.id WHERE u.email = ?").get(email)?.language;
+    check(lang(FRIEND) === "en", "a friend who picks English at sign up gets English");
+    check(lang(EMAIL) === "fr", "the owner, who kept French, has French");
+    db.close();
+  }
   await friend.fill("#business", `e2e ${stamp} friend`);
   await friend.click("form[data-new-line] button[type=submit]");
   await friend.waitForSelector("[data-add-choice]");
@@ -1240,6 +1267,40 @@ try {
     check(more.type === "limited" && !more.token, "and the call page is told to try later, with no voicemail pass");
     for (const v of [guesser, someoneElse, maker, ringer]) await v.ctx.close();
   }
+
+  // The language of the notes, from the account menu.
+  step = "language";
+  await owner.goto(BASE + "/dashboard");
+  await owner.click("[data-account-button]:visible");
+  await owner.click('#account-menu a[href="/dashboard/language"]');
+  await owner.waitForSelector("[data-language-choice]");
+  check(await owner.isChecked('input[name=language][value=fr]'), "the language page shows French, as chosen at sign up");
+  await owner.screenshot({ path: `${SHOTS}/language.png`, fullPage: true });
+  await owner.check('input[name=language][value=en]');
+  await owner.click("main form[action='/dashboard/language'] button[type=submit]");
+  await owner.waitForSelector("[data-language-saved]");
+  await owner.reload();
+  check(await owner.isChecked('input[name=language][value=en]'), "the language changes to English and stays");
+  await owner.click("main form[action='/dashboard/language'] button[type=submit]");
+  await owner.waitForSelector("[data-language-saved]");
+  const badLanguage = await owner.request.post(BASE + "/dashboard/language", { form: { language: "de" } });
+  check(badLanguage.status() === 422 && (await badLanguage.text()).includes("Choose French or English"), "a made-up language is refused");
+  {
+    const phone = await newPage(390, 844);
+    await phone.context().addCookies(await owner.context().cookies());
+    await phone.goto(BASE + "/dashboard");
+    await phone.click("[data-account-button]:visible");
+    await phone.screenshot({ path: `${SHOTS}/account-menu-phone.png` });
+    await phone.click('#account-menu a[href="/dashboard/language"]');
+    await phone.waitForSelector("[data-language-choice]");
+    const wide = await phone.evaluate(() => document.documentElement.scrollWidth);
+    check(wide <= 390, `phone width: the language page doesn't scroll sideways (${wide}px)`);
+    await phone.screenshot({ path: `${SHOTS}/language-phone.png`, fullPage: true });
+    await phone.context().close();
+  }
+  await owner.click('main input[name=language][value=fr]');
+  await owner.click("main form[action='/dashboard/language'] button[type=submit]");
+  await owner.waitForSelector("[data-language-saved]");
 
   // Change password, from the account menu: the other devices log out.
   step = "change password";

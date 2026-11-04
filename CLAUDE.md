@@ -39,6 +39,7 @@ B&B and may become a SaaS.
 - `PRODUCT.md` (who it is for, brand rules, Ken's design taste) and `DESIGN.md` (how it looks: type, colours, the landing components). Read both before any screen work.
 - `docs/vision.md`: the long-term goal (calls, then meeting room, whiteboard, notes; two plans; web app only). Read before planning features.
 - `docs/plan.md`: the build phases, 0 to 6. Work follows this order.
+- `docs/notes-plan.md`: the loop plan for Premium notes (transcript, summary, next actions), step by step.
 - `docs/research.md`: background, existing projects, competitors, Go component choice.
 - The first proof of concept (Python/Flask + coturn "callbox", and a Zadarma evaluation) lives only in git
   commit `5b8d116`, under `custom/` and `zadarma/` (`git show 5b8d116:custom/callbox/app.py`). Reference only;
@@ -59,8 +60,8 @@ B&B and may become a SaaS.
 ## How the code fits together
 
 - `main.go` opens the database and hands everything to `web.Server.Routes`.
-- `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, and a
-  same-site check on form posts, and hands pages the `pages.Viewer` (admin, new messages); `dashboard.go` has Home, Business, line creation, saving "What callers hear" and the call page;
+- `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, the language
+  of the notes (`account.language`, `/dashboard/language`), and a same-site check on form posts, and hands pages the `pages.Viewer` (admin, new messages); `dashboard.go` has Home, Business, line creation, saving "What callers hear" and the call page;
   `app.go` the owner's app (`/app`, its call list, the Available switch, call history logging).
 - `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.

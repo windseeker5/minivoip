@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ func TestNotesArePremiumOnly(t *testing.T) {
 func TestNoteAudioStaysInTheDataFolder(t *testing.T) {
 	s := open(t)
 	notesAccount(t, s, "joe@example.com", "joes")
-	for _, bad := range []string{"../secret", "/etc/passwd", "notes/../../secret"} {
+	for _, bad := range []string{"", "../secret", "/etc/passwd", "notes/../../secret"} {
 		if _, err := s.AddNote("joes", NoteCall, bad, "audio/webm", 10); err == nil {
 			t.Errorf("%q accepted", bad)
 		}
@@ -219,5 +220,94 @@ func TestNotesGoWithTheAccount(t *testing.T) {
 	s.db.QueryRow("SELECT count(*) FROM note_usage").Scan(&usage)
 	if notes != 0 || usage != 0 {
 		t.Fatalf("%d notes, %d usage rows", notes, usage)
+	}
+}
+
+func voicemail(t *testing.T, s *Store, line string, ms int64) Voicemail {
+	t.Helper()
+	v, err := s.AddVoicemail(line, "", "", "audio/webm", ms, strings.NewReader("sound"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
+}
+
+func TestVoicemailNote(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	if ok, err := s.NoteVoicemail(voicemail(t, s, "joes", MinNoteMS-1)); ok || err != nil {
+		t.Fatalf("a very short message: %v %v", ok, err)
+	}
+	v := voicemail(t, s, "joes", MinNoteMS)
+	if ok, err := s.NoteVoicemail(v); !ok || err != nil {
+		t.Fatalf("a message: %v %v", ok, err)
+	}
+	list, _ := s.Notes(u.AccountID)
+	if len(list) != 1 || list[0].Kind != NoteVoicemail || list[0].AudioType != "audio/webm" || list[0].Seconds != 2 {
+		t.Fatalf("notes: %+v", list)
+	}
+	if b, err := os.ReadFile(s.NoteAudioPath(list[0])); err != nil || string(b) != "sound" {
+		t.Fatalf("its recording: %q %v", b, err)
+	}
+	s.SetPlan(u.AccountID, Basic)
+	if ok, err := s.NoteVoicemail(voicemail(t, s, "joes", 9000)); ok || err != nil {
+		t.Fatalf("Basic: %v %v", ok, err)
+	}
+	if ok, err := s.NoteVoicemail(Voicemail{ID: 9999, DurationMS: 9000}); ok || !errors.Is(err, ErrNotFound) {
+		t.Fatalf("no such message: %v %v", ok, err)
+	}
+}
+
+// A message that expires leaves its note; one the owner deletes takes it along,
+// and only its own.
+func TestVoicemailNoteLife(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	sue := notesAccount(t, s, "sue@example.com", "sues")
+	old := voicemail(t, s, "joes", 9000)
+	s.NoteVoicemail(old)
+	gone := voicemail(t, s, "joes", 9000)
+	s.NoteVoicemail(gone)
+	s.db.Exec("UPDATE voicemail SET created_at = datetime('now', ?) WHERE id = ?", fmt.Sprintf("-%d days", VoicemailDays+1), old.ID)
+	if err := s.Cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := s.Notes(u.AccountID)
+	if len(list) != 2 {
+		t.Fatalf("a message that expired took its note: %+v", list)
+	}
+	if err := s.DeleteVoicemail(sue.AccountID, gone.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("someone else deletes it: %v", err)
+	}
+	if err := s.DeleteVoicemail(u.AccountID, gone.ID); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ = s.Notes(u.AccountID); len(list) != 1 {
+		t.Fatalf("after delete: %+v", list)
+	}
+}
+
+// Past a line's share of a day, no note waits for the services, and other lines
+// aren't touched.
+func TestVoicemailNotesPerDay(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	sue := notesAccount(t, s, "sue@example.com", "sues")
+	for range MaxVoicemailNotesPerDay {
+		s.NoteVoicemail(voicemail(t, s, "joes", 9000))
+	}
+	if ok, err := s.NoteVoicemail(voicemail(t, s, "joes", 9000)); !ok || err != nil {
+		t.Fatalf("one too many: %v %v", ok, err)
+	}
+	list, _ := s.Notes(u.AccountID)
+	if len(list) != MaxVoicemailNotesPerDay+1 {
+		t.Fatalf("%d notes", len(list))
+	}
+	if n := list[0]; n.Status != NoteSkipped || n.Reason != NoteDayLimit || n.Audio != "" {
+		t.Fatalf("one too many: %+v", n)
+	}
+	s.NoteVoicemail(voicemail(t, s, "sues", 9000))
+	if theirs, _ := s.Notes(sue.AccountID); len(theirs) != 1 || theirs[0].Status != NoteWaiting {
+		t.Fatalf("another line: %+v", theirs)
 	}
 }

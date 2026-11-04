@@ -304,6 +304,69 @@ func TestDeletedNoteKeepsItsHours(t *testing.T) {
 	}
 }
 
+// A real message, from saved to written, and robots leaving many: the services
+// are paid for a line's share of a day, and never past the month's limit.
+func TestVoicemailsFromStartToEnd(t *testing.T) {
+	s := newSetup(t)
+	leave := func(ms int64) (store.Voicemail, bool) {
+		t.Helper()
+		v, err := s.st.AddVoicemail("joes", "", "", "audio/webm", ms, strings.NewReader("sound"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		queued, err := s.st.NoteVoicemail(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v, queued
+	}
+	v, queued := leave(30000)
+	s.drain()
+	list, _ := s.st.Notes(s.acct)
+	if !queued || len(list) != 1 || list[0].Status != store.NoteDone || s.scribe.calls != 1 {
+		t.Fatalf("queued %v, notes %+v, %d calls", queued, list, s.scribe.calls)
+	}
+	path, _, err := s.st.VoicemailFile(s.acct, v.ID)
+	if err != nil || !exists(path) {
+		t.Fatalf("the message's own audio: %v", err)
+	}
+	if err := s.st.DeleteVoicemail(s.acct, v.ID); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ = s.st.Notes(s.acct); len(list) != 0 {
+		t.Fatalf("the note outlived its message: %+v", list)
+	}
+
+	s.scribe.calls = 0
+	for range store.MaxVoicemailNotesPerDay + 5 {
+		leave(30000)
+	}
+	s.drain()
+	if s.scribe.calls != store.MaxVoicemailNotesPerDay {
+		t.Fatalf("the service was paid %d times", s.scribe.calls)
+	}
+
+	other, _ := s.st.CreateAccount("sue@example.com", "long-enough", "")
+	s.st.SetPlan(other.AccountID, store.Premium)
+	s.st.CreateLine(other.AccountID, "sues", "Sue's")
+	s.st.ChargeNotes(other.AccountID, store.NoteMonthSeconds)
+	m, err := s.st.AddVoicemail("sues", "", "", "audio/webm", 30000, strings.NewReader("sound"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.st.NoteVoicemail(m)
+	s.scribe.calls = 0
+	s.drain()
+	theirs, _ := s.st.Notes(other.AccountID)
+	if s.scribe.calls != 0 || theirs[0].Reason != store.NoteMonthLimit {
+		t.Fatalf("past the month: %d calls, %+v", s.scribe.calls, theirs[0])
+	}
+	path, _, _ = s.st.VoicemailFile(other.AccountID, m.ID)
+	if !exists(path) {
+		t.Fatal("the owner keeps the message itself past the limit")
+	}
+}
+
 // A browser can't play a recording down: its size says how long it can be.
 func TestLimitsSeeThroughAShortClaim(t *testing.T) {
 	s := newSetup(t)

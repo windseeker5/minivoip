@@ -64,7 +64,7 @@ them: without keys, new notes say "Notes aren't set up yet", and everything is t
   background worker that survives restarts, retries a few times and handles one note at a time. The two service
   clients. The monthly and daily limits. Keys through `.env`: add `dotenv` to `Taskfile.yml` and ship `.env.example`.
   The summarizer's prompt treats the transcript as data. Notes are cleaned up after a year.
-- [ ] **3. Voicemail notes.** A Premium voicemail queues a note after upload; deleting the voicemail deletes it. Very
+- [x] **3. Voicemail notes.** A Premium voicemail queues a note after upload; deleting the voicemail deletes it. Very
   short messages are skipped, so silence costs nothing. Robots can't spend Ken's money past the limits.
 - [ ] **4. The Notes tab in the dashboard.** In the side menu and bottom tabs, Premium only (Basic sees the usual
   "Premium" tag). A list, newest first, and a one-page view: summary, next actions, then the transcript with who said
@@ -99,3 +99,4 @@ them: without keys, new notes say "Notes aren't set up yet", and everything is t
 
 - 2026-11-04, step 1: `account.language` (migration 14, ran on the dev database, existing accounts French), the choice on sign up, `/dashboard/language` from the account menu. A made-up language at sign up becomes French; on the page it is refused. `CreateAccount` keeps its arguments and sign up sets the language right after, so a failure there leaves a working French account.
 - 2026-11-04, step 2: `notes/` (worker, Scribe, Claude), `store/notes.go`, migration 15, `.env.example`, Taskfile `dotenv`. Choices: past the day's ceiling a note is skipped, not held for tomorrow; a note past a limit or without keys loses a call's recording; hours live in `note_usage` so deleting a note doesn't give them back; Scribe hears the language itself. Claude is `claude-opus-5-5` (about $0.10 an hour of audio), the default for now; Ken can pick a cheaper one. Price of $0.22 an hour for Scribe v2 seen only on third-party lists, one says $0.27: Ken checks when he gets the key. For step 6: separate channels cost double at Scribe (each billed in full). Nothing has reached the real services yet.
+- 2026-11-04, step 3: a Premium voicemail queues its note after upload (migration 16, `note.voicemail_id`), deleting the message deletes it. Choices: under 2 seconds gets no note row at all, so the Notes tab isn't full of hang-ups; a line's voicemails get 30 notes a day, past that the note says so (the message still arrives), so a robot can't use up the owner's hours or the day's ceiling. Once Ken sets keys, each `site.mjs` run spends a few cents on real services (its Premium voicemails). In `site.mjs` the voicemail choice now records 2.5 s, past the 2 second minimum.

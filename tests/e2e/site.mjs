@@ -5,7 +5,7 @@
 // 2. Signs up, creates a line, builds a menu, records prompts (a caller hears
 //    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
-//    then voicemail (unanswered call and a voicemail choice), listen, delete.
+//    then voicemail (unanswered call and a voicemail choice), its note, listen, delete.
 //    A new account is Basic (voice only, no meeting room); then Premium:
 //    video through the relay. The meeting room: a guest waits, the app says so,
 //    the owner opens it, a third person, the whiteboard, leaving.
@@ -21,7 +21,7 @@
 
 import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite"; // built into Node 22.5+
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { createServer } from "node:http";
@@ -753,10 +753,29 @@ try {
   await caller.waitForSelector('[data-key="4"]:visible');
   await caller.click('[data-key="4"]');
   await caller.waitForSelector('[data-action="send-message"]:enabled', { timeout: 20000 });
-  await caller.waitForTimeout(1500);
+  await caller.waitForTimeout(2500);
   await caller.click('[data-action="send-message"]');
   await caller.waitForSelector("text=Message sent", { timeout: 10000 });
   check(true, "a 'take a voicemail' choice records, and Send my message sends it");
+
+  // Each message on this Premium line gets a note. With no keys on the server
+  // (.env) it says so; with them, this run spends a few cents on the real services.
+  step = "voicemail notes";
+  const voicemailNotes = () => {
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const rows = db.prepare(`SELECT n.status, n.reason, n.kind, n.language, n.voicemail_id AS message FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? ORDER BY n.id`).all(LINE);
+    db.close();
+    return rows;
+  };
+  const envFile = existsSync(".env") ? readFileSync(".env", "utf8") : "";
+  const notesSetUp = /^ELEVENLABS_API_KEY=\S/m.test(envFile) && /^ANTHROPIC_API_KEY=\S/m.test(envFile);
+  const firstNotes = voicemailNotes();
+  check(firstNotes.length === 2 && firstNotes.every((n) => n.kind === "voicemail" && n.language === "fr" && n.message), `each voicemail on a Premium line queues a note, in the account's language (${firstNotes.length})`);
+  if (!notesSetUp) {
+    await caller.waitForTimeout(1000);
+    const settled = voicemailNotes();
+    check(settled.every((n) => n.status === "skipped" && n.reason === "not_set_up"), `without keys, a note says it isn't set up (${settled.map((n) => n.status + "/" + n.reason).join(", ")})`);
+  }
 
   step = "voicemail page";
   await owner.goto(BASE + "/dashboard");
@@ -779,6 +798,7 @@ try {
   await items.first().locator('button[aria-label="Delete this message"]').click();
   await owner.waitForFunction(() => document.querySelectorAll("[data-voicemail]").length === 1, null, { timeout: 5000 });
   check(true, "deleting a message removes it");
+  check(voicemailNotes().length === 1, "deleting a message deletes its note");
 
   step = "away";
   await owner.goto(BASE + "/app");

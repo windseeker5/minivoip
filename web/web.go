@@ -34,6 +34,8 @@ type Server struct {
 	Dev bool
 	// OnVoicemail runs after a voicemail is saved (push notifications).
 	OnVoicemail func(line string)
+	// OnNote runs when a note is queued, to wake the notes worker.
+	OnNote func()
 	// Push sends notifications to the owner's devices (nil in tests).
 	Push *push.Sender
 	// CallLine is the line behind the landing page's "Call us now" button.

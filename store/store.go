@@ -232,6 +232,12 @@ var migrations = []string{
 	);
 	CREATE INDEX note_usage_day ON note_usage(day);
 	`,
+	// 16: a voicemail's note. Deleting the message deletes the note
+	// (DeleteVoicemail); a message that expires leaves its note behind.
+	`
+	ALTER TABLE note ADD COLUMN voicemail_id INTEGER REFERENCES voicemail(id) ON DELETE SET NULL;
+	CREATE INDEX note_voicemail ON note(voicemail_id);
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

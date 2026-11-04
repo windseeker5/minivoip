@@ -85,6 +85,7 @@ func main() {
 	if !writer.SetUp() {
 		fmt.Println("notes: not set up (ELEVENLABS_API_KEY and ANTHROPIC_API_KEY, see .env.example)")
 	}
+	site.OnNote = writer.Wake
 	go writer.Run(context.Background())
 
 	// Logins that ran out and plans that changed end their open sockets.

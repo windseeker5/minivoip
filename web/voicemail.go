@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -58,10 +59,17 @@ func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
 	// A message lasts two minutes; the browser only reports it.
 	ms, _ := strconv.ParseInt(r.FormValue("duration_ms"), 10, 64)
 	ms = min(max(ms, 0), 5*60*1000)
-	if _, err := s.Store.AddVoicemail(pass.Line, pass.Option, pass.CallID, ct, ms, file); err != nil {
+	v, err := s.Store.AddVoicemail(pass.Line, pass.Option, pass.CallID, ct, ms, file)
+	if err != nil {
 		s.giveVoicemail(r, pass.Line)
 		serverError(w, r, err)
 		return
+	}
+	// Premium's note. If this fails the owner still has the message.
+	if queued, err := s.Store.NoteVoicemail(v); err != nil {
+		log.Printf("voicemail %d: note: %v", v.ID, err)
+	} else if queued && s.OnNote != nil {
+		s.OnNote()
 	}
 	s.Hub.NotifyOwners(pass.Line, calls.Message{Type: "voicemail"})
 	if s.OnVoicemail != nil {

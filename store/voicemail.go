@@ -252,13 +252,24 @@ func (s *Store) Cleanup() error {
 	return nil
 }
 
-// DeleteVoicemail removes a message and its audio file.
+// DeleteVoicemail removes a message, its audio file and its note.
 func (s *Store) DeleteVoicemail(accountID, id int64) error {
 	path, _, err := s.VoicemailFile(accountID, id)
 	if err != nil {
 		return err
 	}
-	if _, err := s.db.Exec("DELETE FROM voicemail WHERE id = ?", id); err != nil {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("DELETE FROM note WHERE voicemail_id = ?", id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM voicemail WHERE id = ?", id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 	os.Remove(path)

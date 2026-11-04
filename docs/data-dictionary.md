@@ -180,7 +180,7 @@ Premium's written record of a call, a meeting room or a voicemail (`store/notes.
 | `line_id` | integer → `line.id` (delete cascades) | |
 | `kind` | text: `voicemail`, `call` or `room` | What was recorded |
 | `status` | text: `waiting`, `working`, `done`, `failed` or `skipped` | `waiting` includes a note between two tries. A server that stops leaves `working`, put back at the next start |
-| `reason` | text | Why it `failed` or was `skipped`: `not_set_up` (a key is missing), `not_premium`, `month_limit`, `day_limit`, `silent` (nothing said), `no_audio`, `transcribe`, `summarize`. A `summarize` failure still has its transcript |
+| `reason` | text | Why it `failed` or was `skipped`: `not_set_up` (a key is missing), `not_premium`, `month_limit`, `day_limit` (everyone's day, or a line's 30 voicemail notes in a day), `silent` (nothing said), `no_audio`, `transcribe`, `summarize`. A `summarize` failure still has its transcript |
 | `language` | text: `fr` or `en` | What the summary and next actions are written in: the account's at the time. The transcript keeps the words as spoken |
 | `audio` | text | The recording, a path under the data folder; empty once transcribed or given up on. A call's or a room's file is deleted then; a voicemail's stays, it's the owner's message |
 | `audio_type` | text | Its content type |
@@ -192,6 +192,7 @@ Premium's written record of a call, a meeting room or a voicemail (`store/notes.
 | `next_try` | text (UTC) | When its turn comes |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 | `done_at` | text (UTC), nullable | When it was finished or given up on |
+| `voicemail_id` | integer, nullable → `voicemail.id` (delete sets null) | A voicemail's message. Deleting the message deletes the note (`DeleteVoicemail`); a message that expires after 90 days leaves its note |
 
 ## note_usage
 How much audio each account's notes covered each day (UTC). Apart from `note`, so deleting a note doesn't give its hours back. It sets the month's limit (`store.NoteMonthSeconds`, 10 hours per account) and the day's ceiling across all accounts (`MINIVOIP_NOTES_DAY_HOURS`, default 20). Counted only once a transcript comes back. Kept 62 days.
@@ -220,3 +221,4 @@ How much audio each account's notes covered each day (UTC). Apart from `note`, s
 | 13 | 2026-11-03 | `voicemail.size` (old messages filled in at start) |
 | 14 | 2026-11-04 | `account.language` (`fr` or `en`; existing accounts get French) |
 | 15 | 2026-11-04 | `note`, `note_usage` (Premium notes and the hours they used) |
+| 16 | 2026-11-04 | `note.voicemail_id` |

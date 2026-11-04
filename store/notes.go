@@ -47,6 +47,13 @@ const (
 // month (UTC).
 const NoteMonthSeconds = 10 * 3600
 
+// MinNoteMS is the shortest voicemail that gets a note, and
+// MaxVoicemailNotesPerDay how many a line's voicemails get in a day.
+const (
+	MinNoteMS               = 2000
+	MaxVoicemailNotesPerDay = 30
+)
+
 // How long the notes and their hours are kept.
 const (
 	noteDays      = 365
@@ -116,7 +123,12 @@ func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 // seconds is its length as far as anyone knows yet. Only Premium accounts get
 // notes, and the note takes the account's language of the moment.
 func (s *Store) AddNote(lineName string, kind NoteKind, audio, audioType string, seconds int64) (int64, error) {
-	if !filepath.IsLocal(audio) {
+	return s.addNote(lineName, kind, audio, audioType, seconds, nil, NoteWaiting, "")
+}
+
+func (s *Store) addNote(lineName string, kind NoteKind, audio, audioType string, seconds int64, voicemailID any, status NoteStatus, reason string) (int64, error) {
+	// Only a note closed from the start has no recording.
+	if (audio != "" || status == NoteWaiting) && !filepath.IsLocal(audio) {
 		return 0, fmt.Errorf("note audio outside the data folder: %q", audio)
 	}
 	var lineID, accountID int64
@@ -133,12 +145,44 @@ func (s *Store) AddNote(lineName string, kind NoteKind, audio, audioType string,
 	if plan != Premium {
 		return 0, ErrNotPremium
 	}
-	res, err := s.db.Exec("INSERT INTO note (account_id, line_id, kind, language, audio, audio_type, seconds) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		accountID, lineID, kind, language, audio, audioType, seconds)
+	res, err := s.db.Exec("INSERT INTO note (account_id, line_id, kind, language, audio, audio_type, seconds, voicemail_id, status, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		accountID, lineID, kind, language, audio, audioType, seconds, voicemailID, status, reason)
 	if err != nil {
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+// NoteVoicemail queues a note for a saved message, if its account gets notes.
+// A message shorter than this says nothing worth paying for, and gets none. The
+// length comes from the browser, but playing it down only loses the note, and
+// playing it up changes nothing: the worker also goes by the file's size. Past
+// a line's share of a day, the message gets a note saying why it has no words:
+// a robot leaving messages can't use up the owner's hours or everyone's day.
+func (s *Store) NoteVoicemail(v Voicemail) (bool, error) {
+	if v.DurationMS < MinNoteMS {
+		return false, nil
+	}
+	var line, file string
+	var today int
+	err := s.db.QueryRow(`SELECT l.name, v.file, (SELECT count(*) FROM note n WHERE n.line_id = v.line_id AND n.kind = 'voicemail'
+			AND n.created_at > datetime('now', '-1 day'))
+		FROM voicemail v JOIN line l ON l.id = v.line_id WHERE v.id = ?`, v.ID).Scan(&line, &file, &today)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, ErrNotFound
+	}
+	if err != nil {
+		return false, err
+	}
+	audio, status, reason := filepath.Join(filepath.Base(s.voicemailDir()), file), NoteWaiting, ""
+	if today >= MaxVoicemailNotesPerDay {
+		audio, status, reason = "", NoteSkipped, NoteDayLimit
+	}
+	_, err = s.addNote(line, NoteVoicemail, audio, v.ContentType, v.Seconds(), v.ID, status, reason)
+	if errors.Is(err, ErrNotPremium) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // ClaimNote takes the oldest note whose turn has come and marks it working.

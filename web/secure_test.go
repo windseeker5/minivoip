@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/textproto"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -689,8 +690,13 @@ func voicemailPass(t *testing.T, srv *httptest.Server, line, addr string) string
 }
 
 func voicemailUpload(h http.Handler, token, addr string, size int) int {
+	return voicemailUploadMS(h, token, addr, size, 0)
+}
+
+func voicemailUploadMS(h http.Handler, token, addr string, size int, ms int64) int {
 	var buf bytes.Buffer
 	m := multipart.NewWriter(&buf)
+	m.WriteField("duration_ms", strconv.FormatInt(ms, 10))
 	head := textproto.MIMEHeader{}
 	head.Set("Content-Disposition", `form-data; name="audio"; filename="m.webm"`)
 	head.Set("Content-Type", "audio/webm")
@@ -705,6 +711,57 @@ func voicemailUpload(h http.Handler, token, addr string, size int) int {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	return w.Code
+}
+
+// A Premium voicemail queues a note and wakes the worker; a Basic one and a very
+// short one cost nothing; deleting the message deletes its note.
+func TestVoicemailNotes(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	woken := 0
+	s.OnNote = func() { woken++ }
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	leave := func(addr string, ms int64) {
+		t.Helper()
+		if c := voicemailUploadMS(h, voicemailPass(t, srv, "joesbnb", addr), addr, 1000, ms); c != http.StatusNoContent {
+			t.Fatalf("upload: %d", c)
+		}
+	}
+	notes := func() []store.Note {
+		t.Helper()
+		list, err := st.Notes(u.AccountID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return list
+	}
+
+	leave("198.51.100.1", 30000)
+	if len(notes()) != 0 || woken != 0 {
+		t.Fatalf("a Basic voicemail: %d notes, woken %d", len(notes()), woken)
+	}
+	st.SetPlan(u.AccountID, store.Premium)
+	leave("198.51.100.2", 1500)
+	if len(notes()) != 0 || woken != 0 {
+		t.Fatalf("a very short voicemail: %d notes, woken %d", len(notes()), woken)
+	}
+	leave("198.51.100.3", 30000)
+	list := notes()
+	if len(list) != 1 || woken != 1 || list[0].Kind != store.NoteVoicemail || list[0].Status != store.NoteWaiting || list[0].Seconds != 30 || list[0].Language != store.French {
+		t.Fatalf("a Premium voicemail: %+v, woken %d", list, woken)
+	}
+	if _, err := os.Stat(st.NoteAudioPath(list[0])); err != nil {
+		t.Fatalf("the note doesn't find its recording: %v", err)
+	}
+	messages, _ := st.Voicemails(u.AccountID)
+	if err := st.DeleteVoicemail(u.AccountID, messages[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(notes()) != 0 {
+		t.Fatalf("the note outlived its message: %+v", notes())
+	}
 }
 
 func TestVoicemailUploads(t *testing.T) {

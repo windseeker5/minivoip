@@ -370,7 +370,7 @@ func TestNotesListHasNoTranscripts(t *testing.T) {
 	u := notesAccount(t, s, "joe@example.com", "joes")
 	id, _ := s.AddNote("joes", NoteCall, "notes/a.webm", "audio/webm", 10)
 	n, _, _ := s.ClaimNote()
-	if err := s.SaveTranscript(n, []NoteLine{{Speaker: "speaker_0", Text: "Bonjour"}}, 10); err != nil {
+	if err := s.SaveTranscript(n, []NoteLine{{Speaker: "speaker_0", Text: "Bonjour"}}, 10, 10); err != nil {
 		t.Fatal(err)
 	}
 	s.FinishNote(id, "Joe", []string{"Call"})
@@ -458,7 +458,7 @@ func TestRecordingInPieces(t *testing.T) {
 	if err := s.AppendRecording(u.AccountID, "c1", 2, []byte("late"), 0); !errors.Is(err, ErrRecordingStale) {
 		t.Fatalf("a piece after its turn: %v", err)
 	}
-	if err := s.SaveTranscript(claimed, []NoteLine{{Speaker: SpeakerOwner, Text: "Oui"}}, 9); err != nil {
+	if err := s.SaveTranscript(claimed, []NoteLine{{Speaker: SpeakerOwner, Text: "Oui"}}, 9, 18); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(s.Dir, claimed.Audio)); err == nil {
@@ -661,5 +661,152 @@ func TestRecordingMissed(t *testing.T) {
 	s.AppendRecording(u.AccountID, "c2", 1, []byte("x"), 1<<40)
 	if got, _ := s.NoteByID(u.AccountID, m.ID); got.Missed != NoteMonthSeconds {
 		t.Fatalf("too many: %d", got.Missed)
+	}
+}
+
+// A recording can't grow faster than real time, and only so many are open at once.
+func TestRecordingGuards(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	s.StartRecording("joes", "c1", "audio/webm")
+	head := (recordingHeadStart + 1) * MaxRecordingRate
+	piece := make([]byte, MaxRecordingPiece)
+	var err error
+	for part := 0; err == nil && part*MaxRecordingPiece < head+MaxRecordingPiece; part++ {
+		err = s.AppendRecording(u.AccountID, "c1", part, piece, 0)
+	}
+	if !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("faster than real time: %v", err)
+	}
+	s.StartRecording("joes", "c2", "audio/webm")
+	s.StartRecording("joes", "c3", "audio/webm")
+	if _, err := s.StartRecording("joes", "c4", "audio/webm"); !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("a fourth at once: %v", err)
+	}
+	if n, err := s.StartRecording("joes", "c2", "audio/webm"); err != nil || n.CallID != "c2" {
+		t.Fatalf("one already open: %+v %v", n, err)
+	}
+	s.db.Exec("UPDATE note SET audio_size = ? WHERE call_id = 'c2'", int64(MaxRecordingDisk))
+	if err := s.AppendRecording(u.AccountID, "c3", 0, []byte("x"), 0); !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("the disk's share, on a recording already open: %v", err)
+	}
+}
+
+// The switch off or a move to Basic stops what's being recorded, there and then.
+func TestRecordingStopsWithTheSwitch(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	s.StartRecording("joes", "c1", "audio/webm")
+	if err := s.AppendRecording(u.AccountID, "c1", 0, []byte("x"), 0); err != nil {
+		t.Fatal(err)
+	}
+	s.SetTakeNotes(u.AccountID, false)
+	if err := s.AppendRecording(u.AccountID, "c1", 1, []byte("x"), 0); !errors.Is(err, ErrRecordingStale) {
+		t.Fatalf("switch off: %v", err)
+	}
+	s.SetTakeNotes(u.AccountID, true)
+	s.SetPlan(u.AccountID, Basic)
+	if err := s.AppendRecording(u.AccountID, "c1", 1, []byte("x"), 0); !errors.Is(err, ErrRecordingStale) {
+		t.Fatalf("Basic: %v", err)
+	}
+}
+
+// A call's end hurries its note along, and shows if the recording stopped early.
+func TestRecordingCallEnded(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	n, _ := s.StartRecording("joes", "c1", "audio/webm")
+	s.AppendRecording(u.AccountID, "c1", 0, []byte("x"), 0)
+	var left int
+	wait := func() {
+		s.db.QueryRow("SELECT CAST(strftime('%s', next_try) AS INTEGER) - CAST(strftime('%s', 'now') AS INTEGER) FROM note WHERE id = ?", n.ID).Scan(&left)
+	}
+	wait()
+	if left < recordingGrace-5 {
+		t.Fatalf("while recording it waits long: %d", left)
+	}
+	if err := s.RecordingCallEnded("c1"); err != nil {
+		t.Fatal(err)
+	}
+	wait()
+	if left > callEndGrace {
+		t.Fatalf("once ended it waits little: %d", left)
+	}
+	if got, _ := s.NoteByID(u.AccountID, n.ID); got.Missed != 0 {
+		t.Fatalf("a recording up to the end misses nothing: %d", got.Missed)
+	}
+	// The recording stopped ten minutes before the call did.
+	s.db.Exec("UPDATE note SET created_at = datetime('now', '-900 seconds'), seconds = 300 WHERE id = ?", n.ID)
+	s.RecordingCallEnded("c1")
+	if got, _ := s.NoteByID(u.AccountID, n.ID); got.Missed < 500 || got.Missed > 600 {
+		t.Fatalf("stopped early: %d", got.Missed)
+	}
+	// A call with no recording has nothing to say.
+	s.SkipCallNote("joes", "c2", NoteNotSetUp)
+	s.RecordingCallEnded("c2")
+	if list, _ := s.Notes(u.AccountID); list[0].Missed != 0 {
+		t.Fatalf("no recording: %d", list[0].Missed)
+	}
+}
+
+func TestStuckNotesComeBack(t *testing.T) {
+	s := open(t)
+	notesAccount(t, s, "joe@example.com", "joes")
+	s.AddNote("joes", NoteCall, "notes/a.webm", "audio/webm", 10)
+	n, _, _ := s.ClaimNote()
+	s.ReleaseStuckNotes()
+	if _, ok, _ := s.ClaimNote(); ok {
+		t.Fatal("a note being worked on came back")
+	}
+	s.db.Exec("UPDATE note SET next_try = datetime('now', '-1 seconds') WHERE id = ?", n.ID)
+	s.ReleaseStuckNotes()
+	if again, ok, _ := s.ClaimNote(); !ok || again.ID != n.ID || again.Tries != 2 {
+		t.Fatalf("stuck: %+v %v", again, ok)
+	}
+}
+
+// A restart lets a note go right away, without waiting for its hour.
+func TestReleasedNoteIsDueNow(t *testing.T) {
+	s := open(t)
+	notesAccount(t, s, "joe@example.com", "joes")
+	s.AddNote("joes", NoteCall, "notes/a.webm", "audio/webm", 10)
+	s.ClaimNote()
+	s.ReleaseNotes()
+	if _, ok, _ := s.ClaimNote(); !ok {
+		t.Fatal("not due")
+	}
+}
+
+// A guest let in once a meeting's note is queued isn't added to it.
+func TestPersonOnlyJoinsTheMeetingOn(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	n, _ := s.StartRoomRecording("joes", "audio/webm", nil)
+	s.AppendRecording(u.AccountID, n.CallID, 0, []byte("x"), 0)
+	s.FinishRecording(u.AccountID, n.CallID, 0)
+	s.AddNotePerson("joes", "Late")
+	if got, _ := s.NoteByID(u.AccountID, n.ID); len(got.People) != 0 {
+		t.Fatalf("people: %v", got.People)
+	}
+}
+
+func TestNoteUsageColumns(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	id, _ := s.AddNote("joes", NoteVoicemail, "notes/a.webm", "audio/webm", 10)
+	n, _, _ := s.ClaimNote()
+	if n.ID != id {
+		t.Fatal("claim")
+	}
+	s.SaveTranscript(n, nil, 300, 2640)
+	today, month, err := s.VoicemailSeconds(u.AccountID)
+	if err != nil || today != 2640 || month != 2640 {
+		t.Fatalf("voicemail: %d %d %v", today, month, err)
+	}
+	if used, _ := s.NoteSecondsThisMonth(u.AccountID); used != 300 {
+		t.Fatalf("the owner's month: %d", used)
+	}
+	if all, _ := s.NoteSecondsToday(); all != 2640 {
+		t.Fatalf("everyone's day: %d", all)
 	}
 }

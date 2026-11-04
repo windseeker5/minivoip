@@ -12,7 +12,7 @@ One customer (a business). Created at sign up.
 | `promo_code` | text, nullable → `promo_code.code` | The code used at sign up, which is required since 2026-11-02. Set = free forever (while the code isn't revoked) |
 | `plan` | text: `basic` or `premium` | What the account gets. Basic: calls, voice menu, voicemail. Premium adds video, screen sharing, the whiteboard and the meeting room (`store.Plan`). From the promo code at sign up, else `basic`; admins switch it on `/admin/promo` |
 | `language` | text: `fr` or `en` | What the account's call notes are written in (`store.Language`). Chosen at sign up, French unless English is picked; changed at `/dashboard/language`, from the account menu. The site itself stays in English |
-| `take_notes` | integer (0 or 1) | The "Take notes" switch on the Notes tab, on by default. Off: no new notes (`store.ErrNotesOff`); notes already queued still finish |
+| `take_notes` | integer (0 or 1) | The "Take notes" switch on the Notes tab, on by default. Off: no new notes (`store.ErrNotesOff`), a recording on the go stops, and what's waiting isn't written down |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 
 ## user
@@ -181,7 +181,7 @@ Premium's written record of a call, a meeting room or a voicemail (`store/notes.
 | `line_id` | integer → `line.id` (delete cascades) | |
 | `kind` | text: `voicemail`, `call` or `room` | What was recorded |
 | `status` | text: `waiting`, `working`, `done`, `failed` or `skipped` | `waiting` includes a note between two tries. A server that stops leaves `working`, put back at the next start |
-| `reason` | text | Why it `failed` or was `skipped`: `not_set_up` (a key is missing), `not_premium`, `no_recorder` (this browser can't record), `month_limit`, `day_limit` (everyone's day, or a line's 30 voicemail notes in a day), `silent` (nothing said), `no_audio`, `transcribe`, `summarize`. A `summarize` failure still has its transcript |
+| `reason` | text | Why it `failed` or was `skipped`: `not_set_up` (a key is missing), `not_premium`, `no_recorder` (this browser can't record), `switched_off`, `busy` (too many recordings on the disk), `not_told` (a caller's or guest's page loaded before notes were on), `month_limit`, `day_limit` (everyone's day, or a line's 30 voicemail notes in a day), `silent` (nothing said), `no_audio`, `transcribe`, `summarize`. A `summarize` failure still has its transcript |
 | `language` | text: `fr` or `en` | What the summary and next actions are written in: the account's at the time. The transcript keeps the words as spoken |
 | `audio` | text | The recording, a path under the data folder (`voicemail/…`, or `notes/…` for a call); empty once transcribed or given up on. A call's or a room's file is deleted then; a voicemail's stays, it's the owner's message |
 | `audio_type` | text | Its content type |
@@ -200,13 +200,15 @@ Premium's written record of a call, a meeting room or a voicemail (`store/notes.
 | `voicemail_id` | integer, nullable → `voicemail.id` (delete sets null) | A voicemail's message. Deleting the message deletes the note (`DeleteVoicemail`); a message that expires after 90 days leaves its note |
 
 ## note_usage
-How much audio each account's notes covered each day (UTC). Apart from `note`, so deleting a note doesn't give its hours back. It sets the month's limit (`store.NoteMonthSeconds`, 10 hours per account) and the day's ceiling across all accounts (`MINIVOIP_NOTES_DAY_HOURS`, default 20). Counted only once a transcript comes back. Kept 62 days.
+How much audio each account's notes covered each day (UTC). Apart from `note`, so deleting a note doesn't give its hours back. `seconds` sets the month's limit (`store.NoteMonthSeconds`, 10 hours per account), `billed` the day's ceiling across all accounts (`MINIVOIP_NOTES_DAY_HOURS`, default 20), `voicemail` the voicemails' own budgets (1 hour a day, 5 a month). Counted only once a transcript comes back. Kept 62 days.
 
 | Column | Type | Meaning |
 |---|---|---|
 | `account_id` | integer → `account.id` (delete cascades) | |
 | `day` | text (UTC `YYYY-MM-DD`) | Key, with `account_id` |
-| `seconds` | integer | |
+| `seconds` | integer | What the owner's month pays: a call counts once, a voicemail 5 minutes at most |
+| `billed` | integer | What the service charged: both channels of a call, the whole of a voicemail |
+| `voicemail` | integer | How much of `billed` was voicemails |
 
 ## Version history
 | Version (`PRAGMA user_version`) | Date | Change |
@@ -231,3 +233,4 @@ How much audio each account's notes covered each day (UTC). Apart from `note`, s
 | 18 | 2026-11-04 | `note.call_id`, `note.parts`, `note.audio_size` (a call's recording, in pieces) |
 | 19 | 2026-11-04 | `note.people` (who came to a meeting) |
 | 20 | 2026-11-04 | `note.missed_seconds` (what a recording didn't catch) |
+| 21 | 2026-11-04 | `note_usage.billed`, `note_usage.voicemail` |

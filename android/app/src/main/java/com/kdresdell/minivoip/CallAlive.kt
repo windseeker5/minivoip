@@ -28,6 +28,8 @@ class CallAlive : Service() {
             .setOngoing(true)
             .build()
         // Android can refuse, say if the app is no longer in front. The call goes on.
+        // Always tried first, even to stop: a service told to start that stops without
+        // this crashes the app, and the call with it.
         try {
             if (Build.VERSION.SDK_INT >= 30) {
                 startForeground(ID, note, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
@@ -36,23 +38,40 @@ class CallAlive : Service() {
             }
         } catch (e: RuntimeException) {
             stopSelf()
+            return START_NOT_STICKY
+        }
+        if (intent?.action == STOP) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
         }
         return START_NOT_STICKY
     }
 
     companion object {
         private const val ID = 3
+        private const val STOP = "stop"
+
+        @Volatile
+        private var asked = false
 
         fun start(ctx: Context) {
             try {
                 ctx.startForegroundService(Intent(ctx, CallAlive::class.java))
+                asked = true
             } catch (e: RuntimeException) {
                 // Not allowed right now: the call goes on while the screen is on.
             }
         }
 
+        // stop goes through the service itself: it may not have started yet.
         fun stop(ctx: Context) {
-            ctx.stopService(Intent(ctx, CallAlive::class.java))
+            if (!asked) return
+            asked = false
+            try {
+                ctx.startService(Intent(ctx, CallAlive::class.java).setAction(STOP))
+            } catch (e: RuntimeException) {
+                ctx.stopService(Intent(ctx, CallAlive::class.java))
+            }
         }
     }
 }

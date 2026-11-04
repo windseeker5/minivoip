@@ -50,6 +50,12 @@ func noteBusy(n store.Note) bool {
 // noteProblem says why a note isn't whole, in the owner's words; "" when it is.
 func noteProblem(n store.Note) string {
 	switch n.Reason {
+	case store.NoteSwitchedOff:
+		return "Take notes was turned off, so there's no note."
+	case store.NoteBusy:
+		return "No note: too many recordings were waiting."
+	case store.NoteNotTold:
+		return "Someone hadn't been told notes were on, so nothing was recorded."
 	case store.NoteNoRecorder:
 		return "This browser can't record, so there's no note. Try Chrome, Edge, Firefox or Safari."
 	case store.NoteNotSetUp:

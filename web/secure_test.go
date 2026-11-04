@@ -690,6 +690,9 @@ func voicemailPass(t *testing.T, srv *httptest.Server, line, addr string) string
 	return m.Token
 }
 
+// voicemailTold is what the caller's page says: it told them notes are on.
+var voicemailTold = "1"
+
 func voicemailUpload(h http.Handler, token, addr string, size int) int {
 	return voicemailUploadMS(h, token, addr, size, 0)
 }
@@ -698,6 +701,7 @@ func voicemailUploadMS(h http.Handler, token, addr string, size int, ms int64) i
 	var buf bytes.Buffer
 	m := multipart.NewWriter(&buf)
 	m.WriteField("duration_ms", strconv.FormatInt(ms, 10))
+	m.WriteField("told", voicemailTold)
 	head := textproto.MIMEHeader{}
 	head.Set("Content-Disposition", `form-data; name="audio"; filename="m.webm"`)
 	head.Set("Content-Type", "audio/webm")
@@ -748,6 +752,13 @@ func TestVoicemailNotes(t *testing.T) {
 	if len(notes()) != 0 || woken != 0 {
 		t.Fatalf("a very short voicemail: %d notes, woken %d", len(notes()), woken)
 	}
+	// A page that loaded before notes were on didn't tell them: no note.
+	voicemailTold = "0"
+	leave("198.51.100.5", 30000)
+	voicemailTold = "1"
+	if len(notes()) != 0 || woken != 0 {
+		t.Fatalf("a caller who wasn't told: %d notes", len(notes()))
+	}
 	leave("198.51.100.3", 30000)
 	list := notes()
 	if len(list) != 1 || woken != 1 || list[0].Kind != store.NoteVoicemail || list[0].Status != store.NoteWaiting || list[0].Seconds != 30 || list[0].Language != store.French {
@@ -771,6 +782,11 @@ var calledFrom int
 // and returns the call's id.
 func answeredCall(t *testing.T, srv *httptest.Server, line, token string) (id string, hangUp func()) {
 	t.Helper()
+	return answeredCallTold(t, srv, line, token, true)
+}
+
+func answeredCallTold(t *testing.T, srv *httptest.Server, line, token string, told bool) (id string, hangUp func()) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	t.Cleanup(cancel)
 	dial := func(role string, h http.Header) *websocket.Conn {
@@ -785,7 +801,7 @@ func answeredCall(t *testing.T, srv *httptest.Server, line, token string) (id st
 	wsjson.Write(ctx, owner, calls.Message{Type: "hello"})
 	calledFrom++ // a visitor has 3 calls in 10 minutes
 	visitor := dial("visitor", http.Header{"X-Forwarded-For": {"198.51.100." + strconv.Itoa(100+calledFrom)}})
-	wsjson.Write(ctx, visitor, calls.Message{Type: "call", Option: "Talk"})
+	wsjson.Write(ctx, visitor, calls.Message{Type: "call", Option: "Talk", Told: told})
 	read := func(c *websocket.Conn, typ string) calls.Message {
 		t.Helper()
 		for {
@@ -974,6 +990,17 @@ func TestRecordingRefused(t *testing.T) {
 	}
 	st.DeleteNote(u.AccountID, list[0].ID)
 
+	// A caller's page from before notes were on: not recorded, and the note says so.
+	id, hangUp = answeredCallTold(t, srv, "joesbnb", token, false)
+	if a := start(id); !strings.Contains(a, `"record":false`) || !strings.Contains(a, store.NoteNotTold) {
+		t.Fatalf("not told: %s", a)
+	}
+	hangUp()
+	if list, _ = st.Notes(u.AccountID); list[0].Reason != store.NoteNotTold {
+		t.Fatalf("not told: %+v", list[0])
+	}
+	st.DeleteNote(u.AccountID, list[0].ID)
+
 	// The switch off: not a word.
 	st.SetTakeNotes(u.AccountID, false)
 	id, hangUp = answeredCall(t, srv, "joesbnb", token)
@@ -1017,7 +1044,7 @@ func meeting(t *testing.T, srv *httptest.Server, line, token, name string) (leav
 	read(host, "welcome")
 	calledFrom++
 	guest := dial(http.Header{"X-Forwarded-For": {"198.51.100." + strconv.Itoa(100+calledFrom)}})
-	wsjson.Write(ctx, guest, calls.RoomMessage{Type: "join", Name: name})
+	wsjson.Write(ctx, guest, calls.RoomMessage{Type: "join", Name: name, Told: !strings.HasPrefix(name, "Untold")})
 	read(guest, "waiting")
 	door := read(host, "door")
 	for len(door.Peers) == 0 {
@@ -1115,11 +1142,51 @@ func TestMeetingPeopleAndRefusal(t *testing.T) {
 		t.Fatalf("start: %s", w.Body.String())
 	}
 	s.Rooms.OnJoined("joesbnb", "Bo")
-	list, _ = st.Notes(u.AccountID)
+	for range 100 {
+		if list, _ = st.Notes(u.AccountID); len(list) == 2 && len(list[0].People) == 2 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	if len(list) != 2 || len(list[0].People) != 2 || list[0].People[1] != "Bo" {
 		t.Fatalf("after Bo: %+v", list[0])
 	}
 	leave()
+}
+
+// A guest whose page didn't tell them: no recording starts.
+func TestMeetingWithSomeoneNotTold(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	s.RefuseNotes = func(int64) string { return "" }
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	leave := meeting(t, srv, "joesbnb", token, "Untold Ana")
+	defer leave()
+	if w := post(h, "/room/joesbnb/recording?type=audio/webm", nil, token); !strings.Contains(w.Body.String(), store.NoteNotTold) {
+		t.Fatalf("start: %s", w.Body.String())
+	}
+}
+
+// One account can't start recordings without end, even past a limit.
+func TestRecordingStartsAreLimited(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	leave := meeting(t, srv, "joesbnb", token, "Ana")
+	defer leave()
+	s.Limits.Recordings = NewWindow(3, time.Hour)
+	got := burst(10, func(int) int { return post(h, "/room/joesbnb/recording?type=audio/webm", nil, token).Code })
+	if got[http.StatusOK] != 3 || got[http.StatusTooManyRequests] != 7 {
+		t.Fatalf("starts: %v", got)
+	}
 }
 
 // get opens a page as a logged-in owner (or a visitor, with no cookie).
@@ -1144,7 +1211,7 @@ func writtenNote(t *testing.T, st *store.Store, line, said string) int64 {
 	if !ok || err != nil || n.ID != id {
 		t.Fatalf("claim: %+v %v %v", n, ok, err)
 	}
-	if err := st.SaveTranscript(n, []store.NoteLine{{Speaker: "speaker_1", Start: 5, Text: said}}, 65); err != nil {
+	if err := st.SaveTranscript(n, []store.NoteLine{{Speaker: "speaker_1", Start: 5, Text: said}}, 65, 130); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.FinishNote(id, "Summary: "+said, []string{"Do: " + said}); err != nil {

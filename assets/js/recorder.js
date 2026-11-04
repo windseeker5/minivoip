@@ -33,7 +33,7 @@
     var type = bestType(), slice = window.MinivoipRecorderSlice || SLICE;
     var base = o.url, voices = o.voices || {}, sources = {};
     var ac, mix, rec, part = 0, queue = [], sending = false, over = false, dead = false, begun = false, retryTimer;
-    var missed = 0, troubleSince = 0, micQuiet = false, lastTick = 0, tickTimer;
+    var missed = 0, troubleSince = 0, micQuiet = false, lastTick = 0, tickTimer, soundDone = false;
 
     // ------------------------------------------------- what the recording misses
 
@@ -69,6 +69,7 @@
     function giveUp() {
       if (over) return;
       over = dead = true;
+      missed += queue.length * slice;
       queue = [];
       stopSound();
       state("stopped");
@@ -89,14 +90,16 @@
 
     function pump() {
       if (sending) return;
-      if (!queue.length) { if (over) finish(); return; }
+      // The recorder's last piece comes after it's told to stop: "done" waits for it.
+      if (!queue.length) { if (over && (soundDone || !rec)) finish(); return; }
       if (queue.length > WAITING) return giveUp();
       sending = true;
-      fetch(base + "/" + part + "?missed=" + missedSeconds(), { method: "POST", body: queue[0] }).then(function (r) {
+      // A login that ran out answers with a redirect, which must not count as sent.
+      fetch(base + "/" + part + "?missed=" + missedSeconds(), { method: "POST", body: queue[0], redirect: "manual" }).then(function (r) {
         sending = false;
         if (r.ok) { part++; queue.shift(); return pump(); }
         // The server won't take more: past a limit, or the note is gone.
-        if (r.status === 403 || r.status === 404 || r.status === 409 || r.status === 413) return giveUp();
+        if (r.type === "opaqueredirect" || r.status === 403 || r.status === 404 || r.status === 409 || r.status === 413) return giveUp();
         later();
       }, function () {
         sending = false;
@@ -106,7 +109,7 @@
     // The network or the server is having a moment. At the end of a call there's
     // one more try, then what's in is what the note gets.
     function later() {
-      if (over) { queue = []; return finish(); }
+      if (over) { missed += queue.length * slice; queue = []; return finish(); }
       clearTimeout(retryTimer);
       retryTimer = setTimeout(pump, RETRY);
     }
@@ -141,7 +144,7 @@
         rec = new MediaRecorder(out.stream, { mimeType: type, audioBitsPerSecond: BITRATE });
         rec.ondataavailable = function (e) { if (e.data && e.data.size && !dead) { queue.push(e.data); pump(); } };
         rec.onerror = ended;
-        rec.onstop = ended;
+        rec.onstop = function () { soundDone = true; ended(); pump(); };
         ac.onstatechange = trouble;
         var mine = voices[o.mine];
         if (mine) mine.getAudioTracks().forEach(function (t) {
@@ -158,7 +161,7 @@
       }
     }
 
-    fetch(o.url + "?type=" + encodeURIComponent(type.split(";")[0]), { method: "POST" }).then(function (r) {
+    fetch(o.url + "?type=" + encodeURIComponent(type.split(";")[0]), { method: "POST", redirect: "manual" }).then(function (r) {
       return r.ok ? r.json() : { record: false, reason: "stopped" };
     }).then(function (a) {
       if (over) return;
@@ -181,7 +184,6 @@
         if (over) return;
         over = true;
         clearTimeout(retryTimer);
-        if (rec && rec.state !== "inactive") rec.addEventListener("stop", function () { pump(); });
         stopSound();
         if (!rec) finish();
         state("");
@@ -196,6 +198,8 @@
       on: "Recording for your notes",
       not_set_up: "Notes aren't set up yet, " + not,
       no_recorder: "This browser can't record, " + not,
+      busy: "Too many recordings are waiting, " + not,
+      not_told: "Someone here wasn't told notes are on, " + not,
       month_limit: "This month's 10 hours of notes are used, " + not,
       day_limit: "Too many notes today, " + not,
       stopped: "Recording stopped. Your " + what + " goes on.",

@@ -260,6 +260,13 @@ var migrations = []string{
 	`
 	ALTER TABLE note ADD COLUMN missed_seconds INTEGER NOT NULL DEFAULT 0;
 	`,
+	// 21: what the services really bill for (a call's two channels are billed
+	// apart), and how much of it voicemails used: strangers can leave those.
+	`
+	ALTER TABLE note_usage ADD COLUMN billed INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE note_usage ADD COLUMN voicemail INTEGER NOT NULL DEFAULT 0;
+	UPDATE note_usage SET billed = seconds;
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

@@ -55,6 +55,8 @@ const server = createServer((req, res) => {
       if (tail === "/done") { rec.done++; return send(204, "text/plain", ""); }
       if (rec.mode === "upload-error") return send(500, "text/plain", "no");
       if (rec.mode === "refused" && rec.parts.length >= 1) return send(409, "text/plain", "no");
+      // A login that ran out: the server answers with a redirect to the log in page.
+      if (rec.mode === "logged-out" && rec.parts.length >= 1) { res.writeHead(303, { Location: "/app" }); return res.end(); }
       rec.parts[Number(tail.slice(1))] = Buffer.concat(chunks);
       send(204, "text/plain", "");
     });
@@ -348,13 +350,14 @@ const peaks = (o) => o.evaluate(async () => {
   await v.context().close();
   await o.context().close();
 }
-for (const [mode, words] of [["limit", "10 hours"], ["start-error", "Recording stopped"], ["upload-error", null], ["refused", null]]) {
+for (const [mode, words] of [["limit", "10 hours"], ["start-error", "Recording stopped"], ["upload-error", null], ["refused", null], ["logged-out", null]]) {
   const before = errors.length;
   const { o, v } = await notesCall(mode, async (o) => {
     await o.waitForTimeout(mode === "upload-error" ? 2500 : 4000);
     if (words) check((await o.textContent("[data-rec-note]")).includes(words), `${mode}: the owner is told (${await o.textContent("[data-rec-note]")})`);
     if (mode === "limit") check(rec.parts.length === 0, "limit: nothing is sent");
     if (mode === "refused") check(rec.parts.length === 1 && /stopped/.test(await o.textContent("[data-rec-note]")), `refused: it stops after the server says so (${rec.parts.length})`);
+    if (mode === "logged-out") check(rec.parts.length === 1 && /stopped/.test(await o.textContent("[data-rec-note]")), `logged-out: a redirect isn't taken for an upload (${rec.parts.length})`);
   });
   if (mode === "upload-error") check(await until(() => rec.done > 0, 3000) || rec.parts.length === 0, "upload-error: the failed pieces don't hold up the end of the call");
   errors.splice(before);

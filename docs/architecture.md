@@ -189,17 +189,22 @@ for the summary, and hours are counted only then.
   `fallbacks: "default"`: a request its safety checks decline runs on the model Anthropic picks). About $0.10 an hour of audio.
 - **Keys** in `.env` (`ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, see `.env.example`; the Taskfile loads it). Without
   both, new notes are skipped and say so.
-- **Limits, checked before any money is spent:** 10 hours per account per month, 20 hours a day across all accounts
-  (`MINIVOIP_NOTES_DAY_HOURS`). A browser can't play a recording down: its size also says how long it can be.
+- **Limits, checked before any money is spent:** 10 hours per account per month, 20 hours billed a day across all accounts
+  (`MINIVOIP_NOTES_DAY_HOURS`; a call counts both channels here). A browser can't play a recording down: its size also says
+  how long it can be, and what the service measures is charged afterwards, so one file overshoots at most once. A recording
+  can't grow faster than real time, an account has 3 on the go and 30 starts an hour at most, and all recordings together stop at 20 GB.
 - **Voicemails** (`store.NoteVoicemail`, called after the upload): Premium only. Under 2 seconds gets no note, so
-  silence costs nothing. A line's voicemails get 30 notes a day; after that the message says why it has none, so a robot
-  can't use up the owner's hours or everyone's day. The message itself always arrives, and its audio stays.
+  silence costs nothing. A line's voicemails get 30 notes a day, and 1 hour of real audio a day and 5 a month, however
+  small the files; one message costs the owner's month 5 minutes at most. So a robot can't use up the owner's hours or everyone's
+  day. Past that the message says why it has no note. The message itself always arrives, and its audio stays.
 - **Calls** are recorded in the owner's app, never on the server's side of the call (`assets/js/recorder.js`, `web/recording.go`):
   once answered, the owner's microphone on one sound channel and the caller's voice on the other, so the transcript says
   who is who (Scribe bills each channel, so a call costs about twice a voicemail per hour). A piece goes up every 30
   seconds, so a crash loses little. Only the line's logged-in owner can start one, only while that call is on (`Hub.Answered`),
   and a call has one note. Past the month's hours, the day's ceiling or without keys, nothing is recorded and the note says why.
-  The note's turn comes when the app says the last piece is in, or 2 minutes after the last piece. If recording fails, the
+  The note's turn comes when the app says the last piece is in, 15 minutes after the last piece while the
+  call is on (a phone's network can come back), or 2 minutes once the call has ended. Turning "Take notes" off or leaving Premium stops the
+  recording and drops what's waiting. If recording fails, the
   call goes on. Mute silences the owner's channel too. Audio is deleted once transcribed or given up on.
 - **Meetings** are recorded in the host's browser only, from the first guest let in, with everyone mixed on one sound
   channel, so people coming and going are simply in it (the transcript says "Person 1", "Person 2"). Only the line's
@@ -215,7 +220,8 @@ for the summary, and hours are counted only then.
 - **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing on every
   step of the call window, out loud before the menu (even a recorded one) and before the tone, written at the meeting room's
   door, in the room, and said to a guest pressing Join. In the account's language. A caller who presses a choice early
-  still hears it before the phone rings. It is told whether or not the keys are set: saying too much is the safe side.
+  still hears it before the phone rings. It is told whether or not the keys are set: saying too much is the safe side. The server keeps
+  this honest too: a page that loaded before notes were on says it told nobody, and then nothing is recorded or written down.
   There's no way to refuse but hanging up, or turning off "Take notes" as the owner. Not legal advice: the rules where
   the business operates apply.
 - **The Notes tab** (`web/notes.go`, `pages/notes.templ`) is for the account's logged-in owner on Premium, checked on the

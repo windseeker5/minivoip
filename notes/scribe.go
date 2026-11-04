@@ -174,9 +174,9 @@ func (a scribeAnswer) transcript(channels []string) Transcript {
 		}
 	}
 	flush()
-	// With channels the service may add them up, so only the last word counts.
-	if a.AudioSeconds != nil && len(channels) == 0 {
-		last = *a.AudioSeconds
+	// With channels the service adds them up, so a long file of silence shows too.
+	if a.AudioSeconds != nil {
+		last = max(last, *a.AudioSeconds/float64(max(len(channels), 1)))
 	}
 	t.Seconds = int64(math.Ceil(last))
 	return t

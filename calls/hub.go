@@ -37,6 +37,7 @@ type Message struct {
 	Candidate json.RawMessage `json:"candidate,omitempty"`
 	Names     []string        `json:"names,omitempty"` // "room": the guests waiting in the meeting room
 	ICE       json.RawMessage `json:"ice,omitempty"`   // "accepted": the connection helpers, with a relay login
+	Told      bool            `json:"told,omitempty"`  // "call": the caller's page told them notes are on
 }
 
 type peer struct {
@@ -58,6 +59,7 @@ type call struct {
 	started  time.Time
 	answered time.Time
 	noPush   bool // past the line's budget: open apps ring, sleeping phones aren't woken
+	told     bool // the caller's page told them notes are on
 }
 
 // Record is a finished call, for the owner's call history.
@@ -254,7 +256,7 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 			me.send(h.offerVoicemail(name, me, "no-answer", m.Option, newID()))
 			return
 		}
-		c = &call{id: newID(), option: m.Option, visitor: me, started: time.Now(), noPush: !wake}
+		c = &call{id: newID(), option: m.Option, visitor: me, started: time.Now(), noPush: !wake, told: m.Told}
 		l.current = c
 		c.timer = time.AfterFunc(h.RingTimeout, func() { h.noAnswer(name, c) })
 		if h.OnRing != nil && wake {
@@ -323,12 +325,16 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 	}
 }
 
-// Answered says whether this is the line's call on right now, picked up.
-func (h *Hub) Answered(name, callID string) bool {
+// Answered says whether this is the line's call on right now, picked up, and
+// whether its caller's page told them notes are on.
+func (h *Hub) Answered(name, callID string) (on, told bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	c := h.line(name).current
-	return c != nil && c.id == callID && c.owner != nil
+	if c == nil || c.id != callID || c.owner == nil {
+		return false, false
+	}
+	return true, c.told
 }
 
 // Decline turns down a ringing call from outside the socket (the Android

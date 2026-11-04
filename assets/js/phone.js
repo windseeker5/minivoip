@@ -473,6 +473,11 @@
     recorder = MinivoipRecorder.start({ url: "/app/calls/" + encodeURIComponent(liveId) + "/recording", voices: { owner: mic, caller: remote }, mine: "owner", onState: recNote });
   }
 
+  // A page reloading mid-call has ended it: the Android app lets the microphone go.
+  window.addEventListener("pagehide", function () {
+    if (android && android.callStopped) android.callStopped();
+  });
+
   function endCall() {
     if (android && android.callStopped) android.callStopped();
     if (recorder) { recorder.stop(); recorder = null; }

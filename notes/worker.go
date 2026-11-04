@@ -51,13 +51,22 @@ var CallChannels = []string{store.SpeakerOwner, store.SpeakerCaller}
 const MaxTries = 4
 
 // DefaultDaySeconds is the ceiling across all accounts in a day (UTC), to protect
-// Ken's bill: 20 hours of audio is about $7 of both services, up to $11 for calls
-// (their two channels are billed apart).
+// Ken's bill: 20 hours billed is about $7 of both services. A call counts each of
+// its two channels, as the service bills them.
 const DefaultDaySeconds = 20 * 3600
 
 // A recording says at most this many bytes a second, even in Safari's bigger
 // format, so a file's size shows a length the browser may have played down.
-const maxBytesPerSecond = 20000
+const maxBytesPerSecond = store.MaxRecordingRate
+
+// Voicemails can be left by anyone, so robots mustn't use up the owner's hours or
+// everyone's day. They have budgets of real audio, and one message costs the owner's
+// month at most what a message can last, whatever the file really held.
+const (
+	voicemailDaySeconds   = 3600
+	voicemailMonthSeconds = 5 * 3600
+	voicemailMaxCharge    = 300
+)
 
 type Worker struct {
 	Store       *store.Store
@@ -111,6 +120,9 @@ func (w *Worker) Run(ctx context.Context) {
 			return
 		case <-w.wake:
 		case <-look.C:
+			if err := w.Store.ReleaseStuckNotes(); err != nil {
+				log.Printf("notes: %v", err)
+			}
 		}
 	}
 }
@@ -153,6 +165,14 @@ func (w *Worker) do(ctx context.Context, n store.Note) {
 		w.end(n, store.NoteSkipped, store.NoteNotPremium)
 		return
 	}
+	// Turned off since: what's waiting isn't written down, and a call's recording goes.
+	if on, err := w.Store.TakeNotes(n.AccountID); err != nil {
+		w.tryAgain(ctx, n, store.NoteTranscribe, err)
+		return
+	} else if !on {
+		w.end(n, store.NoteSkipped, store.NoteSwitchedOff)
+		return
+	}
 	// Once transcribed there's no recording left, and another try only pays for the summary.
 	if n.Audio != "" {
 		var done bool
@@ -178,7 +198,12 @@ func (w *Worker) transcribe(ctx context.Context, n store.Note) (store.Note, bool
 		w.end(n, store.NoteFailed, store.NoteNoAudio)
 		return n, true
 	}
-	if reason, err := w.limit(n.AccountID, max(n.Seconds, info.Size()/maxBytesPerSecond)); err != nil {
+	bySize := info.Size() / maxBytesPerSecond
+	reason, err := w.limit(n.AccountID, max(n.Seconds, bySize))
+	if err == nil && reason == "" && n.Kind == store.NoteVoicemail {
+		reason, err = w.voicemailLimit(n.AccountID, max(n.Seconds, bySize))
+	}
+	if err != nil {
 		w.tryAgain(ctx, n, store.NoteTranscribe, err)
 		return n, true
 	} else if reason != "" {
@@ -194,13 +219,19 @@ func (w *Worker) transcribe(ctx context.Context, n store.Note) (store.Note, bool
 		w.tryAgain(ctx, n, store.NoteTranscribe, err)
 		return n, true
 	}
-	// A call's or a meeting's clock counts the quiet at its end, which the words
-	// don't show.
-	seconds := t.Seconds
-	if n.Kind != store.NoteVoicemail {
+	// What the owner's month pays: a call's or a meeting's clock counts the quiet at
+	// its end, which the words don't show, and its size shows a length its clock
+	// can't. What the service charged: every channel, in full.
+	seconds, billed := max(t.Seconds, bySize), max(t.Seconds, bySize)
+	if n.Kind == store.NoteVoicemail {
+		seconds = min(seconds, voicemailMaxCharge)
+	} else {
 		seconds = max(seconds, n.Seconds)
+		billed = seconds * int64(max(len(channels), 1))
 	}
-	if err := w.Store.SaveTranscript(n, t.Lines, seconds); err != nil {
+	if err := w.Store.SaveTranscript(n, t.Lines, seconds, billed); errors.Is(err, store.ErrNotFound) {
+		return n, true // deleted in the meantime: nothing more is paid for it
+	} else if err != nil {
 		w.tryAgain(ctx, n, store.NoteTranscribe, err)
 		return n, true
 	}
@@ -227,6 +258,18 @@ func (w *Worker) limit(accountID, seconds int64) (string, error) {
 		return "", err
 	}
 	if today+seconds > w.DaySeconds {
+		return store.NoteDayLimit, nil
+	}
+	return "", nil
+}
+
+// voicemailLimit says which of a voicemail's own budgets stops it, or "".
+func (w *Worker) voicemailLimit(accountID, seconds int64) (string, error) {
+	today, month, err := w.Store.VoicemailSeconds(accountID)
+	if err != nil {
+		return "", err
+	}
+	if today+seconds > voicemailDaySeconds || month+seconds > voicemailMonthSeconds {
 		return store.NoteDayLimit, nil
 	}
 	return "", nil

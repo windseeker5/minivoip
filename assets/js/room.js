@@ -114,7 +114,7 @@
   function connect() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     var sock = ws = new WebSocket(proto + "//" + location.host + "/ws/room?line=" + encodeURIComponent(room.line));
-    sock.onopen = function () { sock.send(JSON.stringify({ type: "join", name: myName })); };
+    sock.onopen = function () { sock.send(JSON.stringify({ type: "join", name: myName, told: !!room.notice })); };
     sock.onmessage = function (e) {
       if (sock !== ws) return;
       var m = JSON.parse(e.data);
@@ -187,6 +187,12 @@
     }
     clearTimeout(aloneTimer);
     aloneTimer = null;
+    // Their page loaded before notes were on, so it didn't tell them.
+    if (Object.keys(peers).some(function (id) { return !peers[id].told; })) {
+      stopNotes();
+      recNote("not_told");
+      return;
+    }
     if (!notes) {
       var voices = { me: mic };
       Object.keys(noteVoices).forEach(function (id) { voices[id] = noteVoices[id]; });
@@ -213,7 +219,7 @@
       noteVoices[p.id] = stream;
       if (notes) notes.add(p.id, stream);
     } });
-    peers[p.id] = { pc: pc, link: link, audio: audio, name: p.name, owner: p.owner };
+    peers[p.id] = { pc: pc, link: link, audio: audio, name: p.name, owner: p.owner, told: p.told };
     followGuests();
     pc.onicecandidate = function (e) {
       if (e.candidate) send(p.id, { type: "ice", candidate: e.candidate.toJSON() });

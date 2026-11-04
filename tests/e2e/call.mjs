@@ -364,6 +364,7 @@ for (const [name, w, h] of [["phone", 390, 844], ["small", 320, 568], ["desk", 1
     r.dataset.state = "talking";
     r.querySelectorAll("[data-show]").forEach((e) => (e.hidden = e.dataset.show.split(" ").indexOf("talking") === -1));
   });
+  check(sock.sent.find((m) => m.type === "call").told === true, "the call tells the server this caller was told");
   check((await page.locator("[data-notice]:visible").textContent()).includes("Cet appel est enregistré"), "on the call, it says the call is being recorded");
   check(!(await clipped(page)).length, "and the buttons still fit");
   await settle(page);

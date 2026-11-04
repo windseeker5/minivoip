@@ -66,10 +66,13 @@ func (s *Server) uploadVoicemail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Premium's note. If this fails the owner still has the message.
-	if queued, err := s.Store.NoteVoicemail(v); err != nil {
-		log.Printf("voicemail %d: note: %v", v.ID, err)
-	} else if queued && s.OnNote != nil {
-		s.OnNote()
+	// Only if this caller's page told them notes are on: it may have loaded before.
+	if r.FormValue("told") == "1" {
+		if queued, err := s.Store.NoteVoicemail(v); err != nil {
+			log.Printf("voicemail %d: note: %v", v.ID, err)
+		} else if queued && s.OnNote != nil {
+			s.OnNote()
+		}
 	}
 	s.Hub.NotifyOwners(pass.Line, calls.Message{Type: "voicemail"})
 	if s.OnVoicemail != nil {

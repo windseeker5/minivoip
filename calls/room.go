@@ -47,6 +47,7 @@ type RoomMessage struct {
 	Type  string          `json:"type"`
 	ID    string          `json:"id,omitempty"`
 	Name  string          `json:"name,omitempty"`
+	Told  bool            `json:"told,omitempty"` // "join": this guest's page told them notes are on
 	To    string          `json:"to,omitempty"`
 	From  string          `json:"from,omitempty"`
 	Peer  *RoomPeer       `json:"peer,omitempty"`
@@ -60,6 +61,7 @@ type RoomPeer struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Owner bool   `json:"owner"`
+	Told  bool   `json:"told,omitempty"` // their page told them notes are on
 }
 
 type member struct {
@@ -168,23 +170,25 @@ func (rs *Rooms) People(line string) int {
 }
 
 // Meeting lists the guests in a line's room while its owner is there with them;
-// ok is false when no meeting is on.
-func (rs *Rooms) Meeting(line string) (guests []string, ok bool) {
+// on is false when no meeting is on, told when one of them wasn't told about notes.
+func (rs *Rooms) Meeting(line string) (guests []string, on, told bool) {
 	rs.mu.Lock()
 	defer rs.mu.Unlock()
 	r := rs.rooms[line]
 	if r == nil {
-		return nil, false
+		return nil, false, false
 	}
 	host := false
+	told = true
 	for _, m := range r.in {
 		if m.Owner {
 			host = true
 		} else {
 			guests = append(guests, m.Name)
+			told = told && m.Told
 		}
 	}
-	return guests, host && len(guests) > 0
+	return guests, host && len(guests) > 0, told
 }
 
 func names(list []*member) []string {
@@ -246,6 +250,7 @@ func (rs *Rooms) handle(line string, me *member, m RoomMessage) {
 			return // joined already
 		}
 		me.Name = cleanName(m.Name)
+		me.Told = m.Told
 		// The login may have ended since this socket opened.
 		me.Owner = me.Owner && rs.IsOwner != nil && rs.IsOwner(me.req, line)
 		if !me.Owner {

@@ -33,6 +33,7 @@ type Limits struct {
 	LineVMDay   *Window // every message left on one line, over a day
 	Passes      *Window // voicemail passes given to a visitor on one line
 	Uploads     *Gauge  // voicemail uploads under way from one visitor
+	Recordings  *Window // recordings started by one account
 	Logins      *Window // wrong passwords from one visitor
 	Accounts    *Window // wrong passwords on one account, from anywhere
 	PushTests   *Window // "Send a test" from one account
@@ -62,6 +63,7 @@ func NewLimits() *Limits {
 		LineVMSeen:  NewWindow(1, time.Hour),
 		Passes:      NewWindow(10, time.Hour).perNetwork(3),
 		Uploads:     NewGauge(2).perNetwork(5),
+		Recordings:  NewWindow(30, time.Hour),
 		Logins:      NewWindow(5, 15*time.Minute).perNetwork(10),
 		Accounts:    NewWindow(100, 15*time.Minute),
 		PushTests:   NewWindow(10, time.Hour),

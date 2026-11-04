@@ -38,15 +38,18 @@ const (
 
 // Why a note was skipped or failed (note.reason); the dashboard words them.
 const (
-	NoteNoRecorder = "no_recorder"
-	NoteNotSetUp   = "not_set_up"
-	NoteNotPremium = "not_premium"
-	NoteMonthLimit = "month_limit"
-	NoteDayLimit   = "day_limit"
-	NoteSilent     = "silent"
-	NoteNoAudio    = "no_audio"
-	NoteTranscribe = "transcribe"
-	NoteSummarize  = "summarize"
+	NoteNoRecorder  = "no_recorder"
+	NoteSwitchedOff = "switched_off"
+	NoteBusy        = "busy"
+	NoteNotTold     = "not_told"
+	NoteNotSetUp    = "not_set_up"
+	NoteNotPremium  = "not_premium"
+	NoteMonthLimit  = "month_limit"
+	NoteDayLimit    = "day_limit"
+	NoteSilent      = "silent"
+	NoteNoAudio     = "no_audio"
+	NoteTranscribe  = "transcribe"
+	NoteSummarize   = "summarize"
 )
 
 // NoteMonthSeconds is how much audio an account's notes can cover in a calendar
@@ -252,9 +255,22 @@ const (
 	MaxRecordingBytes = 300 << 20
 	// MaxRecordingDisk caps every recording waiting to be written down.
 	MaxRecordingDisk = 20 << 30
+	// MaxOpenRecordings caps an account's recordings on the go at one time.
+	MaxOpenRecordings = 3
+	// MaxRecordingRate is the most bytes a second a recording can grow by: more
+	// than any browser sends live, so a file can't be sent faster than real time.
+	// recordingHeadStart is the seconds of slack it starts with.
+	MaxRecordingRate   = 20000
+	recordingHeadStart = 120
 	// recordingGrace is how long, in seconds, a note waits for its next piece
-	// before it goes ahead with what it has: an app that crashed loses little.
-	recordingGrace = 120
+	// before it goes ahead with what it has: long enough for a phone's network to
+	// come back, or an app that crashed loses little. callEndGrace is what's left
+	// once the call has ended.
+	recordingGrace = 900
+	callEndGrace   = 120
+	// lastPieceSlack is how long, in seconds, the last piece can come before the end
+	// of a call without the rest counting as missed: a piece is 30 seconds.
+	lastPieceSlack = 45
 )
 
 var (
@@ -301,6 +317,14 @@ func (s *Store) startRecording(lineName string, kind NoteKind, callID, audioType
 	} else if !errors.Is(err, ErrNotFound) {
 		return Note{}, err
 	}
+	var open int
+	if err := s.db.QueryRow(`SELECT count(*) FROM note n JOIN line l ON l.id = n.line_id
+		WHERE l.name = ? AND n.kind <> 'voicemail' AND n.status IN ('waiting', 'working') AND n.audio <> ''`, lineName).Scan(&open); err != nil {
+		return Note{}, err
+	}
+	if open >= MaxOpenRecordings {
+		return Note{}, ErrRecordingFull
+	}
 	id, err := newRecordingID()
 	if err != nil {
 		return Note{}, err
@@ -345,7 +369,8 @@ func (s *Store) AddNotePerson(lineName, name string) error {
 	var id int64
 	var raw string
 	err := s.db.QueryRow(`SELECT n.id, n.people FROM note n JOIN line l ON l.id = n.line_id
-		WHERE l.name = ? AND n.kind = 'room' AND n.status = 'waiting' ORDER BY n.id DESC LIMIT 1`, lineName).Scan(&id, &raw)
+		WHERE l.name = ? AND n.kind = 'room' AND n.status = 'waiting' AND n.tries = 0 AND n.next_try > datetime('now')
+		ORDER BY n.id DESC LIMIT 1`, lineName).Scan(&id, &raw)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -379,32 +404,39 @@ func (s *Store) noteByCall(callID string) (Note, error) {
 
 // AppendRecording adds piece number part (from 0) to a call's recording. Pieces
 // come one at a time; one sent again after a lost answer is already in. A
-// recording past the account's month, its own size, or already being written
-// down takes no more, and the app stops.
+// recording past the account's month, its own size or real time, one whose owner
+// turned notes off or left Premium, or one already being written down takes no
+// more, and the app stops.
 func (s *Store) AppendRecording(accountID int64, callID string, part int, data []byte, missed int64) error {
 	s.recording.Lock()
 	defer s.recording.Unlock()
-	var id, size, month int64
+	var id, size, elapsed, month, disk int64
 	var parts int
 	var audio string
 	var status NoteStatus
-	err := s.db.QueryRow(`SELECT id, parts, audio_size, audio, status,
-			CAST(strftime('%s', 'now') AS INTEGER) - CAST(strftime('%s', created_at) AS INTEGER)
-				+ (SELECT COALESCE(sum(u.seconds), 0) FROM note_usage u WHERE u.account_id = note.account_id AND u.day >= date('now', 'start of month'))
-		FROM note WHERE call_id = ? AND account_id = ?`, callID, accountID).Scan(&id, &parts, &size, &audio, &status, &month)
+	var plan Plan
+	var takeNotes bool
+	err := s.db.QueryRow(`SELECT n.id, n.parts, n.audio_size, n.audio, n.status, a.plan, a.take_notes,
+			CAST(strftime('%s', 'now') AS INTEGER) - CAST(strftime('%s', n.created_at) AS INTEGER),
+			(SELECT COALESCE(sum(u.seconds), 0) FROM note_usage u WHERE u.account_id = n.account_id AND u.day >= date('now', 'start of month')),
+			(SELECT COALESCE(sum(o.audio_size), 0) FROM note o WHERE o.audio <> '' AND o.kind <> 'voicemail')
+		FROM note n JOIN account a ON a.id = n.account_id WHERE n.call_id = ? AND n.account_id = ?`, callID, accountID).
+		Scan(&id, &parts, &size, &audio, &status, &plan, &takeNotes, &elapsed, &month, &disk)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
 	if err != nil {
 		return err
 	}
-	if status != NoteWaiting || audio == "" || part > parts {
+	if status != NoteWaiting || audio == "" || part > parts || plan != Premium || !takeNotes {
 		return ErrRecordingStale
 	}
 	if part < parts {
 		return nil
 	}
-	if len(data) > MaxRecordingPiece || size+int64(len(data)) > MaxRecordingBytes || month > NoteMonthSeconds {
+	grown := size + int64(len(data))
+	if len(data) > MaxRecordingPiece || grown > MaxRecordingBytes || month+elapsed > NoteMonthSeconds ||
+		grown > (elapsed+recordingHeadStart)*MaxRecordingRate || disk >= MaxRecordingDisk {
 		return ErrRecordingFull
 	}
 	if err := os.MkdirAll(s.notesDir(), 0o700); err != nil {
@@ -426,6 +458,20 @@ func (s *Store) AppendRecording(accountID int64, callID string, part int, data [
 			missed_seconds = max(missed_seconds, ?),
 			next_try = datetime('now', ?)
 		WHERE id = ? AND status = 'waiting'`, len(data), clampMissed(missed), fmt.Sprintf("+%d seconds", recordingGrace), id)
+	if err != nil {
+		// Take the piece back, so sending it again doesn't put it in twice.
+		os.Truncate(filepath.Join(s.Dir, audio), size)
+	}
+	return err
+}
+
+// RecordingCallEnded says a call is over. Its note waits only a little for the last
+// piece now, and if the recording stopped well before the call did, it says so.
+func (s *Store) RecordingCallEnded(callID string) error {
+	_, err := s.db.Exec(`UPDATE note SET
+			missed_seconds = max(missed_seconds, CAST(strftime('%s', 'now') AS INTEGER) - CAST(strftime('%s', created_at) AS INTEGER) - seconds - ?),
+			next_try = min(next_try, datetime('now', ?))
+		WHERE call_id = ? AND parts > 0`, lastPieceSlack, fmt.Sprintf("+%d seconds", callEndGrace), callID)
 	return err
 }
 
@@ -454,7 +500,7 @@ func clampMissed(n int64) int64 { return min(max(n, 0), NoteMonthSeconds) }
 
 // ClaimNote takes the oldest note whose turn has come and marks it working.
 func (s *Store) ClaimNote() (Note, bool, error) {
-	n, err := scanNote(s.db.QueryRow(`UPDATE note SET status = 'working', tries = tries + 1
+	n, err := scanNote(s.db.QueryRow(`UPDATE note SET status = 'working', tries = tries + 1, next_try = datetime('now', '+1 hours')
 		WHERE id = (SELECT id FROM note WHERE status = 'waiting' AND next_try <= datetime('now') ORDER BY id LIMIT 1)
 		RETURNING ` + noteColumns))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -466,7 +512,14 @@ func (s *Store) ClaimNote() (Note, bool, error) {
 // ReleaseNotes puts back the notes a stopped server was working on. The try
 // still counts, so a note can't spend money without end.
 func (s *Store) ReleaseNotes() error {
-	_, err := s.db.Exec("UPDATE note SET status = 'waiting' WHERE status = 'working'")
+	_, err := s.db.Exec("UPDATE note SET status = 'waiting', next_try = datetime('now') WHERE status = 'working'")
+	return err
+}
+
+// ReleaseStuckNotes puts back a note left working for over an hour, longer than
+// both services can take: the database failed just when it was finished.
+func (s *Store) ReleaseStuckNotes() error {
+	_, err := s.db.Exec("UPDATE note SET status = 'waiting', next_try = datetime('now') WHERE status = 'working' AND next_try <= datetime('now')")
 	return err
 }
 
@@ -481,10 +534,12 @@ func (s *Store) dropNoteAudio(kind NoteKind, audio string) {
 	}
 }
 
-// SaveTranscript keeps a note's transcript and its measured length, counts the
-// hours, and deletes the recording of a call or a room. The hours count even if
-// the owner deleted the note in the meantime: the service was paid for.
-func (s *Store) SaveTranscript(n Note, lines []NoteLine, seconds int64) error {
+// SaveTranscript keeps a note's transcript and its length, counts the hours, and
+// deletes the recording of a call or a room. seconds is what the owner's month pays,
+// billed what the service charged. The hours count even if the owner deleted the
+// note in the meantime, since the service was paid for: then it says ErrNotFound,
+// and nothing more should be paid for it.
+func (s *Store) SaveTranscript(n Note, lines []NoteLine, seconds, billed int64) error {
 	b, err := json.Marshal(lines)
 	if err != nil {
 		return err
@@ -494,16 +549,24 @@ func (s *Store) SaveTranscript(n Note, lines []NoteLine, seconds int64) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec("UPDATE note SET transcript = ?, seconds = ?, audio = '' WHERE id = ?", string(b), seconds, n.ID); err != nil {
+	res, err := tx.Exec("UPDATE note SET transcript = ?, seconds = ?, audio = '' WHERE id = ?", string(b), seconds, n.ID)
+	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(chargeNotesSQL, n.AccountID, seconds); err != nil {
+	var voicemail int64
+	if n.Kind == NoteVoicemail {
+		voicemail = billed
+	}
+	if _, err := tx.Exec(chargeNotesSQL, n.AccountID, seconds, billed, voicemail); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.dropNoteAudio(n.Kind, n.Audio)
+	if changed, _ := res.RowsAffected(); changed == 0 {
+		return ErrNotFound
+	}
 	return nil
 }
 
@@ -609,12 +672,12 @@ func (s *Store) DeleteNote(accountID, id int64) error {
 	return nil
 }
 
-const chargeNotesSQL = `INSERT INTO note_usage (account_id, day, seconds) VALUES (?, date('now'), ?)
-	ON CONFLICT (account_id, day) DO UPDATE SET seconds = seconds + excluded.seconds`
+const chargeNotesSQL = `INSERT INTO note_usage (account_id, day, seconds, billed, voicemail) VALUES (?, date('now'), ?, ?, ?)
+	ON CONFLICT (account_id, day) DO UPDATE SET seconds = seconds + excluded.seconds, billed = billed + excluded.billed, voicemail = voicemail + excluded.voicemail`
 
 // ChargeNotes counts audio against the account's month and everyone's day.
 func (s *Store) ChargeNotes(accountID, seconds int64) error {
-	_, err := s.db.Exec(chargeNotesSQL, accountID, seconds)
+	_, err := s.db.Exec(chargeNotesSQL, accountID, seconds, seconds, 0)
 	return err
 }
 
@@ -626,11 +689,19 @@ func (s *Store) NoteSecondsThisMonth(accountID int64) (int64, error) {
 	return n, err
 }
 
-// NoteSecondsToday is how much audio all accounts' notes covered today.
+// NoteSecondsToday is how much audio the services billed for today, all accounts.
 func (s *Store) NoteSecondsToday() (int64, error) {
 	var n int64
-	err := s.db.QueryRow("SELECT COALESCE(sum(seconds), 0) FROM note_usage WHERE day = date('now')").Scan(&n)
+	err := s.db.QueryRow("SELECT COALESCE(sum(billed), 0) FROM note_usage WHERE day = date('now')").Scan(&n)
 	return n, err
+}
+
+// VoicemailSeconds is how much audio the account's voicemails really used today and
+// this month. Strangers can leave those, so they have budgets of their own.
+func (s *Store) VoicemailSeconds(accountID int64) (today, month int64, err error) {
+	err = s.db.QueryRow(`SELECT COALESCE(sum(CASE WHEN day = date('now') THEN voicemail ELSE 0 END), 0), COALESCE(sum(voicemail), 0)
+		FROM note_usage WHERE account_id = ? AND day >= date('now', 'start of month')`, accountID).Scan(&today, &month)
+	return today, month, err
 }
 
 // cleanupNotes forgets notes after a year, and their hours once no limit needs them.

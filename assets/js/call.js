@@ -345,7 +345,7 @@
     countdown(line.ringSeconds || 30);
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(proto + "//" + location.host + "/ws?role=visitor&line=" + encodeURIComponent(line.line));
-    ws.onopen = function () { send({ type: "call", option: o.label }); };
+    ws.onopen = function () { send({ type: "call", option: o.label, told: !!line.notice }); };
     ws.onmessage = function (e) {
       var m = JSON.parse(e.data);
       if (s !== seq) return;
@@ -496,6 +496,7 @@
     status("Sending your message…");
     var form = new FormData();
     form.append("duration_ms", String(ms));
+    form.append("told", line.notice ? "1" : "0");
     form.append("audio", blob, "message" + (/mp4/.test(blob.type) ? ".m4a" : /ogg/.test(blob.type) ? ".ogg" : ".webm"));
     fetch("/api/voicemail", { method: "POST", headers: { "X-Voicemail-Pass": token }, body: form }).then(function (r) {
       if (r.status === 429) { if (s === seq) limited(); return; }

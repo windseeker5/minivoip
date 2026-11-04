@@ -83,10 +83,13 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	s.Hub.Available = s.Store.Available
 	s.Hub.OnEnd = s.logCall
 	s.Rooms.IsOwner = s.canAnswer
+	// Not with the rooms locked: a busy database mustn't hold up every room.
 	s.Rooms.OnJoined = func(line, name string) {
-		if err := s.Store.AddNotePerson(line, name); err != nil {
-			log.Printf("room %s: note: %v", line, err)
-		}
+		go func() {
+			if err := s.Store.AddNotePerson(line, name); err != nil {
+				log.Printf("room %s: note: %v", line, err)
+			}
+		}()
 	}
 	// The owner's open apps show who waits in the meeting room.
 	s.Rooms.OnWaiting = func(line string, names []string) {

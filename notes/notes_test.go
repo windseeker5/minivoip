@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -394,6 +395,74 @@ func TestCallFromStartToEnd(t *testing.T) {
 	}
 }
 
+// Billed hours go by what's billed: both channels of a call, and a file's size
+// when the service says little. The review's scenario: a mostly silent file.
+func TestMeterCatchesAMostlySilentFile(t *testing.T) {
+	s := newSetup(t)
+	id, path := s.add(t, store.NoteCall, 60)
+	os.WriteFile(path, make([]byte, 7200*maxBytesPerSecond), 0o600) // two hours by its size, in one minute
+	s.drain()
+	if n := s.note(t, id); n.Seconds != 7200 {
+		t.Fatalf("the month pays %d", n.Seconds)
+	}
+	if used, _ := s.st.NoteSecondsThisMonth(s.acct); used != 7200 {
+		t.Fatalf("hours: %d", used)
+	}
+	if all, _ := s.st.NoteSecondsToday(); all != 14400 {
+		t.Fatalf("billed, both channels: %d", all)
+	}
+}
+
+// A robot leaving long messages in small files: each costs the owner's month five
+// minutes at most, and voicemails stop at their own budget of real audio.
+func TestRobotVoicemailsStopAtTheirBudget(t *testing.T) {
+	s := newSetup(t)
+	s.scribe.answer = Transcript{Seconds: 2640, Lines: twoLines.Lines} // 44 minutes in 4 MB
+	first, _ := s.add(t, store.NoteVoicemail, 3)
+	s.drain()
+	if n := s.note(t, first); n.Status != store.NoteDone {
+		t.Fatalf("first: %s %s", n.Status, n.Reason)
+	}
+	if used, _ := s.st.NoteSecondsThisMonth(s.acct); used != voicemailMaxCharge {
+		t.Fatalf("the owner's month: %d", used)
+	}
+	if all, _ := s.st.NoteSecondsToday(); all != 2640 {
+		t.Fatalf("what was billed: %d", all)
+	}
+	calls := s.scribe.calls
+	var last int64
+	for i := range 3 {
+		name := filepath.Join("voicemail", "robot"+strconv.Itoa(i)+".webm")
+		os.MkdirAll(filepath.Join(s.st.Dir, "voicemail"), 0o700)
+		os.WriteFile(filepath.Join(s.st.Dir, name), []byte("sound"), 0o600)
+		last, _ = s.st.AddNote("joes", store.NoteVoicemail, name, "audio/webm", 3)
+		s.drain()
+	}
+	if s.scribe.calls != calls+1 {
+		t.Fatalf("the service was paid %d more times", s.scribe.calls-calls)
+	}
+	if n := s.note(t, last); n.Status != store.NoteSkipped || n.Reason != store.NoteDayLimit {
+		t.Fatalf("past the budget: %s %s", n.Status, n.Reason)
+	}
+	if used, _ := s.st.NoteSecondsThisMonth(s.acct); used > 2*voicemailMaxCharge {
+		t.Fatalf("the owner's month: %d", used)
+	}
+}
+
+// Take notes turned off: what's waiting isn't written down, and a call's recording goes.
+func TestSwitchOffStopsWhatsWaiting(t *testing.T) {
+	s := newSetup(t)
+	id, path := s.add(t, store.NoteCall, 40)
+	s.st.SetTakeNotes(s.acct, false)
+	s.drain()
+	if n := s.note(t, id); n.Status != store.NoteSkipped || n.Reason != store.NoteSwitchedOff || s.scribe.calls != 0 || s.claude.calls != 0 {
+		t.Fatalf("%s %s, %d %d", n.Status, n.Reason, s.scribe.calls, s.claude.calls)
+	}
+	if exists(path) {
+		t.Fatal("the recording stayed")
+	}
+}
+
 // A browser can't play a recording down: its size says how long it can be.
 func TestLimitsSeeThroughAShortClaim(t *testing.T) {
 	s := newSetup(t)
@@ -544,6 +613,9 @@ func TestDeletedWhileWorking(t *testing.T) {
 	}
 	if used, _ := s.st.NoteSecondsThisMonth(s.acct); used != 42 {
 		t.Fatalf("the service was paid for, hours: %d", used)
+	}
+	if s.claude.calls != 0 {
+		t.Fatal("deleted words went to the summary")
 	}
 }
 

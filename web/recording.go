@@ -28,8 +28,13 @@ func (s *Server) recordingStart(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	id := r.PathValue("id")
-	if !s.Hub.Answered(l.Name, id) {
+	on, told := s.Hub.Answered(l.Name, id)
+	if !on {
 		http.NotFound(w, r)
+		return
+	}
+	if !s.Limits.Recordings.Take(strconv.FormatInt(u.AccountID, 10)) {
+		http.Error(w, "Too many recordings. Please try again later.", http.StatusTooManyRequests)
 		return
 	}
 	answer := func(record bool, reason string) {
@@ -43,6 +48,10 @@ func (s *Server) recordingStart(w http.ResponseWriter, r *http.Request, u store.
 	reason := store.NoteNotSetUp
 	if s.RefuseNotes != nil {
 		reason = s.RefuseNotes(u.AccountID)
+	}
+	// The caller's page loaded before notes were on, so it didn't tell them.
+	if reason == "" && !told {
+		reason = store.NoteNotTold
 	}
 	if reason != "" {
 		if err := s.Store.SkipCallNote(l.Name, id, reason); err != nil {
@@ -69,8 +78,8 @@ func (s *Server) recordingStart(w http.ResponseWriter, r *http.Request, u store.
 	case errors.Is(err, store.ErrNotPremium), errors.Is(err, store.ErrNotesOff):
 		answer(false, "")
 	case errors.Is(err, store.ErrRecordingFull):
-		s.Store.SkipCallNote(l.Name, id, store.NoteDayLimit)
-		answer(false, store.NoteDayLimit)
+		s.Store.SkipCallNote(l.Name, id, store.NoteBusy)
+		answer(false, store.NoteBusy)
 	case err != nil:
 		serverError(w, r, err)
 	default:
@@ -90,9 +99,13 @@ func (s *Server) roomRecordingStart(w http.ResponseWriter, r *http.Request, u st
 		serverError(w, r, err)
 		return
 	}
-	guests, on := s.Rooms.Meeting(l.Name)
+	guests, on, told := s.Rooms.Meeting(l.Name)
 	if !on {
 		http.NotFound(w, r)
+		return
+	}
+	if !s.Limits.Recordings.Take(strconv.FormatInt(u.AccountID, 10)) {
+		http.Error(w, "Too many recordings. Please try again later.", http.StatusTooManyRequests)
 		return
 	}
 	answer := func(record bool, reason, url string) {
@@ -106,6 +119,9 @@ func (s *Server) roomRecordingStart(w http.ResponseWriter, r *http.Request, u st
 	reason := store.NoteNotSetUp
 	if s.RefuseNotes != nil {
 		reason = s.RefuseNotes(u.AccountID)
+	}
+	if reason == "" && !told {
+		reason = store.NoteNotTold
 	}
 	if reason != "" {
 		if err := s.Store.SkipRoomNote(l.Name, reason, guests); err != nil {
@@ -131,8 +147,8 @@ func (s *Server) roomRecordingStart(w http.ResponseWriter, r *http.Request, u st
 	case errors.Is(err, store.ErrNotPremium), errors.Is(err, store.ErrNotesOff):
 		answer(false, "", "")
 	case errors.Is(err, store.ErrRecordingFull):
-		s.Store.SkipRoomNote(l.Name, store.NoteDayLimit, guests)
-		answer(false, store.NoteDayLimit, "")
+		s.Store.SkipRoomNote(l.Name, store.NoteBusy, guests)
+		answer(false, store.NoteBusy, "")
 	case err != nil:
 		serverError(w, r, err)
 	default:

@@ -94,4 +94,9 @@ func (s *Server) logCall(line string, c calls.Record) {
 	if err != nil {
 		log.Printf("call history %s: %v", line, err)
 	}
+	if c.Outcome == "answered" {
+		if err := s.Store.RecordingCallEnded(c.ID); err != nil {
+			log.Printf("call %s: note: %v", c.ID, err)
+		}
+	}
 }

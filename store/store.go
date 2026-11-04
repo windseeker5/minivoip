@@ -200,6 +200,38 @@ var migrations = []string{
 	`
 	ALTER TABLE account ADD COLUMN language TEXT NOT NULL DEFAULT 'fr' CHECK (language IN ('fr', 'en'));
 	`,
+	// 15: Premium notes (transcript, summary, next actions) and the hours they
+	// used, kept apart so deleting a note doesn't give its hours back.
+	`
+	CREATE TABLE note (
+		id           INTEGER PRIMARY KEY,
+		account_id   INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+		line_id      INTEGER NOT NULL REFERENCES line(id) ON DELETE CASCADE,
+		kind         TEXT NOT NULL CHECK (kind IN ('voicemail', 'call', 'room')),
+		status       TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'working', 'done', 'failed', 'skipped')),
+		reason       TEXT NOT NULL DEFAULT '',
+		language     TEXT NOT NULL CHECK (language IN ('fr', 'en')),
+		audio        TEXT NOT NULL DEFAULT '',
+		audio_type   TEXT NOT NULL DEFAULT '',
+		seconds      INTEGER NOT NULL DEFAULT 0,
+		transcript   TEXT NOT NULL DEFAULT '',
+		summary      TEXT NOT NULL DEFAULT '',
+		next_actions TEXT NOT NULL DEFAULT '',
+		tries        INTEGER NOT NULL DEFAULT 0,
+		next_try     TEXT NOT NULL DEFAULT (datetime('now')),
+		created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+		done_at      TEXT
+	);
+	CREATE INDEX note_account ON note(account_id, created_at);
+	CREATE INDEX note_status ON note(status, next_try);
+	CREATE TABLE note_usage (
+		account_id  INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+		day         TEXT NOT NULL,
+		seconds     INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (account_id, day)
+	);
+	CREATE INDEX note_usage_day ON note_usage(day);
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

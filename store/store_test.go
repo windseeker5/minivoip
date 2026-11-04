@@ -144,6 +144,8 @@ func TestPlansMigration(t *testing.T) {
 	s.db.Exec("ALTER TABLE session DROP COLUMN hashed")
 	s.db.Exec("ALTER TABLE voicemail DROP COLUMN size")
 	s.db.Exec("ALTER TABLE account DROP COLUMN language")
+	s.db.Exec("DROP TABLE note_usage")
+	s.db.Exec("DROP TABLE note")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)
@@ -197,6 +199,8 @@ func TestLanguageMigration(t *testing.T) {
 	u, _ := s.CreateAccount("joe@example.com", "password1", "")
 	s.db.Exec("PRAGMA user_version = 13")
 	s.db.Exec("ALTER TABLE account DROP COLUMN language")
+	s.db.Exec("DROP TABLE note_usage")
+	s.db.Exec("DROP TABLE note")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)
@@ -234,6 +238,8 @@ func TestVoicemailGreetingMigration(t *testing.T) {
 	s.db.Exec("ALTER TABLE session DROP COLUMN hashed")
 	s.db.Exec("ALTER TABLE voicemail DROP COLUMN size")
 	s.db.Exec("ALTER TABLE account DROP COLUMN language")
+	s.db.Exec("DROP TABLE note_usage")
+	s.db.Exec("DROP TABLE note")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)

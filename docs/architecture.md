@@ -175,6 +175,27 @@ sequenceDiagram
     A->J: voice, cameras, screens, whiteboard: direct (or via the relay)
 ```
 
+## Premium notes (2026-11-04)
+
+A saved recording becomes a transcript, a summary and next actions (plan: [notes-plan.md](notes-plan.md)). One
+background worker (`notes/worker.go`) does one note at a time; its queue is the `note` table, so a restart loses
+nothing. It tries 4 times, waiting 1, 5, then 30 minutes. A transcript that came back is kept, so another try only pays
+for the summary, and hours are counted only then.
+
+- **Two services, each behind a small interface** (`Transcriber`, `Summarizer`), both with plain `net/http`; Go tests
+  use fakes. Transcripts: ElevenLabs Scribe (`scribe_v2`, with who said what; it hears the language itself). About $0.22
+  an hour according to third-party price lists in November 2026; check their own page. Summaries: Claude (`claude-opus-5-5`, with
+  `fallbacks: "default"`: a request its safety checks decline runs on the model Anthropic picks). About $0.10 an hour of audio.
+- **Keys** in `.env` (`ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, see `.env.example`; the Taskfile loads it). Without
+  both, new notes are skipped and say so.
+- **Limits, checked before any money is spent:** 10 hours per account per month, 20 hours a day across all accounts
+  (`MINIVOIP_NOTES_DAY_HOURS`). A browser can't play a recording down: its size also says how long it can be.
+- **What people say is untrusted.** Claude gets no tools and only the one transcript, as JSON between tags (JSON writes
+  `<` as `\u003c`, so a caller's words can't close the tag); its instructions say it's data, and its answer must fit a
+  schema. The worst a caller can do is spoil the note of their own call. Transcripts never go in the logs, and the
+  clients follow no redirect, so a key can't travel.
+- **ElevenLabs keeps logs by default;** turning that off (`enable_logging=false`) is for its enterprise customers.
+
 ## Security rules (reviews of 2026-11-02)
 
 - **The call address stays short and public** (`/call/ken`): it's printed on the business's website anyway, so a random
@@ -299,6 +320,8 @@ Exact columns: [data-dictionary.md](data-dictionary.md). Built so far: `account`
 | `call_log` | Time, line, answered/missed/voicemail, length |
 | `promo_code` | Code, plan it gives (Basic or Premium), valid from/to, max uses, times used, revoked yes/no. A valid code makes a line free forever. Created and revoked by Ken on an admin page, where he also switches any account between Basic and Premium (`account.plan`). |
 | `session` | A login (cookie token, expiry) |
+| `note` | Premium's record of a call, room or voicemail: transcript, summary, next actions, how far along it is |
+| `note_usage` | How much audio each account's notes covered each day, for the limits |
 | *later:* `sip_login` | Username and password for a desk phone or SIP app (step 2) |
 | *later:* `phone_number` | A real number from the SIP provider, pointing to a line (step 3) |
 

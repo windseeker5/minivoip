@@ -170,6 +170,38 @@ Who owns each recorded message (files in `<data dir>/prompts/`): only that accou
 | `account_id` | integer → `account.id` (delete cascades) | |
 | `created_at` | text (UTC) | |
 
+## note
+Premium's written record of a call, a meeting room or a voicemail (`store/notes.go`; written by the `notes` package, one at a time). Kept a year, or until the owner deletes it. Only the account's owner reads it. `transcript` holds what strangers said, so it's always shown as plain text and never given to the summary as instructions.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `account_id` | integer → `account.id` (delete cascades) | |
+| `line_id` | integer → `line.id` (delete cascades) | |
+| `kind` | text: `voicemail`, `call` or `room` | What was recorded |
+| `status` | text: `waiting`, `working`, `done`, `failed` or `skipped` | `waiting` includes a note between two tries. A server that stops leaves `working`, put back at the next start |
+| `reason` | text | Why it `failed` or was `skipped`: `not_set_up` (a key is missing), `not_premium`, `month_limit`, `day_limit`, `silent` (nothing said), `no_audio`, `transcribe`, `summarize`. A `summarize` failure still has its transcript |
+| `language` | text: `fr` or `en` | What the summary and next actions are written in: the account's at the time. The transcript keeps the words as spoken |
+| `audio` | text | The recording, a path under the data folder; empty once transcribed or given up on. A call's or a room's file is deleted then; a voicemail's stays, it's the owner's message |
+| `audio_type` | text | Its content type |
+| `seconds` | integer | The recording's length: first as told, then as the service measured it |
+| `transcript` | text (JSON list of `{speaker, start, text}`) | Who said what, word for word |
+| `summary` | text | One page at most (cut at 20,000 characters) |
+| `next_actions` | text (JSON list of text) | What the owner has to do (at most 30) |
+| `tries` | integer | Tries so far, 4 at most; a stop in the middle counts, so it can't spend money without end |
+| `next_try` | text (UTC) | When its turn comes |
+| `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
+| `done_at` | text (UTC), nullable | When it was finished or given up on |
+
+## note_usage
+How much audio each account's notes covered each day (UTC). Apart from `note`, so deleting a note doesn't give its hours back. It sets the month's limit (`store.NoteMonthSeconds`, 10 hours per account) and the day's ceiling across all accounts (`MINIVOIP_NOTES_DAY_HOURS`, default 20). Counted only once a transcript comes back. Kept 62 days.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `account_id` | integer → `account.id` (delete cascades) | |
+| `day` | text (UTC `YYYY-MM-DD`) | Key, with `account_id` |
+| `seconds` | integer | |
+
 ## Version history
 | Version (`PRAGMA user_version`) | Date | Change |
 |---|---|---|
@@ -187,3 +219,4 @@ Who owns each recorded message (files in `<data dir>/prompts/`): only that accou
 | 12 | 2026-11-02 | `prompt` (who owns each recording), `session.hashed` (tokens stored as a hash, old ones converted at start) |
 | 13 | 2026-11-03 | `voicemail.size` (old messages filled in at start) |
 | 14 | 2026-11-04 | `account.language` (`fr` or `en`; existing accounts get French) |
+| 15 | 2026-11-04 | `note`, `note_usage` (Premium notes and the hours they used) |

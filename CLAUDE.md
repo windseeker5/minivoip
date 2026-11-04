@@ -66,6 +66,9 @@ B&B and may become a SaaS.
 - `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
   Passwords use bcrypt. The dev database is `data/minivoip.db` (gitignored).
+- `notes/`: Premium's notes from a saved recording: `worker.go` (one background worker, its queue the `note` table in
+  `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `claude.go` (summary and next actions; what
+  callers say is data, never instructions). Go tests use fakes of both; see `docs/architecture.md` "Premium notes".
 - `lines/`: the Line/Option types, menu actions (ring, play, link, voicemail), the spoken menu text and line-name
   rules. `choicePhrase` is mirrored in `assets/js/dashboard.js`.
 - `calls/hub.go`: the WebSocket at `/ws?line=&role=visitor|owner`. Only passes messages (call, ringing, ready,

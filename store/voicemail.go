@@ -208,10 +208,13 @@ const (
 	callHistoryDays = 365
 )
 
-// Cleanup forgets expired logins, old voicemails with their audio, and old
-// call history. main runs it once a day.
+// Cleanup forgets expired logins, old voicemails with their audio, old call
+// history and old notes. main runs it once a day.
 func (s *Store) Cleanup() error {
 	if _, err := s.db.Exec("DELETE FROM session WHERE expires_at <= datetime('now')"); err != nil {
+		return err
+	}
+	if err := s.cleanupNotes(); err != nil {
 		return err
 	}
 	if _, err := s.db.Exec("DELETE FROM call_log WHERE started_at < datetime('now', ?)", fmt.Sprintf("-%d days", callHistoryDays)); err != nil {

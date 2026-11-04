@@ -59,7 +59,7 @@ them: without keys, new notes say "Notes aren't set up yet", and everything is t
 
 - [x] **1. Language.** `account.language` (`fr` or `en`). A choice on the sign up form, French already selected; a place
   to change it from the account menu; a store function and tests.
-- [ ] **2. The notes engine, with no audio source yet.** A `note` table: account, line, kind (voicemail, call, room),
+- [x] **2. The notes engine, with no audio source yet.** A `note` table: account, line, kind (voicemail, call, room),
   status (waiting, working, done, failed, skipped), language, transcript, summary, next actions, minutes, dates. A
   background worker that survives restarts, retries a few times and handles one note at a time. The two service
   clients. The monthly and daily limits. Keys through `.env`: add `dotenv` to `Taskfile.yml` and ship `.env.example`.
@@ -98,3 +98,4 @@ them: without keys, new notes say "Notes aren't set up yet", and everything is t
 (One line per pass.)
 
 - 2026-11-04, step 1: `account.language` (migration 14, ran on the dev database, existing accounts French), the choice on sign up, `/dashboard/language` from the account menu. A made-up language at sign up becomes French; on the page it is refused. `CreateAccount` keeps its arguments and sign up sets the language right after, so a failure there leaves a working French account.
+- 2026-11-04, step 2: `notes/` (worker, Scribe, Claude), `store/notes.go`, migration 15, `.env.example`, Taskfile `dotenv`. Choices: past the day's ceiling a note is skipped, not held for tomorrow; a note past a limit or without keys loses a call's recording; hours live in `note_usage` so deleting a note doesn't give them back; Scribe hears the language itself. Claude is `claude-opus-5-5` (about $0.10 an hour of audio), the default for now; Ken can pick a cheaper one. Price of $0.22 an hour for Scribe v2 seen only on third-party lists, one says $0.27: Ken checks when he gets the key. For step 6: separate channels cost double at Scribe (each billed in full). Nothing has reached the real services yet.

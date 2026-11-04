@@ -1,5 +1,8 @@
 version: "3"
 
+# Secrets for the running app (see .env.example); never in git.
+dotenv: [".env"]
+
 vars:
   # The app port: an explicit 'task dev PORT=8091' wins, otherwise the next
   # free port from 8090 up. The templ proxy and the app share the result,

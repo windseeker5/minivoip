@@ -23,10 +23,11 @@ type Transcriber interface {
 	Transcribe(ctx context.Context, file, contentType string, channels []string) (Transcript, error)
 }
 
-// Summarizer writes the note from a transcript, in the given language. What
-// people said is untrusted: it can only ever end up in this note.
+// Summarizer writes the note from a transcript, in the given language; people are
+// a meeting's guests, as they named themselves. What people said and their names
+// are untrusted: they can only ever end up in this note.
 type Summarizer interface {
-	Summarize(ctx context.Context, lines []store.NoteLine, language store.Language) (Summary, error)
+	Summarize(ctx context.Context, lines []store.NoteLine, language store.Language, people []string) (Summary, error)
 }
 
 type Transcript struct {
@@ -159,7 +160,7 @@ func (w *Worker) do(ctx context.Context, n store.Note) {
 			return
 		}
 	}
-	s, err := w.Summarizer.Summarize(ctx, n.Transcript, n.Language)
+	s, err := w.Summarizer.Summarize(ctx, n.Transcript, n.Language, n.People)
 	if err != nil {
 		w.tryAgain(ctx, n, store.NoteSummarize, err)
 		return
@@ -193,9 +194,10 @@ func (w *Worker) transcribe(ctx context.Context, n store.Note) (store.Note, bool
 		w.tryAgain(ctx, n, store.NoteTranscribe, err)
 		return n, true
 	}
-	// A call's clock counts the quiet at its end, which the words don't show.
+	// A call's or a meeting's clock counts the quiet at its end, which the words
+	// don't show.
 	seconds := t.Seconds
-	if n.Kind == store.NoteCall {
+	if n.Kind != store.NoteVoicemail {
 		seconds = max(seconds, n.Seconds)
 	}
 	if err := w.Store.SaveTranscript(n, t.Lines, seconds); err != nil {

@@ -17,6 +17,7 @@ type roomData struct {
 	// Said out loud to a guest pressing Join, when notes are on.
 	Notice     string `json:"notice,omitempty"`
 	NoticeLang string `json:"noticeLang,omitempty"`
+	Notes      bool   `json:"notes,omitempty"` // this is the host, with notes on: their browser records
 }
 
 templ iconLeave() {
@@ -157,6 +158,9 @@ templ Room(l lines.Line, isOwner bool, url string) {
 				<div class="rm-stage" data-stage></div>
 				<p class="rm-meet-note" data-meet-note role="status" hidden></p>
 				@roomNotice(notice.RoomDuring, notice.Lang)
+				if isOwner {
+					<p class="rm-rec-note" data-rec-note role="status" hidden></p>
+				}
 				<nav class="rm-controls" aria-label="Meeting controls">
 					<button type="button" class="rm-round" data-action="mute" aria-pressed="false">
 						<span>
@@ -192,8 +196,11 @@ templ Room(l lines.Line, isOwner bool, url string) {
 			</section>
 			<div data-audio hidden></div>
 		</main>
-		@templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), Logo: logoURL(l), URL: url, Notice: roomSaid(notice, isOwner), NoticeLang: notice.Lang})
+		@templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), Logo: logoURL(l), URL: url, Notice: roomSaid(notice, isOwner), NoticeLang: notice.Lang, Notes: isOwner && notice.Room != ""})
 		<script src="/assets/js/meet.js" defer></script>
+		if isOwner {
+			<script src="/assets/js/recorder.js" defer></script>
+		}
 		<script src="/assets/js/room.js" defer></script>
 	}
 }

@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -953,6 +954,142 @@ func TestRecordingRefused(t *testing.T) {
 	if list, _ := st.Notes(u.AccountID); len(list) != 2 {
 		t.Fatalf("the switch off: %+v", list)
 	}
+}
+
+// meeting opens a real room: its owner in, and a guest let in. It returns a
+// function for the guest to leave.
+func meeting(t *testing.T, srv *httptest.Server, line, token, name string) (leave func()) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	t.Cleanup(cancel)
+	dial := func(h http.Header) *websocket.Conn {
+		c, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/room?line="+line, &websocket.DialOptions{HTTPHeader: h})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { c.CloseNow() })
+		return c
+	}
+	read := func(c *websocket.Conn, typ string) calls.RoomMessage {
+		t.Helper()
+		for {
+			var m calls.RoomMessage
+			if err := wsjson.Read(ctx, c, &m); err != nil {
+				t.Fatalf("waiting for %s: %v", typ, err)
+			}
+			if m.Type == typ {
+				return m
+			}
+		}
+	}
+	host := dial(http.Header{"Cookie": {sessionCookie + "=" + token}})
+	wsjson.Write(ctx, host, calls.RoomMessage{Type: "join", Name: "Host"})
+	read(host, "welcome")
+	calledFrom++
+	guest := dial(http.Header{"X-Forwarded-For": {"198.51.100." + strconv.Itoa(100+calledFrom)}})
+	wsjson.Write(ctx, guest, calls.RoomMessage{Type: "join", Name: name})
+	read(guest, "waiting")
+	door := read(host, "door")
+	for len(door.Peers) == 0 {
+		door = read(host, "door")
+	}
+	wsjson.Write(ctx, host, calls.RoomMessage{Type: "admit", To: door.Peers[0].ID})
+	read(guest, "welcome")
+	read(host, "joined")
+	return func() {
+		guest.Close(websocket.StatusNormalClosure, "")
+		read(host, "left")
+	}
+}
+
+// A meeting's recording is for the line's own host, while a guest is in the room.
+func TestRecordingAMeeting(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	s.RefuseNotes = func(int64) string { return "" }
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	sue, _ := st.CreateAccount("sue@example.com", "long-enough", "")
+	st.CreateLine(sue.AccountID, "sues", "Sue's")
+	st.SetPlan(sue.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	other, _, _ := st.NewSession(sue.ID)
+	start := "/room/joesbnb/recording?type=audio/webm"
+
+	if w := post(h, start, nil, token); w.Code != http.StatusNotFound {
+		t.Fatalf("no meeting on: %d", w.Code)
+	}
+	leave := meeting(t, srv, "joesbnb", token, "Ana Roy")
+	if w := post(h, start, nil, ""); w.Code != http.StatusSeeOther {
+		t.Fatalf("logged out: %d", w.Code)
+	}
+	if w := post(h, start, nil, other); w.Code != http.StatusNotFound {
+		t.Fatalf("another account: %d", w.Code)
+	}
+	if w := post(h, "/room/joesbnb/recording?type=text/html", nil, token); w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("not a recording: %d", w.Code)
+	}
+	w := post(h, start, nil, token)
+	var a struct {
+		Record bool   `json:"record"`
+		URL    string `json:"url"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &a); err != nil || !a.Record || !strings.HasPrefix(a.URL, "/app/calls/room-") {
+		t.Fatalf("start: %s %v", w.Body.String(), err)
+	}
+	id := strings.TrimSuffix(strings.TrimPrefix(a.URL, "/app/calls/"), "/recording")
+	if c := piece(h, id, 0, "one ", other); c != http.StatusNotFound {
+		t.Fatalf("someone else's piece: %d", c)
+	}
+	if c := piece(h, id, 0, "one ", token); c != http.StatusNoContent {
+		t.Fatalf("a piece: %d", c)
+	}
+	list, _ := st.Notes(u.AccountID)
+	if len(list) != 1 || list[0].Kind != store.NoteRoom || len(list[0].People) != 1 || list[0].People[0] != "Ana Roy" {
+		t.Fatalf("the note: %+v", list)
+	}
+	leave()
+	if w := post(h, start, nil, token); w.Code != http.StatusNotFound {
+		t.Fatalf("nobody left to meet: %d", w.Code)
+	}
+	if w := post(h, a.URL+"/done", nil, token); w.Code != http.StatusNoContent {
+		t.Fatalf("done: %d", w.Code)
+	}
+	n, ok, err := st.ClaimNote()
+	if !ok || err != nil || n.Kind != store.NoteRoom {
+		t.Fatalf("its turn: %+v %v %v", n, ok, err)
+	}
+}
+
+// Someone let in while it records is in the note; refused, the note says why.
+func TestMeetingPeopleAndRefusal(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	leave := meeting(t, srv, "joesbnb", token, "Ana Roy")
+	if w := post(h, "/room/joesbnb/recording?type=audio/webm", nil, token); !strings.Contains(w.Body.String(), store.NoteNotSetUp) {
+		t.Fatalf("no keys: %s", w.Body.String())
+	}
+	list, _ := st.Notes(u.AccountID)
+	if len(list) != 1 || list[0].Status != store.NoteSkipped || list[0].Reason != store.NoteNotSetUp || list[0].People[0] != "Ana Roy" {
+		t.Fatalf("the note: %+v", list)
+	}
+	s.RefuseNotes = func(int64) string { return "" }
+	if w := post(h, "/room/joesbnb/recording?type=audio/webm", nil, token); !strings.Contains(w.Body.String(), `"record":true`) {
+		t.Fatalf("start: %s", w.Body.String())
+	}
+	s.Rooms.OnJoined("joesbnb", "Bo")
+	list, _ = st.Notes(u.AccountID)
+	if len(list) != 2 || len(list[0].People) != 2 || list[0].People[1] != "Bo" {
+		t.Fatalf("after Bo: %+v", list[0])
+	}
+	leave()
 }
 
 // get opens a page as a logged-in owner (or a visitor, with no cookie).

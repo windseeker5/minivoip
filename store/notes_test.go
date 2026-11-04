@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -574,5 +575,63 @@ func TestSweepRecordings(t *testing.T) {
 	}
 	if _, err := os.Stat(mine); err != nil {
 		t.Error("a note's recording went")
+	}
+}
+
+func TestRoomRecording(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	sue := notesAccount(t, s, "sue@example.com", "sues")
+	if err := s.AddNotePerson("joes", "Early"); err != nil {
+		t.Fatalf("no meeting yet: %v", err)
+	}
+	n, err := s.StartRoomRecording("joes", "audio/webm", []string{"Ana"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind != NoteRoom || !strings.HasPrefix(n.CallID, "room-") || !strings.HasPrefix(n.Audio, "notes/room-") || len(n.People) != 1 {
+		t.Fatalf("note: %+v", n)
+	}
+	s.AddNotePerson("joes", "Bo")
+	s.AddNotePerson("joes", "Ana")
+	s.AddNotePerson("sues", "Not here")
+	got, _ := s.NoteByID(u.AccountID, n.ID)
+	if len(got.People) != 2 || got.People[0] != "Ana" || got.People[1] != "Bo" {
+		t.Fatalf("people: %v", got.People)
+	}
+	for i := range maxNotePeople + 5 {
+		s.AddNotePerson("joes", fmt.Sprintf("Guest %d", i))
+	}
+	if got, _ = s.NoteByID(u.AccountID, n.ID); len(got.People) != maxNotePeople {
+		t.Fatalf("a robot's names: %d", len(got.People))
+	}
+	if err := s.AppendRecording(sue.AccountID, n.CallID, 0, []byte("x")); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("someone else's piece: %v", err)
+	}
+	if err := s.AppendRecording(u.AccountID, n.CallID, 0, []byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	s.FinishRecording(u.AccountID, n.CallID)
+	s.ClaimNote()
+	s.AddNotePerson("joes", "Late")
+	if got, _ = s.NoteByID(u.AccountID, n.ID); slices.Contains(got.People, "Late") {
+		t.Fatal("someone added after the meeting")
+	}
+	if err := s.SkipRoomNote("joes", NoteNotSetUp, []string{"Ana"}); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := s.Notes(u.AccountID)
+	if len(list) != 2 || list[0].Reason != NoteNotSetUp || list[0].People[0] != "Ana" || list[0].Audio != "" {
+		t.Fatalf("skipped: %+v", list[0])
+	}
+	s.SetPlan(u.AccountID, Basic)
+	if _, err := s.StartRoomRecording("joes", "audio/webm", nil); !errors.Is(err, ErrNotPremium) {
+		t.Fatalf("Basic: %v", err)
+	}
+	if err := s.SkipRoomNote("joes", NoteNotSetUp, nil); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ = s.Notes(u.AccountID); len(list) != 2 {
+		t.Fatalf("Basic gets no note: %d", len(list))
 	}
 }

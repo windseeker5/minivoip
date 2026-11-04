@@ -225,6 +225,19 @@ func TestRoomSaysNotesAreOn(t *testing.T) {
 	}
 }
 
+func TestNotePeople(t *testing.T) {
+	if got := notePeople(store.Note{}); got != "" {
+		t.Errorf("no one: %q", got)
+	}
+	if got := notePeople(store.Note{People: []string{"Ana", "Bo"}}); got != " · with Ana, Bo" {
+		t.Errorf("two: %q", got)
+	}
+	page := render(t, NotePage("marie@example.com", store.Note{ID: 1, Kind: store.NoteRoom, Status: store.NoteDone, People: []string{"<b>Eve</b>"}, Summary: "Ok"}))
+	if strings.Contains(page, "<b>Eve") || !strings.Contains(page, "&lt;b&gt;Eve") {
+		t.Error("a guest's name isn't plain text")
+	}
+}
+
 // The Notes tab names a call's speakers.
 func TestSpeakerNames(t *testing.T) {
 	for _, c := range []struct {

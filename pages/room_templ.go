@@ -25,6 +25,7 @@ type roomData struct {
 	// Said out loud to a guest pressing Join, when notes are on.
 	Notice     string `json:"notice,omitempty"`
 	NoticeLang string `json:"noticeLang,omitempty"`
+	Notes      bool   `json:"notes,omitempty"` // this is the host, with notes on: their browser records
 }
 
 func iconLeave() templ.Component {
@@ -144,7 +145,7 @@ func roomNotice(text, lang string) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(lang)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 37, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 38, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 			if templ_7745c5c3_Err != nil {
@@ -157,7 +158,7 @@ func roomNotice(text, lang string) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 37, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 38, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -231,7 +232,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(logoURL(l))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 67, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 68, Col: 101}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
@@ -250,7 +251,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(initials(owner))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 71, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 72, Col: 26}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
@@ -293,7 +294,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 90, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 91, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -316,7 +317,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("So " + owner + " knows who you are")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 96, Col: 139}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 97, Col: 139}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 				if templ_7745c5c3_Err != nil {
@@ -357,7 +358,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(owner)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 109, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 110, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -386,7 +387,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(l.Business)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 133, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 134, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -435,7 +436,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(url)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 155, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/room.templ`, Line: 156, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -449,7 +450,13 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<nav class=\"rm-controls\" aria-label=\"Meeting controls\"><button type=\"button\" class=\"rm-round\" data-action=\"mute\" aria-pressed=\"false\"><span>")
+			if isOwner {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<p class=\"rm-rec-note\" data-rec-note role=\"status\" hidden></p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<nav class=\"rm-controls\" aria-label=\"Meeting controls\"><button type=\"button\" class=\"rm-round\" data-action=\"mute\" aria-pressed=\"false\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -457,7 +464,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</span> <span>Mute</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"camera\" aria-pressed=\"false\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</span> <span>Mute</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"camera\" aria-pressed=\"false\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -465,7 +472,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</span> <span>Camera</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"screen\" aria-pressed=\"false\" data-share-btn hidden><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</span> <span>Camera</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"screen\" aria-pressed=\"false\" data-share-btn hidden><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -473,7 +480,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</span> <span>Screen</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"board\" aria-pressed=\"false\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</span> <span>Screen</span></button> <button type=\"button\" class=\"rm-round\" data-action=\"board\" aria-pressed=\"false\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -481,7 +488,7 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</span> <span>Whiteboard</span></button> <button type=\"button\" class=\"rm-round is-end\" data-action=\"leave\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span> <span>Whiteboard</span></button> <button type=\"button\" class=\"rm-round is-end\" data-action=\"leave\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -489,15 +496,25 @@ func Room(l lines.Line, isOwner bool, url string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span> <span>Leave</span></button></nav></section><div data-audio hidden></div></main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</span> <span>Leave</span></button></nav></section><div data-audio hidden></div></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), Logo: logoURL(l), URL: url, Notice: roomSaid(notice, isOwner), NoticeLang: notice.Lang}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), Logo: logoURL(l), URL: url, Notice: roomSaid(notice, isOwner), NoticeLang: notice.Lang, Notes: isOwner && notice.Room != ""}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<script src=\"/assets/js/meet.js\" defer></script> <script src=\"/assets/js/room.js\" defer></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<script src=\"/assets/js/meet.js\" defer></script> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if isOwner {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<script src=\"/assets/js/recorder.js\" defer></script>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, " <script src=\"/assets/js/room.js\" defer></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

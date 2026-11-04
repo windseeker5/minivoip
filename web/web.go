@@ -83,6 +83,11 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	s.Hub.Available = s.Store.Available
 	s.Hub.OnEnd = s.logCall
 	s.Rooms.IsOwner = s.canAnswer
+	s.Rooms.OnJoined = func(line, name string) {
+		if err := s.Store.AddNotePerson(line, name); err != nil {
+			log.Printf("room %s: note: %v", line, err)
+		}
+	}
 	// The owner's open apps show who waits in the meeting room.
 	s.Rooms.OnWaiting = func(line string, names []string) {
 		s.Hub.NotifyOwners(line, calls.Message{Type: "room", Names: names})
@@ -121,6 +126,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /app/calls/{id}/recording", s.auth(s.recordingStart))
 	mux.Handle("POST /app/calls/{id}/recording/done", s.auth(s.recordingDone))
 	mux.Handle("POST /app/calls/{id}/recording/{part}", s.auth(s.recordingPiece))
+	mux.Handle("POST /room/{line}/recording", s.auth(s.roomRecordingStart))
 	mux.HandleFunc("GET /api/android/config", s.androidConfig)
 	mux.HandleFunc("GET /download/minivoip.apk", s.androidAPK)
 

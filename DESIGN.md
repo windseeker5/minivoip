@@ -254,6 +254,9 @@ close button. Opening or closing it does so for everyone. The whiteboard stays o
 
 ## Meeting room (2026-10-25)
 
+Notes on (2026-11-04): a quiet line with the recording's red dot at the door, while waiting and in the room
+(`roomNotice`), said out loud to a guest pressing Join. The host also reads "Recording for your notes", or why not.
+
 `/room/<line>` (`pages/room.templ`, `assets/css/room.css`, `assets/js/room.js`). The call window's world (look A:
 white, Funnel, ink, red only for Leave), not a new look.
 

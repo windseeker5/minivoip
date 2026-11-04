@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -69,6 +70,7 @@ const (
 	maxNoteSummary = 20000
 	maxNoteActions = 30
 	maxNoteAction  = 1000
+	maxNotePeople  = 30
 )
 
 var (
@@ -104,13 +106,15 @@ type Note struct {
 	Summary     string
 	NextActions []string
 	Tries       int
-	VoicemailID int64  // a voicemail's message; 0 if none or gone
-	CreatedAt   string // UTC "YYYY-MM-DD HH:MM:SS"
+	People      []string // a meeting's guests, as they named themselves
+	CallID      string   // the call or meeting it records
+	VoicemailID int64    // a voicemail's message; 0 if none or gone
+	CreatedAt   string   // UTC "YYYY-MM-DD HH:MM:SS"
 	DoneAt      string
 }
 
 const noteColumns = `id, account_id, line_id, kind, status, reason, language, audio, audio_type, seconds,
-	transcript, summary, next_actions, tries, COALESCE(voicemail_id, 0), created_at, COALESCE(done_at, '')`
+	transcript, summary, next_actions, tries, people, call_id, COALESCE(voicemail_id, 0), created_at, COALESCE(done_at, '')`
 
 // noteListColumns leaves the transcripts out: a list doesn't show them, and a
 // year of meetings is a lot of words.
@@ -121,9 +125,9 @@ const MaxNotesListed = 500
 
 func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 	var n Note
-	var transcript, actions string
+	var transcript, actions, people string
 	err := row.Scan(&n.ID, &n.AccountID, &n.LineID, &n.Kind, &n.Status, &n.Reason, &n.Language, &n.Audio, &n.AudioType, &n.Seconds,
-		&transcript, &n.Summary, &actions, &n.Tries, &n.VoicemailID, &n.CreatedAt, &n.DoneAt)
+		&transcript, &n.Summary, &actions, &n.Tries, &people, &n.CallID, &n.VoicemailID, &n.CreatedAt, &n.DoneAt)
 	if err != nil {
 		return Note{}, err
 	}
@@ -134,6 +138,11 @@ func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 	}
 	if actions != "" {
 		if err := json.Unmarshal([]byte(actions), &n.NextActions); err != nil {
+			return Note{}, err
+		}
+	}
+	if people != "" {
+		if err := json.Unmarshal([]byte(people), &n.People); err != nil {
 			return Note{}, err
 		}
 	}
@@ -158,6 +167,7 @@ type newNote struct {
 	status    NoteStatus
 	reason    string
 	wait      int
+	people    []string
 }
 
 func (s *Store) addNote(lineName string, n newNote) (int64, error) {
@@ -183,9 +193,17 @@ func (s *Store) addNote(lineName string, n newNote) (int64, error) {
 	if !takeNotes {
 		return 0, ErrNotesOff
 	}
-	res, err := s.db.Exec(`INSERT INTO note (account_id, line_id, kind, language, audio, audio_type, seconds, voicemail_id, call_id, status, reason, next_try)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
-		accountID, lineID, n.kind, language, n.audio, n.audioType, n.seconds, n.voicemail, n.callID, n.status, n.reason, fmt.Sprintf("+%d seconds", n.wait))
+	people := ""
+	if len(n.people) > 0 {
+		b, err := json.Marshal(n.people)
+		if err != nil {
+			return 0, err
+		}
+		people = string(b)
+	}
+	res, err := s.db.Exec(`INSERT INTO note (account_id, line_id, kind, language, audio, audio_type, seconds, voicemail_id, call_id, status, reason, next_try, people)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?), ?)`,
+		accountID, lineID, n.kind, language, n.audio, n.audioType, n.seconds, n.voicemail, n.callID, n.status, n.reason, fmt.Sprintf("+%d seconds", n.wait), people)
 	if err != nil {
 		return 0, err
 	}
@@ -247,6 +265,28 @@ func (s *Store) notesDir() string { return filepath.Join(s.Dir, "notes") }
 // StartRecording opens the note of a call being answered now, and says where
 // its pieces go. A call has one note, so a second start finds the first.
 func (s *Store) StartRecording(lineName, callID, audioType string) (Note, error) {
+	return s.startRecording(lineName, NoteCall, callID, audioType, nil)
+}
+
+// StartRoomRecording opens the note of a meeting under way, with the guests in
+// the room so far. A meeting has no id of its own, so it gets one.
+func (s *Store) StartRoomRecording(lineName, audioType string, people []string) (Note, error) {
+	id, err := newRecordingID()
+	if err != nil {
+		return Note{}, err
+	}
+	return s.startRecording(lineName, NoteRoom, "room-"+id, audioType, people)
+}
+
+func newRecordingID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func (s *Store) startRecording(lineName string, kind NoteKind, callID, audioType string, people []string) (Note, error) {
 	var disk int64
 	if err := s.db.QueryRow("SELECT COALESCE(sum(audio_size), 0) FROM note WHERE audio <> '' AND kind <> 'voicemail'").Scan(&disk); err != nil {
 		return Note{}, err
@@ -259,12 +299,12 @@ func (s *Store) StartRecording(lineName, callID, audioType string) (Note, error)
 	} else if !errors.Is(err, ErrNotFound) {
 		return Note{}, err
 	}
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
+	id, err := newRecordingID()
+	if err != nil {
 		return Note{}, err
 	}
-	audio := filepath.Join(filepath.Base(s.notesDir()), "call-"+hex.EncodeToString(b)+extFor(audioType))
-	_, err := s.addNote(lineName, newNote{kind: NoteCall, audio: audio, audioType: audioType, callID: callID, status: NoteWaiting, wait: recordingGrace})
+	audio := filepath.Join(filepath.Base(s.notesDir()), string(kind)+"-"+id+extFor(audioType))
+	_, err = s.addNote(lineName, newNote{kind: kind, audio: audio, audioType: audioType, callID: callID, status: NoteWaiting, wait: recordingGrace, people: people})
 	if err != nil {
 		return Note{}, err
 	}
@@ -282,6 +322,48 @@ func (s *Store) SkipCallNote(lineName, callID, reason string) error {
 	if errors.Is(err, ErrNotPremium) || errors.Is(err, ErrNotesOff) {
 		return nil
 	}
+	return err
+}
+
+// SkipRoomNote leaves a note saying why a meeting isn't being recorded.
+func (s *Store) SkipRoomNote(lineName, reason string, people []string) error {
+	id, err := newRecordingID()
+	if err != nil {
+		return err
+	}
+	_, err = s.addNote(lineName, newNote{kind: NoteRoom, callID: "room-" + id, status: NoteSkipped, reason: reason, people: people})
+	if errors.Is(err, ErrNotPremium) || errors.Is(err, ErrNotesOff) {
+		return nil
+	}
+	return err
+}
+
+// AddNotePerson adds a guest to the line's meeting being recorded now, if any.
+func (s *Store) AddNotePerson(lineName, name string) error {
+	var id int64
+	var raw string
+	err := s.db.QueryRow(`SELECT n.id, n.people FROM note n JOIN line l ON l.id = n.line_id
+		WHERE l.name = ? AND n.kind = 'room' AND n.status = 'waiting' ORDER BY n.id DESC LIMIT 1`, lineName).Scan(&id, &raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var people []string
+	if raw != "" {
+		if err := json.Unmarshal([]byte(raw), &people); err != nil {
+			return err
+		}
+	}
+	if len(people) >= maxNotePeople || slices.Contains(people, name) {
+		return nil
+	}
+	b, err := json.Marshal(append(people, name))
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec("UPDATE note SET people = ? WHERE id = ?", string(b), id)
 	return err
 }
 

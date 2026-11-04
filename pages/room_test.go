@@ -37,3 +37,21 @@ func TestRoomRenders(t *testing.T) {
 		}
 	}
 }
+
+// Only the host's browser records: guests get no recorder.
+func TestRoomRecorderIsTheHosts(t *testing.T) {
+	l := sampleCallLine()
+	l.Notes, l.Language = true, "fr"
+	host := render(t, Room(l, true, "https://x/room/auberge"))
+	if !strings.Contains(host, "recorder.js") || !strings.Contains(host, `"notes":true`) || !strings.Contains(host, "data-rec-note") {
+		t.Error("the host's page doesn't record")
+	}
+	guest := render(t, Room(l, false, "https://x/room/auberge"))
+	if strings.Contains(guest, "recorder.js") || strings.Contains(guest, `"notes":true`) || strings.Contains(guest, "data-rec-note") {
+		t.Error("a guest's page records")
+	}
+	l.Notes = false
+	if strings.Contains(render(t, Room(l, true, "https://x/room/auberge")), `"notes":true`) {
+		t.Error("notes off: the host's page records")
+	}
+}

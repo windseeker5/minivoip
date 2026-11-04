@@ -463,22 +463,12 @@
 
   // Notes on: the call is recorded here, the owner on one channel and the caller
   // on the other. Whatever goes wrong with it, the call goes on (recorder.js).
-  var REC_WORDS = {
-    on: "Recording for your notes",
-    not_set_up: "Notes aren't set up yet, so this call isn't recorded.",
-    month_limit: "This month's 10 hours of notes are used, so this call isn't recorded.",
-    day_limit: "Too many notes today, so this call isn't recorded.",
-    stopped: "Recording stopped. Your call goes on.",
-  };
   function recNote(state) {
-    var n = $("[data-rec-note]"), words = REC_WORDS[state];
-    n.textContent = words || "";
-    n.hidden = !words;
-    n.classList.toggle("is-on", state === "on");
+    if (window.MinivoipRecorder) MinivoipRecorder.show($("[data-rec-note]"), state, "call");
   }
   function takeNotes() {
     if (root.dataset.notes !== "true" || recorder || !remote || !window.MinivoipRecorder) return;
-    recorder = MinivoipRecorder.start({ url: "/app/calls/" + encodeURIComponent(liveId) + "/recording", voices: [mic, remote], onState: recNote });
+    recorder = MinivoipRecorder.start({ url: "/app/calls/" + encodeURIComponent(liveId) + "/recording", voices: { owner: mic, caller: remote }, onState: recNote });
   }
 
   function endCall() {

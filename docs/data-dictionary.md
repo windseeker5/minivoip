@@ -193,7 +193,8 @@ Premium's written record of a call, a meeting room or a voicemail (`store/notes.
 | `next_try` | text (UTC) | When its turn comes. A call being recorded keeps pushing it 2 minutes ahead, so it waits for the last piece |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 | `done_at` | text (UTC), nullable | When it was finished or given up on |
-| `call_id` | text | The call it records (`call_log.call_id`); empty otherwise. A call has one note |
+| `call_id` | text | The call it records (`call_log.call_id`), or a meeting's own `room-…` id; empty otherwise. A call has one note |
+| `people` | text (JSON list of text) | A meeting's guests, as they named themselves at the door (at most 30); plain text, untrusted |
 | `parts`, `audio_size` | integer | How many pieces of a call's recording arrived, and how many bytes |
 | `voicemail_id` | integer, nullable → `voicemail.id` (delete sets null) | A voicemail's message. Deleting the message deletes the note (`DeleteVoicemail`); a message that expires after 90 days leaves its note |
 
@@ -227,3 +228,4 @@ How much audio each account's notes covered each day (UTC). Apart from `note`, s
 | 16 | 2026-11-04 | `note.voicemail_id` |
 | 17 | 2026-11-04 | `account.take_notes` (the "Take notes" switch, on) |
 | 18 | 2026-11-04 | `note.call_id`, `note.parts`, `note.audio_size` (a call's recording, in pieces) |
+| 19 | 2026-11-04 | `note.people` (who came to a meeting) |

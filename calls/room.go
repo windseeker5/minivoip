@@ -105,6 +105,9 @@ type Rooms struct {
 	// not block. Nil skips them.
 	OnWaiting func(line string, names []string)
 	OnKnock   func(line, name string)
+	// OnJoined says a guest came into the room. It runs with the rooms locked,
+	// so it must not block. Nil skips it.
+	OnJoined func(line, name string)
 	// AllowKnock says whether this guest's knock may wake the owner's phone
 	// (limits, web/limits.go); when not, the guest still waits. It runs
 	// with the rooms locked. Nil allows every knock.
@@ -162,6 +165,26 @@ func (rs *Rooms) People(line string) int {
 		return len(r.in)
 	}
 	return 0
+}
+
+// Meeting lists the guests in a line's room while its owner is there with them;
+// ok is false when no meeting is on.
+func (rs *Rooms) Meeting(line string) (guests []string, ok bool) {
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+	r := rs.rooms[line]
+	if r == nil {
+		return nil, false
+	}
+	host := false
+	for _, m := range r.in {
+		if m.Owner {
+			host = true
+		} else {
+			guests = append(guests, m.Name)
+		}
+	}
+	return guests, host && len(guests) > 0
 }
 
 func names(list []*member) []string {
@@ -318,6 +341,9 @@ func (rs *Rooms) admit(line string, r *room, me *member) {
 		if o != me {
 			o.send(RoomMessage{Type: "joined", Peer: &p})
 		}
+	}
+	if !me.Owner && rs.OnJoined != nil {
+		rs.OnJoined(line, me.Name)
 	}
 }
 

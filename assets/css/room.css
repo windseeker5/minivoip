@@ -70,6 +70,7 @@
 /* Notes are on: a quiet line with the recording's red dot. */
 .rm-notice { display: flex; align-items: baseline; gap: .5rem; margin: .25rem 0 0; color: var(--rm-muted); font-size: .8125rem; line-height: 1.4; text-wrap: pretty; }
 .rm-notice i { flex: none; width: .4375rem; height: .4375rem; border-radius: 50%; background: var(--rm-end); transform: translateY(-.0625rem); }
+.rm-rec-note { margin: .375rem 0 0; color: var(--rm-muted); font-size: .8125rem; line-height: 1.4; }
 .rm-note { margin: .25rem 0 0; color: var(--rm-muted); font-size: .875rem; line-height: 1.5; }
 .rm-waiting { display: flex; align-items: center; gap: .625rem; margin: 0; font-size: 1.125rem; font-weight: 600; }
 .rm-waiting i { width: .625rem; height: .625rem; border-radius: 50%; background: #f46422; animation: rm-pulse 1.4s ease-in-out infinite; }

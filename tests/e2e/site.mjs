@@ -1167,6 +1167,90 @@ try {
   await host.click('.rm-controls [data-action="leave"]');
   await host.close();
 
+  // Without keys, a meeting isn't recorded and its note says why.
+  step = "meeting note";
+  {
+    const envText = existsSync(".env") ? readFileSync(".env", "utf8") : "";
+    const hasKeys = /^ELEVENLABS_API_KEY=\S/m.test(envText) && /^ANTHROPIC_API_KEY=\S/m.test(envText);
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const meetings = db.prepare(`SELECT n.status, n.reason, n.audio, n.people FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'room' AND n.call_id <> ''`).all(LINE);
+    db.close();
+    check(meetings.length >= 1 && meetings[0].people.includes("Ana Roy"), `a meeting has a note, with who came (${meetings[0]?.people})`);
+    if (!hasKeys) check(meetings.every((m) => m.status === "skipped" && m.reason === "not_set_up" && m.audio === ""), "without keys it isn't recorded, and says so");
+  }
+
+  // A real room, its real sound: the upload is caught here, so it works with no
+  // keys. The host stays muted, so all that's recorded is the guests: Ana speaks,
+  // leaves (quiet), then Bo comes in late and speaks.
+  step = "meeting recording";
+  {
+    const parts = [];
+    let started = 0, done = 0;
+    const host2 = await owner.context().newPage();
+    host2.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
+    await host2.route(/\/room\/[^/]+\/recording/, (r) => { started++; r.fulfill({ json: { record: true, url: "/e2e-recording" } }); });
+    await host2.route(/\/e2e-recording\//, (r) => {
+      if (r.request().url().endsWith("/done")) done++;
+      else parts[Number(r.request().url().split("/").pop())] = r.request().postDataBuffer();
+      r.fulfill({ status: 204 });
+    });
+    await host2.goto(BASE + `/room/${LINE}`);
+    await host2.evaluate(() => { window.MinivoipRecorderSlice = 1500; });
+    await host2.click('.rm-toggle[data-action="pre-mute"]');
+    await host2.click('[data-show="lobby joining"] [data-action="join"]');
+    await host2.waitForSelector(".rm-in:visible", { timeout: 10000 });
+    await host2.waitForTimeout(800);
+    check(started === 0, "alone in the room, nothing is recorded");
+    const guestIn = async (name) => {
+      const p = await newPage(390, 844);
+      await p.goto(BASE + `/room/${LINE}`);
+      await p.fill("[data-name]", name);
+      await p.click('[data-action="join"]');
+      await host2.waitForSelector(`[data-door] >> text=${name} is waiting`, { timeout: 10000 });
+      await host2.click('[data-door] [data-action="admit"]');
+      await p.waitForSelector(".rm-in:visible", { timeout: 10000 });
+      await p.waitForFunction(() => window.minivoipRoomStats().then((s) => s.length && s[0].bytesIn > 500), null, { timeout: 15000 }).catch(() => {});
+      return p;
+    };
+    const ana2 = await guestIn("Ana Roy");
+    await host2.waitForFunction(() => document.querySelector("[data-rec-note]")?.classList.contains("is-on"), null, { timeout: 5000 });
+    check(started === 1 && /Recording for your notes/.test(await host2.textContent("[data-rec-note]")), "the first guest let in starts the recording, and the host sees it");
+    check((await ana2.locator("[data-rec-note]").count()) === 0 && /est enregistrée/.test(await ana2.textContent("[data-notice]:visible")), "a guest has no recorder, and reads that the meeting is recorded");
+    await host2.screenshot({ path: `${SHOTS}/room-recording.png` });
+    await ana2.waitForTimeout(5000);
+    await ana2.click('.rm-controls [data-action="leave"]');
+    await host2.waitForFunction(() => /just you/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+    await host2.waitForTimeout(6000);
+    check(started === 1 && done === 0, "a guest leaving doesn't end the recording right away");
+    const bo2 = await guestIn("Bo");
+    await bo2.waitForTimeout(5000);
+    check(started === 1, "someone coming in late joins the same recording");
+    await bo2.click('.rm-controls [data-action="leave"]');
+    await host2.waitForFunction(() => /just you/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+    await host2.click('.rm-controls [data-action="leave"]');
+    for (let i = 0; i < 50 && !done; i++) await host2.waitForTimeout(100);
+    check(done === 1 && parts.length >= 5 && parts.every(Boolean), `the host leaving ends it, and every piece came up (${parts.length})`);
+    const sound = await host2.evaluate(async (b64) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const audio = await new OfflineAudioContext(1, 48000, 48000).decodeAudioData(bytes.buffer);
+      const data = audio.getChannelData(0), levels = [];
+      for (let s = 0; s + 48000 <= data.length; s += 48000) {
+        let sum = 0;
+        for (let i = s; i < s + 48000; i++) sum += data[i] * data[i];
+        levels.push(Math.sqrt(sum / 48000));
+      }
+      return { channels: audio.numberOfChannels, levels };
+    }, Buffer.concat(parts).toString("base64"));
+    const loud = sound.levels.map((l) => l > 0.005);
+    const firstQuiet = loud.indexOf(false, loud.indexOf(true));
+    const backOn = loud.indexOf(true, firstQuiet);
+    const quietRun = backOn - firstQuiet;
+    check(sound.channels === 1 && loud.indexOf(true) !== -1, `everyone is mixed on one channel, and a guest is heard (${sound.levels.length} s)`);
+    check(firstQuiet !== -1 && quietRun >= 3 && backOn !== -1, `quiet once she left, then someone who came in late is heard too (${loud.map((x) => (x ? "#" : ".")).join("")})`);
+    for (const p of [ana2, bo2]) await p.context().close();
+    await host2.close();
+  }
+
   // Promo codes (admin) -----------------------------------------------------
   step = "admin only";
   await owner.goto(BASE + "/dashboard");

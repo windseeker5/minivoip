@@ -252,6 +252,10 @@ var migrations = []string{
 	ALTER TABLE note ADD COLUMN audio_size INTEGER NOT NULL DEFAULT 0;
 	CREATE UNIQUE INDEX note_call ON note(call_id) WHERE call_id <> '';
 	`,
+	// 19: who came to a meeting, as they named themselves at the door.
+	`
+	ALTER TABLE note ADD COLUMN people TEXT NOT NULL DEFAULT '';
+	`,
 }
 
 // Open opens (and creates or upgrades) the database file at path.

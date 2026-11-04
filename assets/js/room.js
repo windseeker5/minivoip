@@ -168,6 +168,36 @@
     meet.render();
   }
 
+  // ------------------------------------------------- notes, in the host's browser
+
+  // Notes on: the host's browser records the meeting from the first guest let in,
+  // everyone mixed together. With nobody left for a minute, the meeting is over.
+  var notes = null, noteVoices = {}, aloneTimer = null;
+  var ALONE_MS = 60000;
+  function recNote(state) {
+    MinivoipRecorder.show($("[data-rec-note]"), state, "meeting");
+  }
+  function followGuests() {
+    if (!room.isOwner || !room.notes || !window.MinivoipRecorder || !mic) return;
+    if (!Object.keys(peers).length) {
+      if (notes && !aloneTimer) aloneTimer = setTimeout(stopNotes, ALONE_MS);
+      return;
+    }
+    clearTimeout(aloneTimer);
+    aloneTimer = null;
+    if (!notes) {
+      var voices = { me: mic };
+      Object.keys(noteVoices).forEach(function (id) { voices[id] = noteVoices[id]; });
+      notes = MinivoipRecorder.start({ url: "/room/" + encodeURIComponent(room.line) + "/recording", voices: voices, mixed: true, onState: recNote });
+    }
+  }
+  function stopNotes() {
+    clearTimeout(aloneTimer);
+    aloneTimer = null;
+    if (notes) { notes.stop(); notes = null; }
+    if (window.MinivoipRecorder && room.notes && room.isOwner) recNote("");
+  }
+
   function peer(p, offerer) {
     if (!meet || peers[p.id]) return;
     var pc = new RTCPeerConnection(cfg);
@@ -178,8 +208,11 @@
     var link = meet.link(p.id, pc, { name: p.name, initials: p.owner ? room.initials : initials(p.name), logo: p.owner ? room.logo : "", fixedName: true, onAudio: function (stream) {
       audio.srcObject = stream;
       audio.play().catch(function () {});
+      noteVoices[p.id] = stream;
+      if (notes) notes.add(p.id, stream);
     } });
     peers[p.id] = { pc: pc, link: link, audio: audio, name: p.name, owner: p.owner };
+    followGuests();
     pc.onicecandidate = function (e) {
       if (e.candidate) send(p.id, { type: "ice", candidate: e.candidate.toJSON() });
     };
@@ -198,6 +231,9 @@
     var x = peers[id];
     if (!x) return;
     delete peers[id];
+    delete noteVoices[id];
+    if (notes) notes.remove(id);
+    followGuests();
     // Whatever the stage does, the connection closes.
     try { if (meet) meet.drop(id); } catch (e) {}
     x.pc.close();
@@ -280,10 +316,12 @@
 
   // stop ends everything on this side.
   function stop() {
+    stopNotes();
     var sock = ws;
     ws = null;
     if (sock) { sock.onclose = null; sock.close(); }
     Object.keys(peers).forEach(gone);
+    stopNotes(); // the guests' going must not start the minute
     if (meet) {
       muted = meet.muted;
       try { meet.end(); } catch (e) {}

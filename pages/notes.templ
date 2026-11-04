@@ -81,6 +81,14 @@ func noteLine(n store.Note) string {
 	return n.Summary
 }
 
+// notePeople names who came to a meeting, as they named themselves: "with Ana, Bo".
+func notePeople(n store.Note) string {
+	if len(n.People) == 0 {
+		return ""
+	}
+	return " · with " + strings.Join(n.People, ", ")
+}
+
 // noteLength is a recording's length, like 12:05, if it's known.
 func noteLength(n store.Note) string {
 	if n.Seconds <= 0 {
@@ -198,7 +206,7 @@ templ Notes(d NotesTab) {
 								</span>
 								<span class="min-w-0 flex-1">
 									<span class="flex flex-wrap items-baseline justify-between gap-x-3">
-										<span class="font-semibold">{ noteKindName(n.Kind) }</span>
+										<span class="min-w-0 wrap-anywhere"><span class="font-semibold">{ noteKindName(n.Kind) }</span><span class="text-sm text-muted-foreground" data-note-people>{ notePeople(n) }</span></span>
 										<span class="text-sm text-muted-foreground tabular-nums">{ when(n.CreatedAt) }</span>
 									</span>
 									<span class="mt-0.5 line-clamp-2 text-sm text-muted-foreground" data-note-line>{ noteLine(n) }</span>
@@ -235,7 +243,7 @@ templ NotePage(email string, n store.Note) {
 				Notes
 			</a>
 			<h1 class="mt-2 text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">{ noteKindName(n.Kind) }</h1>
-			<p class="mt-1 text-muted-foreground tabular-nums">{ when(n.CreatedAt) }{ noteLength(n) }</p>
+			<p class="mt-1 text-muted-foreground tabular-nums wrap-anywhere">{ when(n.CreatedAt) }{ noteLength(n) }{ notePeople(n) }</p>
 			if noteBusy(n) {
 				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>Being written. This takes a minute or two.</p>
 			} else if p := noteProblem(n); p != "" {

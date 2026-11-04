@@ -201,6 +201,11 @@ for the summary, and hours are counted only then.
   and a call has one note. Past the month's hours, the day's ceiling or without keys, nothing is recorded and the note says why.
   The note's turn comes when the app says the last piece is in, or 2 minutes after the last piece. If recording fails, the
   call goes on. Mute silences the owner's channel too. Audio is deleted once transcribed or given up on.
+- **Meetings** are recorded in the host's browser only, from the first guest let in, with everyone mixed on one sound
+  channel, so people coming and going are simply in it (the transcript says "Person 1", "Person 2"). Only the line's
+  logged-in owner can start one, while they and a guest are in the room (`Rooms.Meeting`). With nobody left for a minute the
+  recording ends, so an empty room costs nothing. The note keeps the names guests typed at the door (`note.people`), which
+  are shown as plain text and given to Claude as data.
 - **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing on every
   step of the call window, out loud before the menu (even a recorded one) and before the tone, written at the meeting room's
   door, in the room, and said to a guest pressing Join. In the account's language. A caller who presses a choice early

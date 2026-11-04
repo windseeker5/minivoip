@@ -13,6 +13,7 @@
   var seq = 0;        // bumps on every new call or hang-up, so old callbacks stop
   var ws, pc, mic, callId, choice, stopRing, timerIv, countIv, ac, recorder, vmToken, stopMeter, unsent, meet, link;
   var MAX_MESSAGE_MS = 120000;
+  var told = true;    // the caller has heard the whole notice, when notes are on
   var waveBars = $$("[data-wave] i"), liveBars = $$("[data-live] i"), recBars = $$("[data-rec-wave] i");
 
   // Showing a screen needs a computer (and a Premium line: Basic has no button).
@@ -150,7 +151,7 @@
   // Resolves when done, or after a time limit if the browser never says it
   // finished.
   var playing = null, voiceId = 0;
-  function say(text, recording, onp) {
+  function say(text, recording, onp, lang) {
     var id = ++voiceId;
     function tick(q) { if (id === voiceId && onp) onp(Math.min(1, q)); }
     if (recording) {
@@ -166,7 +167,7 @@
           finished = true;
           clearInterval(iv);
           playing = null;
-          say(text, "", onp).then(done);
+          say(text, "", onp, lang).then(done);
         };
         a.onloadedmetadata = function () {
           if (isFinite(a.duration)) setTimeout(finish, a.duration * 1000 + 1500);
@@ -183,7 +184,7 @@
       if (!window.speechSynthesis) return;
       speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-US";
+      u.lang = lang || "en-US";
       u.onstart = function () { began = Date.now(); };
       u.onboundary = function (e) { if (typeof e.charIndex === "number") at = e.charIndex / text.length; };
       u.onend = finish;
@@ -205,7 +206,9 @@
         if (s !== seq) return;
         var from = before / total, share = part.text.length / total;
         before += part.text.length;
-        return say(part.text, part.audio, function (q) { onp(from + share * q); });
+        return say(part.text, part.audio, function (q) { onp(from + share * q); }, part.lang).then(function () {
+          if (part.done && s === seq) part.done();
+        });
       });
     }, Promise.resolve());
   }
@@ -255,9 +258,16 @@
     menuStatus("Playing the menu");
     status("Playing " + line.business + "'s menu. You can pick a choice at any time.");
     var text = [line.greeting, line.menu].filter(Boolean).join(" ");
-    var lit = writeOut($("[data-words]"), text, lightChoice);
     var parts = line.greetingAudio ? [{ text: text, audio: line.greetingAudio }]
       : [{ text: line.greeting }, { text: line.menu }].filter(function (x) { return x.text; });
+    // Notes on: the caller hears so first, even before the owner's own recording.
+    told = !line.notice;
+    if (line.notice) {
+      parts.unshift({ text: line.notice.call, lang: line.notice.lang });
+      parts[0].done = function () { told = true; };
+      text = line.notice.call + " " + text;
+    }
+    var lit = writeOut($("[data-words]"), text, lightChoice);
     play(s, parts, function (p) { if (s === seq) { lit(p); lightWave(p); } }).then(function () {
       if (s === seq && phase === "menu") menuStatus("Pick a choice");
     });
@@ -309,8 +319,11 @@
   function ring(s, o) {
     menuStatus("Please hold…");
     var hold = o.say || "Please hold.";
-    var lit = writeOut($("[data-words]"), hold);
-    var spoken = say(hold, o.sayAudio, function (p) { if (s === seq) { lit(p); lightWave(p); } });
+    // A choice pressed during the notice doesn't skip it.
+    var parts = told ? [] : [{ text: line.notice.call, lang: line.notice.lang }];
+    parts.push({ text: hold, audio: o.sayAudio });
+    var lit = writeOut($("[data-words]"), parts.map(function (x) { return x.text; }).join(" "));
+    var spoken = play(s, parts, function (p) { if (s === seq) { lit(p); lightWave(p); } });
     // Asked from the key press itself: some browsers only show the microphone prompt during a tap.
     getMic().then(function (stream) {
       if (s !== seq) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
@@ -411,9 +424,13 @@
     $("[data-rec-bar]").style.width = "0";
     recBars.forEach(function (b) { b.classList.remove("on"); });
     buttons(false);
-    status(prompt);
-    var lit = writeOut($("[data-vm-words]"), prompt);
-    say(prompt, line.voicemailAudio, function (p) { if (s === seq) lit(p); }).then(function () {
+    // Notes on: said before the owner's words, so it's heard before the tone.
+    var parts = line.notice ? [{ text: line.notice.message, lang: line.notice.lang }] : [];
+    parts.push({ text: prompt, audio: line.voicemailAudio });
+    var words = parts.map(function (x) { return x.text; }).join(" ");
+    status(words);
+    var lit = writeOut($("[data-vm-words]"), words);
+    play(s, parts, function (p) { if (s === seq) lit(p); }).then(function () {
       if (s === seq) record(s);
     });
   }

@@ -85,10 +85,22 @@ func TestCallPreview(t *testing.T) {
 	for _, k := range []string{"5", "6", "7"} {
 		many.Options = append(many.Options, lines.Option{Key: k, Label: "Group bookings and special events", Action: lines.Play, Say: "Call us."})
 	}
+	french := sampleCallLine()
+	french.Notes, french.Language = true, "fr"
+	english := french
+	english.Language = "en"
+	recorded := french
+	recorded.GreetingAudio = "prompt-welcome.webm"
+	noRecording := french
+	noRecording.Options = []lines.Option{{Key: "1", Label: "Hours", Action: lines.Play, Say: "Open at nine."}}
 	files := map[string]string{
-		"call.html":      render(t, Call(sampleCallLine(), 30, true)),
-		"call-one.html":  render(t, Call(one, 30, true)),
-		"call-many.html": render(t, Call(many, 30, true)),
+		"call.html":            render(t, Call(sampleCallLine(), 30, true)),
+		"call-one.html":        render(t, Call(one, 30, true)),
+		"call-many.html":       render(t, Call(many, 30, true)),
+		"call-notes.html":      render(t, Call(french, 30, true)),
+		"call-notes-en.html":   render(t, Call(english, 30, true)),
+		"call-notes-rec.html":  render(t, Call(recorded, 30, true)),
+		"call-notes-none.html": render(t, Call(noRecording, 30, true)),
 	}
 	for name, page := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(page), 0o644); err != nil {
@@ -135,6 +147,80 @@ func TestLogoShows(t *testing.T) {
 	}
 	if !strings.Contains(render(t, NewLine("marie@example.com", LineForm{Host: "x"})), `name="logo"`) {
 		t.Error("creating a line doesn't ask for the logo")
+	}
+}
+
+// Notes on: every step of the call says so, in the account's language. Off, or
+// on Basic: not a word.
+func TestCallSaysNotesAreOn(t *testing.T) {
+	l := sampleCallLine()
+	quiet := render(t, Call(l, 30, true))
+	if strings.Contains(quiet, "data-notice") || strings.Contains(quiet, `"notice"`) {
+		t.Error("notes off: a caller is told about them")
+	}
+	l.Notes, l.Language = true, "fr"
+	page := render(t, Call(l, 30, true))
+	for _, want := range []string{
+		`lang="fr-CA"`,
+		"Votre conversation ou votre message sera enregistré et résumé automatiquement pour Auberge des Pins.",
+		"Cet appel est enregistré et résumé automatiquement pour Auberge des Pins.",
+		"Votre message sera enregistré et résumé automatiquement pour Auberge des Pins.",
+		`"notice":{"lang":"fr-CA"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("French: missing %q", want)
+		}
+	}
+	for _, view := range []string{`data-show="idle"`, `data-show="menu"`, `data-show="ringing connecting"`, `data-show="talking"`, `data-show="voicemail recording sending"`} {
+		rest := page[strings.Index(page, view):]
+		rest = rest[:strings.Index(rest, "</section>")]
+		if !strings.Contains(rest, "data-notice") {
+			t.Errorf("%s doesn't say notes are on", view)
+		}
+	}
+	l.Language = "en"
+	page = render(t, Call(l, 30, true))
+	for _, want := range []string{`lang="en-US"`, "Your conversation or message will be recorded", "This call is being recorded", "Your message will be recorded"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("English: missing %q", want)
+		}
+	}
+	if strings.Contains(page, "enregistré") {
+		t.Error("English: French words")
+	}
+	// A menu that only plays messages records nothing, so it says nothing.
+	l.Options = []lines.Option{{Key: "1", Label: "Hours", Action: lines.Play, Say: "Open at nine."}}
+	if page = render(t, Call(l, 30, true)); strings.Contains(page, "data-notice") || strings.Contains(page, `"notice"`) {
+		t.Error("nothing recorded: a caller is told otherwise")
+	}
+	// The owner sees it too, under What callers hear.
+	l = sampleCallLine()
+	l.Notes, l.Language = true, "fr"
+	if hear := render(t, MenuEditor("marie@example.com", l)); !strings.Contains(hear, "data-notes-told") || !strings.Contains(hear, `data-notice="Votre conversation`) {
+		t.Error("What callers hear doesn't say callers are told first")
+	}
+}
+
+func TestRoomSaysNotesAreOn(t *testing.T) {
+	l := sampleCallLine()
+	if room := render(t, Room(l, false, "https://x/room/auberge")); strings.Contains(room, "data-notice") {
+		t.Error("notes off: a guest is told about them")
+	}
+	l.Notes, l.Language = true, "fr"
+	guest := render(t, Room(l, false, "https://x/room/auberge"))
+	for _, want := range []string{"Cette réunion sera enregistrée", "Cette réunion est enregistrée", `"notice":"Cette réunion sera`, `"noticeLang":"fr-CA"`} {
+		if !strings.Contains(guest, want) {
+			t.Errorf("guest: missing %q", want)
+		}
+	}
+	host := render(t, Room(l, true, "https://x/room/auberge"))
+	if !strings.Contains(host, "Cette réunion sera enregistrée") || strings.Contains(host, `"notice":`) {
+		t.Error("the host reads it, and isn't told out loud")
+	}
+	// The room's words don't depend on the menu.
+	l.Options = nil
+	if !strings.Contains(render(t, Room(l, false, "https://x/room/auberge")), "Cette réunion sera") {
+		t.Error("a line with no menu still has a room that records")
 	}
 }
 

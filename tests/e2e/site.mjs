@@ -701,10 +701,11 @@ try {
   await owner.goto(BASE + "/app?relay=1");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await caller.goto(BASE + `/call/${LINE}?relay=1`);
+  check(/enregistré/.test(await caller.textContent("[data-notice]:visible")), "a Premium line's call page says notes are on, in French");
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
-  await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 30000 });
   await owner.click('[data-action="accept"]');
   const relayed = await caller.waitForSelector("text=On the line with E2E Shop", { timeout: 20000 }).then(() => true, () => false);
   check(relayed, "a call connects through the relay (TURN)");
@@ -742,7 +743,7 @@ try {
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
-  await owner.waitForSelector('[data-action="decline"]:visible', { timeout: 15000 });
+  await owner.waitForSelector('[data-action="decline"]:visible', { timeout: 30000 });
   const beforeDecline = pushes.length;
   await owner.click('[data-action="decline"]');
   await caller.waitForSelector('[data-action="send-message"]:enabled', { timeout: 20000 });
@@ -891,11 +892,15 @@ try {
     await owner.goto(BASE + "/dashboard/notes");
     await Promise.all([owner.waitForNavigation(), owner.click("#take-notes")]);
     check(!(await owner.isChecked("#take-notes")), "turning off Take notes stays off");
+    check(!(await (await owner.request.get(`${BASE}/call/${LINE}`)).text()).includes("data-notice"), "with Take notes off, callers aren't told about notes");
     const switchDB = new DatabaseSync(DB, { readOnly: true });
     check(switchDB.prepare("SELECT take_notes FROM account WHERE id = ?").get(account).take_notes === 0, "and the server has it");
     switchDB.close();
     await Promise.all([owner.waitForNavigation(), owner.click("#take-notes")]);
     check(await owner.isChecked("#take-notes"), "turning it back on stays on");
+    check((await (await owner.request.get(`${BASE}/call/${LINE}`)).text()).includes("data-notice"), "with it on, the call page tells them");
+    await owner.goto(BASE + "/dashboard/menu");
+    check(/callers first hear/.test(await owner.textContent("[data-notes-told]")), "What callers hear says callers are told first");
 
     // The voicemail's own note, from Messages, and back.
     await owner.goto(BASE + "/dashboard/voicemail");
@@ -1040,9 +1045,16 @@ try {
   const guest = await newPage(390, 844);
   await guest.goto(BASE + `/room/${LINE}`);
   check(!(await guest.isVisible("text=You're the host")), "a guest isn't the host");
+  check(/Cette réunion sera enregistrée/.test(await guest.textContent("[data-notice]:visible")), "the meeting room's door says notes are on, in the account's language");
+  await guest.evaluate(() => {
+    const speak = speechSynthesis.speak.bind(speechSynthesis);
+    speechSynthesis.speak = (u) => { window.__said = u.text; speak(u); };
+  });
   await guest.fill("[data-name]", "Ana Roy");
   await guest.click('[data-action="join"]');
   await guest.waitForSelector("text=Waiting for", { timeout: 10000 });
+  check(/Cette réunion sera enregistrée/.test(await guest.evaluate(() => window.__said)), "and says it out loud when a guest presses Join");
+  check(/Cette réunion sera enregistrée/.test(await guest.textContent("[data-notice]:visible")), "and while they wait");
   await guest.screenshot({ path: `${SHOTS}/room-waiting.png` });
   await owner.waitForSelector("[data-room-alert]:visible", { timeout: 5000 });
   check(/Ana Roy is waiting/.test(await owner.textContent("[data-room-alert]")), "the app says who is waiting in the meeting room");

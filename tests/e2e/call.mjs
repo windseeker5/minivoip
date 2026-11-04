@@ -4,7 +4,8 @@
 // Chromium with a fake call socket: the menu written out, a "play" answer, a
 // page to open, ringing, "Leave a message now", recording, start over, send,
 // a failed send and its retry, no answer, microphone blocked, phone, computer
-// and a phone zoomed to 200%. Nothing reaches a real phone. The real calls
+// and a phone zoomed to 200%. Lines taking notes: told in writing and out loud
+// on every path, before anything is recorded, in the account's language. Nothing reaches a real phone. The real calls
 // are in site.mjs.
 // Run from the repo root: node tests/e2e/call.mjs
 import { createRequire } from "node:module";
@@ -26,7 +27,8 @@ const cache = join(homedir(), ".cache/ms-playwright");
 const shell = readdirSync(cache).filter((d) => d.startsWith("chromium_headless_shell-")).sort().pop();
 
 const types = { ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".png": "image/png" };
-const pages = { "/call/auberge": "call.html", "/call/omt": "call-one.html", "/call/many": "call-many.html" };
+const pages = { "/call/auberge": "call.html", "/call/omt": "call-one.html", "/call/many": "call-many.html",
+  "/call/notes": "call-notes.html", "/call/notes-en": "call-notes-en.html", "/call/notes-rec": "call-notes-rec.html", "/call/notes-none": "call-notes-none.html" };
 const uploads = [];
 let vmStatus = 204;
 const server = createServer((req, res) => {
@@ -71,6 +73,7 @@ async function open(w, h, path, opts = {}) {
     Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
       speak(u) {
         cur = u;
+        (window.__said = window.__said || []).push({ text: u.text, lang: u.lang });
         if (u.onstart) u.onstart({});
         for (const m of u.text.matchAll(/\S+/g)) setTimeout(() => { if (cur === u && u.onboundary) u.onboundary({ charIndex: m.index }); }, m.index * 30);
         setTimeout(() => { if (cur === u) { cur = null; if (u.onend) u.onend({}); } }, u.text.length * 30 + 100);
@@ -306,6 +309,124 @@ for (const [name, w, h, scale] of [["many", 390, 844, 1], ["zoom", 195, 422, 2]]
   check(!(await clipped(page)).length, `${name}: Mute and Hang up fit (${await clipped(page)})`);
   await settle(page);
   await page.screenshot({ path: `${SHOTS}/call-${name}-talking.png`, fullPage: true });
+  await ctx.close();
+}
+
+// Notes on ------------------------------------------------------------------
+const said = (p) => p.evaluate(() => window.__said || []);
+const FR_CALL = "Votre conversation ou votre message sera enregistré";
+const FR_MESSAGE = "Votre message sera enregistré";
+{
+  const { page, ctx } = await open(1280, 860, "/call/auberge");
+  check((await page.locator("[data-notice]").count()) === 0, "notes off: no line about them");
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.waitForTimeout(300);
+  check(!(await said(page)).some((u) => /enregistr|recorded/.test(u.text)), "notes off: nothing said about them");
+  await ctx.close();
+}
+for (const [name, w, h] of [["phone", 390, 844], ["small", 320, 568], ["desk", 1280, 860]]) {
+  const { page, ctx } = await open(w, h, "/call/notes");
+  const shown = () => page.locator("[data-notice]:visible");
+  check((await shown().textContent()).includes(FR_CALL) && (await shown().getAttribute("lang")) === "fr-CA", `${name}: the start says so, in French, before Call is pressed`);
+  check(await overflow(page) <= 0 && !(await clipped(page)).length, `${name}: the start still fits (${await clipped(page)})`);
+  await settle(page);
+  await page.screenshot({ path: `${SHOTS}/call-notes-${name}-1-start.png` });
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.waitForTimeout(400);
+  const first = (await said(page))[0];
+  check(first && first.text.includes(FR_CALL) && first.lang === "fr-CA", `${name}: the first thing a caller hears is the notice, in a French voice`);
+  check((await page.textContent("[data-words]")).includes(FR_CALL), `${name}: and it's written out as it's said`);
+  check((await shown().textContent()).includes(FR_CALL), `${name}: the menu keeps the line in sight`);
+  check(await overflow(page) <= 0 && !(await clipped(page)).length, `${name}: the menu still fits (${await clipped(page)})`);
+  await settle(page);
+  await page.screenshot({ path: `${SHOTS}/call-notes-${name}-2-menu.png`, fullPage: true });
+  await ctx.close();
+}
+{
+  // A choice pressed during the notice doesn't skip it: it's said before the call.
+  const { page, sock, ctx } = await open(390, 844, "/call/notes");
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.click('[data-key="1"]');
+  await page.waitForTimeout(200);
+  const heard = await said(page);
+  check(heard.filter((u) => u.text.includes(FR_CALL)).length === 2, `pressing during the notice says it again in full (${heard.length} parts)`);
+  check(await state(page) === "menu" && !sock.sent.some((m) => m.type === "call"), "and the phone doesn't ring until it's said");
+  await waitState(page, "ringing");
+  check((await page.locator("[data-notice]:visible").textContent()).includes(FR_CALL), "ringing keeps the line in sight");
+  await settle(page);
+  await page.screenshot({ path: `${SHOTS}/call-notes-ringing.png` });
+  check(sock.sent.some((m) => m.type === "call"), "then it rings");
+  await page.evaluate(() => {
+    const r = document.querySelector("[data-call]");
+    r.dataset.state = "talking";
+    r.querySelectorAll("[data-show]").forEach((e) => (e.hidden = e.dataset.show.split(" ").indexOf("talking") === -1));
+  });
+  check((await page.locator("[data-notice]:visible").textContent()).includes("Cet appel est enregistré"), "on the call, it says the call is being recorded");
+  check(!(await clipped(page)).length, "and the buttons still fit");
+  await settle(page);
+  await page.screenshot({ path: `${SHOTS}/call-notes-talking.png`, fullPage: true });
+  await ctx.close();
+}
+{
+  // Heard all the way through: not said twice.
+  const { page, ctx } = await open(390, 844, "/call/notes");
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.waitForTimeout(FR_CALL.length * 30 + 3500);
+  await page.click('[data-key="1"]');
+  await waitState(page, "ringing");
+  check((await said(page)).filter((u) => u.text.includes(FR_CALL)).length === 1, "heard to the end, it isn't said again before the call");
+  await ctx.close();
+}
+{
+  // The voicemail path: said before the owner's words, and the tone comes after.
+  const { page, ctx } = await open(390, 844, "/call/notes");
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.click('[data-key="4"]');
+  await waitState(page, "voicemail");
+  check((await page.textContent("[data-vm-words]")).startsWith(FR_MESSAGE), "the voicemail step writes the notice first");
+  check((await page.locator("[data-notice]:visible").textContent()).includes(FR_MESSAGE), "and keeps the line in sight");
+  await settle(page);
+  await page.screenshot({ path: `${SHOTS}/call-notes-voicemail.png` });
+  check(await page.getAttribute('[data-action="send-message"]', "disabled") !== null, "nothing is recording yet");
+  await waitState(page, "recording");
+  const parts = (await said(page)).map((u) => u.text);
+  const told = parts.findIndex((t) => t.startsWith(FR_MESSAGE));
+  check(told !== -1 && told === parts.length - 2, `the notice is said just before the owner's words, then the tone (${parts.length} parts)`);
+  check((await page.locator("[data-notice]:visible").textContent()).includes(FR_MESSAGE), "recording keeps the line in sight");
+  await ctx.close();
+}
+{
+  // The owner's own recorded welcome: the notice comes before it.
+  const { page, ctx } = await open(390, 844, "/call/notes-rec");
+  const asked = [];
+  page.on("request", (r) => { if (r.url().includes("/prompt/")) asked.push(r.url()); });
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.waitForTimeout(300);
+  const before = await said(page);
+  check(before.length === 1 && before[0].text.includes(FR_CALL) && asked.length === 0, "with a recorded welcome, the notice plays first");
+  await page.waitForTimeout(FR_CALL.length * 30 + 3500);
+  check(asked.length > 0, "and the owner's recording comes after it");
+  await ctx.close();
+}
+{
+  const { page, ctx } = await open(390, 844, "/call/notes-en");
+  check((await page.locator("[data-notice]:visible").textContent()).includes("Your conversation or message will be recorded") && (await page.locator("[data-notice]:visible").getAttribute("lang")) === "en-US", "an English account says it in English");
+  await page.click('[data-action="call"]:visible');
+  await waitState(page, "menu");
+  await page.waitForTimeout(300);
+  const first = (await said(page))[0];
+  check(first.text.startsWith("Your conversation") && first.lang === "en-US", "in an English voice");
+  await ctx.close();
+}
+{
+  const { page, ctx } = await open(390, 844, "/call/notes-none");
+  check((await page.locator("[data-notice]").count()) === 0, "a menu that records nothing says nothing");
   await ctx.close();
 }
 

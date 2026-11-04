@@ -380,3 +380,26 @@ func TestNotesListHasNoTranscripts(t *testing.T) {
 		t.Fatalf("the page: %+v", one)
 	}
 }
+
+// A line knows if it takes notes, so its pages can say so.
+func TestLineKnowsAboutNotes(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	l, err := s.LineByName("joes")
+	if err != nil || !l.Notes || l.Language != "fr" {
+		t.Fatalf("Premium: %+v %v", l, err)
+	}
+	s.SetLanguage(u.AccountID, English)
+	if l, _ = s.LineForAccount(u.AccountID); l.Language != "en" {
+		t.Fatalf("English: %q", l.Language)
+	}
+	s.SetTakeNotes(u.AccountID, false)
+	if l, _ = s.LineByName("joes"); l.Notes {
+		t.Fatal("the switch is off")
+	}
+	s.SetTakeNotes(u.AccountID, true)
+	s.SetPlan(u.AccountID, Basic)
+	if l, _ = s.LineByName("joes"); l.Notes {
+		t.Fatal("Basic has no notes, whatever its switch says")
+	}
+}

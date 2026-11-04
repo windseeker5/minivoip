@@ -160,6 +160,10 @@ voice in the middle, B answers first, C like a text conversation).
   only), Whiteboard, Hang up. While a camera, a screen or the whiteboard is on, the stage (below) takes the place of
   the voice wave, the owner's name and the timer move to a small header, and on a computer the window grows to
   almost the whole screen.
+- **Notes on (2026-11-04):** a quiet line with the recording's red dot (`noticeLine`, `.cw-notice`) on every step from
+  the start to the call and the message, in the account's language; the words are in `lines.Notice`. The same words are
+  said first, before the owner's welcome, and written out with it. A choice pressed before the end doesn't skip them.
+  Before the tone the shorter message version is said. A menu that only plays messages records nothing and says nothing.
 - **Keys:** the number keys pick a choice (not with Ctrl, Alt or Cmd); Escape hangs up.
 
 ## Call button on a business's website (chosen 2026-10-27)

@@ -193,6 +193,12 @@ for the summary, and hours are counted only then.
 - **Voicemails** (`store.NoteVoicemail`, called after the upload): Premium only. Under 2 seconds gets no note, so
   silence costs nothing. A line's voicemails get 30 notes a day; after that the message says why it has none, so a robot
   can't use up the owner's hours or everyone's day. The message itself always arrives, and its audio stays.
+- **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing on every
+  step of the call window, out loud before the menu (even a recorded one) and before the tone, written at the meeting room's
+  door, in the room, and said to a guest pressing Join. In the account's language. A caller who presses a choice early
+  still hears it before the phone rings. It is told whether or not the keys are set: saying too much is the safe side.
+  There's no way to refuse but hanging up, or turning off "Take notes" as the owner. Not legal advice: the rules where
+  the business operates apply.
 - **The Notes tab** (`web/notes.go`, `pages/notes.templ`) is for the account's logged-in owner on Premium, checked on the
   server: someone else's note answers 404, and so does any note on Basic, whose tab shows only the Premium tag and how
   many notes are saved. Delete works on any plan. The "Take notes" switch is per account.

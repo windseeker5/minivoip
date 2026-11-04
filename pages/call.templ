@@ -25,6 +25,14 @@ type callData struct {
 	OwnerInitials string       `json:"ownerInitials"`  // the owner's face on the stage until their camera is on
 	Premium       bool         `json:"premium,omitempty"` // video, screens and the whiteboard; on Basic they're ignored
 	Logo          string       `json:"logo,omitempty"` // the business's logo, their face instead of the initials
+	Notice        *callNotice  `json:"notice,omitempty"` // said out loud before anything is recorded, when notes are on
+}
+
+// callNotice is what the browser's voice says when a line takes notes.
+type callNotice struct {
+	Lang    string `json:"lang"`
+	Call    string `json:"call"`
+	Message string `json:"message"`
 }
 
 type callOption struct {
@@ -46,6 +54,9 @@ func promptURL(name string) string {
 func newCallData(l lines.Line, ringSeconds int) callData {
 	d := callData{Line: l.Name, Business: l.Business, Owner: ownerName(l), Greeting: l.Greeting,
 		Premium: l.Premium, GreetingAudio: promptURL(l.GreetingAudio), Menu: l.Menu(), Voicemail: l.VoicemailWords(), VoicemailAudio: promptURL(l.VoicemailAudio), RingSeconds: ringSeconds, OwnerInitials: initials(ownerName(l)), Logo: logoURL(l)}
+	if n := l.Notice(); n.Call != "" {
+		d.Notice = &callNotice{Lang: n.Lang, Call: n.Call, Message: n.Message}
+	}
 	for _, o := range l.Options {
 		d.Options = append(d.Options, callOption{Key: o.Key, Label: o.Label, Action: string(o.Action), Say: o.Say, SayAudio: promptURL(o.SayAudio), URL: o.URL})
 	}
@@ -158,6 +169,13 @@ templ faceBadge(l lines.Line, name, class string) {
 	}
 }
 
+// noticeLine tells callers notes are on. Nothing is recorded before they've seen it.
+templ noticeLine(text, lang string) {
+	if text != "" {
+		<p class="cw-notice" lang={ lang } data-notice><i aria-hidden="true"></i>{ text }</p>
+	}
+}
+
 // callHead is the top of the window while a call is on.
 templ callHead(l lines.Line, status string, attrs templ.Attributes) {
 	<header class="cw-head">
@@ -181,6 +199,7 @@ templ callFoot() {
 // choice goes to voicemail). call.js keeps it up to date.
 templ Call(l lines.Line, ringSeconds int, here bool) {
 	{{ owner := ownerName(l) }}
+	{{ notice := l.Notice() }}
 	@layouts.Plain("Call " + l.Business) {
 		<link rel="stylesheet" href="/assets/css/fonts.css"/>
 		<link rel="stylesheet" href="/assets/css/callscreen.css"/>
@@ -219,6 +238,7 @@ templ Call(l lines.Line, ringSeconds int, here bool) {
 							<span class="cw-if-away">The menu answers, and you can leave a message.</span>
 						}
 					</p>
+					@noticeLine(notice.Call, notice.Lang)
 					@callFoot()
 				</section>
 				<section class="cw-view" data-show="menu" hidden aria-label="Menu">
@@ -251,6 +271,7 @@ templ Call(l lines.Line, ringSeconds int, here bool) {
 						<p>To allow it, tap the lock or settings icon next to the web address, then Microphone. On an iPhone: tap aA, then Website Settings.</p>
 						<button type="button" class="cw-link-btn" data-action="retry-mic">Try again</button>
 					</div>
+					@noticeLine(notice.Call, notice.Lang)
 					<button type="button" class="cw-btn is-quiet" data-action="hangup">
 						@iconHangup()
 						Hang up
@@ -268,6 +289,7 @@ templ Call(l lines.Line, ringSeconds int, here bool) {
 						<p>If { owner } can't answer, you can leave a message in <b data-ring-count></b>.</p>
 						<button type="button" class="cw-link-btn" data-action="leave-message">Leave a message now</button>
 					</div>
+					@noticeLine(notice.Call, notice.Lang)
 					<div class="cw-round-row">
 						<button type="button" class="cw-round is-end" data-action="hangup">
 							<span>
@@ -297,6 +319,7 @@ templ Call(l lines.Line, ringSeconds int, here bool) {
 					</div>
 					<div class="cw-stage" data-stage></div>
 					<p class="cw-meet-note" data-meet-note role="status" hidden></p>
+					@noticeLine(notice.During, notice.Lang)
 					<div class={ "cw-round-row", templ.KV("is-meet", l.Premium) }>
 						<button type="button" class="cw-round" data-action="mute" aria-pressed="false">
 							<span>
@@ -352,6 +375,7 @@ templ Call(l lines.Line, ringSeconds int, here bool) {
 							<div class="cw-meter" aria-hidden="true"><span data-rec-bar></span></div>
 						</div>
 						<p class="cw-rec-tip">Say your name and phone number so { owner } can call you back.</p>
+						@noticeLine(notice.Message, notice.Lang)
 					</div>
 					<button type="button" class="cw-btn is-primary" data-action="send-message" disabled>Send my message</button>
 					<button type="button" class="cw-btn is-plain" data-action="restart-message" disabled>Start over</button>

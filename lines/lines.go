@@ -75,6 +75,58 @@ type Line struct {
 	// Premium: the owner's account is on Premium, so calls offer video,
 	// screen sharing and the whiteboard, and the line has a meeting room.
 	Premium bool
+	// Notes: the account is on Premium with "Take notes" on, so callers and guests
+	// are told before anything is recorded. Language is the account's: fr or en.
+	Notes    bool
+	Language string
+}
+
+// Notice is what callers and guests are told when a line takes notes, in the
+// account's language. Callers hear Call and Message said out loud as well.
+type Notice struct {
+	Lang       string // what a browser's voice and screen readers need
+	Call       string // before the call: the menu itself isn't recorded
+	During     string // on the call
+	Message    string // before the tone
+	Room       string // at the meeting room's door
+	RoomDuring string // in the room
+}
+
+// Notice is empty when notes are off. A menu that neither rings the owner nor
+// takes a message records nothing, so only the room's words are set.
+func (l Line) Notice() Notice {
+	if !l.Notes {
+		return Notice{}
+	}
+	n := Notice{Lang: "fr-CA",
+		Call:       "Votre conversation ou votre message sera enregistré et résumé automatiquement pour " + l.Business + ".",
+		During:     "Cet appel est enregistré et résumé automatiquement pour " + l.Business + ".",
+		Message:    "Votre message sera enregistré et résumé automatiquement pour " + l.Business + ".",
+		Room:       "Cette réunion sera enregistrée et résumée automatiquement pour " + l.Business + ".",
+		RoomDuring: "Cette réunion est enregistrée et résumée automatiquement pour " + l.Business + ".",
+	}
+	if l.Language == "en" {
+		n = Notice{Lang: "en-US",
+			Call:       "Your conversation or message will be recorded and summarized automatically for " + l.Business + ".",
+			During:     "This call is being recorded and summarized automatically for " + l.Business + ".",
+			Message:    "Your message will be recorded and summarized automatically for " + l.Business + ".",
+			Room:       "This meeting will be recorded and summarized automatically for " + l.Business + ".",
+			RoomDuring: "This meeting is being recorded and summarized automatically for " + l.Business + ".",
+		}
+	}
+	if !l.records() {
+		n.Call, n.During, n.Message = "", "", ""
+	}
+	return n
+}
+
+func (l Line) records() bool {
+	for _, o := range l.Options {
+		if o.Action == Ring || o.Action == Voicemail {
+			return true
+		}
+	}
+	return false
 }
 
 // Rings says whether a choice of the menu rings the owner's phones.

@@ -88,6 +88,7 @@
     $("[data-mic-help]").hidden = true;
     show("joining");
     status("Joining…");
+    tellGuest();
     var get = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
       ? navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       : Promise.reject(new Error("no microphone"));
@@ -99,6 +100,15 @@
       $("[data-mic-help]").hidden = false;
       status("Your browser blocked the microphone.");
     });
+  }
+
+  // Notes on: a guest hears so at the door, before anything can be recorded.
+  function tellGuest() {
+    if (!room.notice || !window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(room.notice);
+    u.lang = room.noticeLang;
+    speechSynthesis.speak(u);
   }
 
   function connect() {

@@ -87,6 +87,9 @@
 .cw-screen:not([data-here="true"]) .cw-presence i { background: #9a9aa0; }
 .cw-screen:not([data-here="true"]) .cw-dial-btn { background: var(--cw-bg); color: var(--cw-ink); box-shadow: inset 0 0 0 1.5px var(--cw-ink), 0 18px 36px -20px rgb(12 12 13 / .35); }
 .cw-note { max-width: 18rem; margin: 1.875rem auto 0; color: var(--cw-muted); font-size: .875rem; line-height: 1.5; text-align: center; text-wrap: pretty; }
+/* Notes are on: a quiet line with the recording's red dot. */
+.cw-notice { display: flex; align-items: baseline; gap: .5rem; max-width: 24rem; margin: .875rem auto 0; color: var(--cw-muted); font-size: .8125rem; line-height: 1.4; text-wrap: pretty; }
+.cw-notice i { flex: none; width: .4375rem; height: .4375rem; border-radius: 50%; background: var(--cw-end); transform: translateY(-.0625rem); }
 .cw-foot { margin: 1rem 0 0; color: var(--cw-muted); font-size: .8125rem; text-align: center; }
 .cw-foot a { color: inherit; text-underline-offset: 3px; }
 

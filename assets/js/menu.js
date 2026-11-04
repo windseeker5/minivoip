@@ -286,21 +286,35 @@
     speechSynthesis.speak(u);
   }
 
+  // tellFirst says what callers are told when notes are on, then goes on.
+  var previewTurn = 0;
+  function tellFirst(then) {
+    var turn = ++previewTurn;
+    if (!form.dataset.notice || !window.speechSynthesis) return then();
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(form.dataset.notice);
+    u.lang = form.dataset.noticeLang;
+    u.onend = u.onerror = function () { if (turn === previewTurn) then(); };
+    speechSynthesis.speak(u);
+  }
+
   // Plays the welcome the way callers will hear it: a recording replaces both
   // the greeting and the menu.
   function preview() {
     var note = form.querySelector("[data-preview-text]");
     var box = greeting.closest("[data-recorder]");
+    if (playing) playing.pause();
     if (box.querySelector('[name="greeting_audio"]').value) {
       note.textContent = "Playing your recorded welcome message.";
-      var a = box.querySelector("[data-rec-audio]");
-      a.currentTime = 0;
-      if (a.paused) toggle(box.querySelector("[data-rec-player]"));
+      tellFirst(function () {
+        var a = box.querySelector("[data-rec-audio]");
+        a.currentTime = 0;
+        if (a.paused) toggle(box.querySelector("[data-rec-player]"));
+      });
       return;
     }
-    if (playing) playing.pause();
     note.textContent = welcomeWords();
-    speak(note.textContent);
+    tellFirst(function () { speak(note.textContent); });
   }
 
   // ---------------------------------------------------------------- events

@@ -83,7 +83,7 @@ func main() {
 		writer.DaySeconds = int64(h) * 3600
 	}
 	if !writer.SetUp() {
-		fmt.Println("notes: not set up (ELEVENLABS_API_KEY and ANTHROPIC_API_KEY, see .env.example)")
+		fmt.Println("notes: not set up (ELEVENLABS_API_KEY and ANTHROPIC_API_KEY, or MINIVOIP_NOTES_LOCAL, see .env.example)")
 	}
 	site.OnNote = writer.Wake
 	site.RefuseNotes = writer.Refuse

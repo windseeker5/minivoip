@@ -189,6 +189,12 @@ for the summary, and hours are counted only then.
   `fallbacks: "default"`: a request its safety checks decline runs on the model Anthropic picks). About $0.10 an hour of audio.
 - **Keys** in `.env` (`ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, see `.env.example`; the Taskfile loads it). Without
   both, new notes are skipped and say so.
+- **The demo without keys** (`MINIVOIP_NOTES_LOCAL=1`, `notes/local.go`, `notes/whisper.py`; a key still wins over it). Transcripts:
+  faster-whisper on this machine's graphics card through `uv`, slower on the processor if the card can't; the audio stays here. It can't tell
+  voices apart, so a call's two channels still name who's who, but all of a meeting is one speaker. Summaries: the `claude` command on
+  Ken's Max login, with no tools, settings, memory or saved session, in an empty folder, with none of our secrets (`MINIVOIP_NOTES_CLAUDE` names
+  the program if `claude` is a wrapper). His plan isn't for serving customers, so this stays a demo: paying accounts need the keys. A used-up plan fails
+  the note like a service that's down. `node tests/e2e/notes-real.mjs` proves all of it with a real call and voicemail.
 - **Limits, checked before any money is spent:** 10 hours per account per month, 20 hours billed a day across all accounts
   (`MINIVOIP_NOTES_DAY_HOURS`; a call counts both channels here). A browser can't play a recording down: its size also says
   how long it can be, and what the service measures is charged afterwards, so one file overshoots at most once. A recording

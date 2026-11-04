@@ -58,19 +58,28 @@ A meeting's message also lists, between <people> tags, the names its guests type
 Plain text only, with no markdown.`
 }
 
-func (c *Claude) Summarize(ctx context.Context, lines []store.NoteLine, language store.Language, people []string) (Summary, error) {
-	// JSON writes the less-than sign as an escape, so a caller's words can't close a tag.
+// noteMessage is what Claude reads. JSON writes the less-than sign as an escape, so
+// a caller's words can't close a tag.
+func noteMessage(lines []store.NoteLine, people []string) (string, error) {
 	transcript, err := json.Marshal(lines)
 	if err != nil {
-		return Summary{}, err
+		return "", err
 	}
 	message := "<transcript>\n" + string(transcript) + "\n</transcript>"
 	if len(people) > 0 {
 		names, err := json.Marshal(people)
 		if err != nil {
-			return Summary{}, err
+			return "", err
 		}
 		message = "<people>\n" + string(names) + "\n</people>\n" + message
+	}
+	return message, nil
+}
+
+func (c *Claude) Summarize(ctx context.Context, lines []store.NoteLine, language store.Language, people []string) (Summary, error) {
+	message, err := noteMessage(lines, people)
+	if err != nil {
+		return Summary{}, err
 	}
 	body, err := json.Marshal(map[string]any{
 		"model":      claudeModel,

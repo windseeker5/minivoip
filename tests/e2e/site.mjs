@@ -62,6 +62,8 @@ const JOIN_CODE = `E2E-JOIN-${stamp.toUpperCase()}`;
   db.close();
 }
 const failures = [];
+// Whether the server's .env can write notes: both keys, or the demo's switch.
+const notesOn = (env) => /^MINIVOIP_NOTES_LOCAL=1$/m.test(env) || (/^ELEVENLABS_API_KEY=\S/m.test(env) && /^ANTHROPIC_API_KEY=\S/m.test(env));
 
 // A fake push service: the test subscribes it as one of the owner's phones,
 // keeps the notifications the server sends, and opens them with the phone's
@@ -733,7 +735,7 @@ try {
   // A Premium call: without keys it isn't recorded, and its note says why.
   if (relayed) {
     const notesFile = existsSync(".env") ? readFileSync(".env", "utf8") : "";
-    const keys = /^ELEVENLABS_API_KEY=\S/m.test(notesFile) && /^ANTHROPIC_API_KEY=\S/m.test(notesFile);
+    const keys = notesOn(notesFile);
     const db = new DatabaseSync(DB, { readOnly: true });
     const calls = db.prepare(`SELECT n.status, n.reason, n.audio, n.call_id AS id FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'call'`).all(LINE);
     db.close();
@@ -795,7 +797,7 @@ try {
     return rows;
   };
   const envFile = existsSync(".env") ? readFileSync(".env", "utf8") : "";
-  const notesSetUp = /^ELEVENLABS_API_KEY=\S/m.test(envFile) && /^ANTHROPIC_API_KEY=\S/m.test(envFile);
+  const notesSetUp = notesOn(envFile);
   const firstNotes = voicemailNotes();
   check(firstNotes.length === 2 && firstNotes.every((n) => n.kind === "voicemail" && n.language === "fr" && n.message), `each voicemail on a Premium line queues a note, in the account's language (${firstNotes.length})`);
   if (!notesSetUp) {
@@ -851,7 +853,7 @@ try {
       summary: "Marie Tremblay veut réserver une chambre pour trois nuits à partir du 14 décembre, pour deux adultes et un chien.\n\nLa chambre bleue est libre à 145 $ la nuit, et le chien est accepté. Marie attend une confirmation par courriel.",
       actions: JSON.stringify(["Réserver la chambre bleue du 14 au 17 décembre", "Envoyer la confirmation à Marie par courriel"]),
     });
-    db.prepare("INSERT INTO note_usage (account_id, day, seconds) VALUES (?, date('now'), 9000)").run(account);
+    db.prepare("INSERT INTO note_usage (account_id, day, seconds) VALUES (?, date('now'), 9000) ON CONFLICT (account_id, day) DO UPDATE SET seconds = 9000").run(account);
     db.close();
     await owner.goto(BASE + "/dashboard");
     check(!(await owner.isVisible('aside a[href="/dashboard/notes"] [data-premium-tag]')), "Premium's menu has no Premium tag on Notes");
@@ -1176,7 +1178,7 @@ try {
   step = "meeting note";
   {
     const envText = existsSync(".env") ? readFileSync(".env", "utf8") : "";
-    const hasKeys = /^ELEVENLABS_API_KEY=\S/m.test(envText) && /^ANTHROPIC_API_KEY=\S/m.test(envText);
+    const hasKeys = notesOn(envText);
     const db = new DatabaseSync(DB, { readOnly: true });
     const meetings = db.prepare(`SELECT n.status, n.reason, n.audio, n.people FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'room' AND n.call_id <> ''`).all(LINE);
     db.close();

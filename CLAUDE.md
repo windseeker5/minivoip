@@ -69,7 +69,7 @@ B&B and may become a SaaS.
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
   Passwords use bcrypt. The dev database is `data/minivoip.db` (gitignored).
 - `notes/`: Premium's notes from a saved recording: `worker.go` (one background worker, its queue the `note` table in
-  `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `claude.go` (summary and next actions; what
+  `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `local.go` + `whisper.py` (the demo without keys, `MINIVOIP_NOTES_LOCAL=1`: transcripts on this machine's graphics card, summaries through the Claude Code login), `claude.go` (summary and next actions; what
   callers say is data, never instructions). Go tests use fakes of both; see `docs/architecture.md` "Premium notes". A voicemail queues its note in
   `web/voicemail.go` (`store.NoteVoicemail`); a call's comes from the app's recorder, a meeting's from the host's browser (`assets/js/recorder.js`, `web/recording.go`). What callers are told when notes are on is `lines.Notice` (call window,
   meeting room, "What callers hear").
@@ -101,6 +101,7 @@ B&B and may become a SaaS.
   visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare
   layout, `layouts.Plain`. The dashboard pages (`dashShell`) use `layouts.Lean`: Base without htmx and the component bundle, since their components need no script. The app never links to the dashboard;
   logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
+- Notes for real: `node tests/e2e/notes-real.mjs` (a real call and voicemail with made-up French voices; needs notes on in `.env`).
 - Checking the app without the server: `node tests/e2e/app.mjs` renders it with sample calls
   (`TestAppPreview` in `pages/app_test.go`) and clicks through it headless with a fake call socket, at phone and
   computer width (screenshots `tests/e2e/shots/app-*.png`). Video, screens and the whiteboard in a call:

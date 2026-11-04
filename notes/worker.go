@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 
 	"minivoip/store"
@@ -313,15 +314,24 @@ func (w *Worker) tryAgain(ctx context.Context, n store.Note, reason string, err 
 }
 
 // FromEnv is the real services, for the keys that are set; a missing key leaves
-// its service nil, and new notes say they aren't set up yet.
+// its service nil, and new notes say they aren't set up yet. With
+// MINIVOIP_NOTES_LOCAL=1 a missing key means the demo's service instead (local.go),
+// if its command is on this machine.
 func FromEnv() (Transcriber, Summarizer) {
 	var t Transcriber
 	var s Summarizer
+	local := os.Getenv("MINIVOIP_NOTES_LOCAL") == "1"
 	if key := os.Getenv("ELEVENLABS_API_KEY"); key != "" {
 		t = &Scribe{Key: key}
+	} else if _, err := exec.LookPath("uv"); local && err == nil {
+		t = &Whisper{}
 	}
 	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
 		s = &Claude{Key: key}
+	} else if program := orDefault(os.Getenv("MINIVOIP_NOTES_CLAUDE"), "claude"); local {
+		if _, err := exec.LookPath(program); err == nil {
+			s = &ClaudeCode{Program: program}
+		}
 	}
 	return t, s
 }

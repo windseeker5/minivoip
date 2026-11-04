@@ -323,6 +323,14 @@ func (h *Hub) handle(name string, me *peer, m Message) {
 	}
 }
 
+// Answered says whether this is the line's call on right now, picked up.
+func (h *Hub) Answered(name, callID string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	c := h.line(name).current
+	return c != nil && c.id == callID && c.owner != nil
+}
+
 // Decline turns down a ringing call from outside the socket (the Android
 // app's ring screen). It reports whether that call was ringing.
 func (h *Hub) Decline(name, callID string) bool {

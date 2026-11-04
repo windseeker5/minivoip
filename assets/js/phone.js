@@ -9,7 +9,7 @@
   if (!root) return;
   var $ = function (sel) { return root.querySelector(sel); };
 
-  var ws, pc, mic, ac, ringStop, timerIv, ringIv, meet, link;
+  var ws, pc, mic, ac, ringStop, timerIv, ringIv, meet, link, remote, recorder;
   var ringingId = null, liveId = null, wsDelay = 1000, offlineTimer = null;
   var wide = matchMedia("(min-width: 900px)");
   var android = window.MinivoipAndroid || null;
@@ -406,6 +406,7 @@
         meet = MinivoipMeet.Session({ video: root.dataset.premium === "true", askVideo: true, stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials, logo: root.dataset.meLogo }, mic: mic, onChange: meetChanged });
         link = meet.link(id, pc, { name: "Caller", fixedName: true, onAudio: function (stream) {
           var el = $("[data-remote]");
+          remote = stream;
           el.srcObject = stream;
           el.play().catch(function () {});
         } });
@@ -457,9 +458,33 @@
     timerIv = setInterval(function () {
       $("[data-timer]").textContent = mmss((Date.now() - start) / 1000);
     }, 500);
+    takeNotes();
+  }
+
+  // Notes on: the call is recorded here, the owner on one channel and the caller
+  // on the other. Whatever goes wrong with it, the call goes on (recorder.js).
+  var REC_WORDS = {
+    on: "Recording for your notes",
+    not_set_up: "Notes aren't set up yet, so this call isn't recorded.",
+    month_limit: "This month's 10 hours of notes are used, so this call isn't recorded.",
+    day_limit: "Too many notes today, so this call isn't recorded.",
+    stopped: "Recording stopped. Your call goes on.",
+  };
+  function recNote(state) {
+    var n = $("[data-rec-note]"), words = REC_WORDS[state];
+    n.textContent = words || "";
+    n.hidden = !words;
+    n.classList.toggle("is-on", state === "on");
+  }
+  function takeNotes() {
+    if (root.dataset.notes !== "true" || recorder || !remote || !window.MinivoipRecorder) return;
+    recorder = MinivoipRecorder.start({ url: "/app/calls/" + encodeURIComponent(liveId) + "/recording", voices: [mic, remote], onState: recNote });
   }
 
   function endCall() {
+    if (recorder) { recorder.stop(); recorder = null; }
+    remote = null;
+    recNote("");
     clearInterval(timerIv);
     $("[data-timer]").textContent = "";
     $('[data-action="mute"]').setAttribute("aria-pressed", "false");

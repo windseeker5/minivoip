@@ -110,10 +110,13 @@ func hoursUsed(seconds int64) string {
 	return strconv.FormatFloat(math.Round(h*10)/10, 'f', -1, 64) + " hours"
 }
 
-// speakerName turns the service's label into words: a voicemail has one voice,
-// the others "Person 1", "Person 2".
+// speakerName turns a label into words: a call knows who is who, a voicemail has
+// one voice, the others "Person 1", "Person 2".
 func speakerName(k store.NoteKind, speaker string) string {
-	if k == store.NoteVoicemail {
+	switch {
+	case speaker == store.SpeakerOwner:
+		return "You"
+	case speaker == store.SpeakerCaller || k == store.NoteVoicemail:
 		return "Caller"
 	}
 	if n, err := strconv.Atoi(strings.TrimPrefix(speaker, "speaker_")); err == nil {

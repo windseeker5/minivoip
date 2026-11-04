@@ -49,9 +49,11 @@ B&B and may become a SaaS.
 
 - **One Go program** serves everything: pages, the phone app, `w.js`, the API, call setup (WebSockets), push sending
   and the built-in TURN relay (`pion/turn`). Database is one SQLite file (`modernc.org/sqlite`, pure Go, no cgo).
-- **The server never handles audio for web calls.** The voice menu and voicemail recording run in the visitor's
+- **The server never handles live audio for web calls.** The voice menu and voicemail recording run in the visitor's
   browser, and the call itself is direct WebRTC between visitor and phone app. The server only passes setup messages.
-  Don't add server-side audio for web calls; that is reserved for the later SIP steps.
+  Don't add live server-side audio for web calls; that is reserved for the later SIP steps. When Premium notes are on,
+  recordings are made in the owner's browser and uploaded in pieces (`assets/js/recorder.js`, `web/recording.go`), kept
+  only until they're transcribed.
 - **Pages** are templ + shadcn-templ (components are copied into the project) + Tailwind v4 standalone (no Node).
   Plain JavaScript for dynamic bits; htmx only if it clearly helps. Reuse a shadcn-templ component before writing one.
 - Secrets (VAPID keys, etc.) go in `.env`, never in git; ship a `.env.example`.
@@ -69,7 +71,7 @@ B&B and may become a SaaS.
 - `notes/`: Premium's notes from a saved recording: `worker.go` (one background worker, its queue the `note` table in
   `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `claude.go` (summary and next actions; what
   callers say is data, never instructions). Go tests use fakes of both; see `docs/architecture.md` "Premium notes". A voicemail queues its note in
-  `web/voicemail.go` (`store.NoteVoicemail`). What callers are told when notes are on is `lines.Notice` (call window,
+  `web/voicemail.go` (`store.NoteVoicemail`); a call's comes from the app's recorder, `assets/js/recorder.js` and `web/recording.go`. What callers are told when notes are on is `lines.Notice` (call window,
   meeting room, "What callers hear").
 - `lines/`: the Line/Option types, menu actions (ring, play, link, voicemail), the spoken menu text and line-name
   rules. `choicePhrase` is mirrored in `assets/js/dashboard.js`.

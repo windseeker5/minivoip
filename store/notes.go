@@ -1,13 +1,16 @@
 package store
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Notes are Premium's written record of a call, a meeting room or a voicemail:
@@ -73,6 +76,12 @@ var (
 	ErrNotesOff   = errors.New("this account's Take notes switch is off")
 )
 
+// A call's speakers are known, each on a sound channel of its own.
+const (
+	SpeakerOwner  = "owner"
+	SpeakerCaller = "caller"
+)
+
 // NoteLine is one speaker's turn in a transcript, kept word for word as spoken.
 type NoteLine struct {
 	Speaker string  `json:"speaker"`
@@ -135,13 +144,26 @@ func scanNote(row interface{ Scan(...any) error }) (Note, error) {
 // seconds is its length as far as anyone knows yet. Only Premium accounts get
 // notes, and the note takes the account's language of the moment.
 func (s *Store) AddNote(lineName string, kind NoteKind, audio, audioType string, seconds int64) (int64, error) {
-	return s.addNote(lineName, kind, audio, audioType, seconds, nil, NoteWaiting, "")
+	return s.addNote(lineName, newNote{kind: kind, audio: audio, audioType: audioType, seconds: seconds, status: NoteWaiting})
 }
 
-func (s *Store) addNote(lineName string, kind NoteKind, audio, audioType string, seconds int64, voicemailID any, status NoteStatus, reason string) (int64, error) {
+// newNote is one note to add. wait holds its first try back, in seconds.
+type newNote struct {
+	kind      NoteKind
+	audio     string
+	audioType string
+	seconds   int64
+	voicemail any // its message's id, or nil
+	callID    string
+	status    NoteStatus
+	reason    string
+	wait      int
+}
+
+func (s *Store) addNote(lineName string, n newNote) (int64, error) {
 	// Only a note closed from the start has no recording.
-	if (audio != "" || status == NoteWaiting) && !filepath.IsLocal(audio) {
-		return 0, fmt.Errorf("note audio outside the data folder: %q", audio)
+	if (n.audio != "" || n.status == NoteWaiting) && !filepath.IsLocal(n.audio) {
+		return 0, fmt.Errorf("note audio outside the data folder: %q", n.audio)
 	}
 	var lineID, accountID int64
 	var plan Plan
@@ -161,8 +183,9 @@ func (s *Store) addNote(lineName string, kind NoteKind, audio, audioType string,
 	if !takeNotes {
 		return 0, ErrNotesOff
 	}
-	res, err := s.db.Exec("INSERT INTO note (account_id, line_id, kind, language, audio, audio_type, seconds, voicemail_id, status, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		accountID, lineID, kind, language, audio, audioType, seconds, voicemailID, status, reason)
+	res, err := s.db.Exec(`INSERT INTO note (account_id, line_id, kind, language, audio, audio_type, seconds, voicemail_id, call_id, status, reason, next_try)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
+		accountID, lineID, n.kind, language, n.audio, n.audioType, n.seconds, n.voicemail, n.callID, n.status, n.reason, fmt.Sprintf("+%d seconds", n.wait))
 	if err != nil {
 		return 0, err
 	}
@@ -194,11 +217,151 @@ func (s *Store) NoteVoicemail(v Voicemail) (bool, error) {
 	if today >= MaxVoicemailNotesPerDay {
 		audio, status, reason = "", NoteSkipped, NoteDayLimit
 	}
-	_, err = s.addNote(line, NoteVoicemail, audio, v.ContentType, v.Seconds(), v.ID, status, reason)
+	_, err = s.addNote(line, newNote{kind: NoteVoicemail, audio: audio, audioType: v.ContentType, seconds: v.Seconds(), voicemail: v.ID, status: status, reason: reason})
 	if errors.Is(err, ErrNotPremium) || errors.Is(err, ErrNotesOff) {
 		return false, nil
 	}
 	return err == nil, err
+}
+
+// A call's recording arrives in pieces from the owner's app (web/recording.go).
+const (
+	// MaxRecordingPiece caps one piece: 30 seconds, whatever the browser's format.
+	MaxRecordingPiece = 4 << 20
+	// MaxRecordingBytes caps one recording: about the month's 10 hours.
+	MaxRecordingBytes = 300 << 20
+	// MaxRecordingDisk caps every recording waiting to be written down.
+	MaxRecordingDisk = 20 << 30
+	// recordingGrace is how long, in seconds, a note waits for its next piece
+	// before it goes ahead with what it has: an app that crashed loses little.
+	recordingGrace = 120
+)
+
+var (
+	ErrRecordingStale = errors.New("this recording isn't taking pieces any more")
+	ErrRecordingFull  = errors.New("this recording is full")
+)
+
+func (s *Store) notesDir() string { return filepath.Join(s.Dir, "notes") }
+
+// StartRecording opens the note of a call being answered now, and says where
+// its pieces go. A call has one note, so a second start finds the first.
+func (s *Store) StartRecording(lineName, callID, audioType string) (Note, error) {
+	var disk int64
+	if err := s.db.QueryRow("SELECT COALESCE(sum(audio_size), 0) FROM note WHERE audio <> '' AND kind <> 'voicemail'").Scan(&disk); err != nil {
+		return Note{}, err
+	}
+	if disk >= MaxRecordingDisk {
+		return Note{}, ErrRecordingFull
+	}
+	if n, err := s.noteByCall(callID); err == nil {
+		return n, nil
+	} else if !errors.Is(err, ErrNotFound) {
+		return Note{}, err
+	}
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return Note{}, err
+	}
+	audio := filepath.Join(filepath.Base(s.notesDir()), "call-"+hex.EncodeToString(b)+extFor(audioType))
+	_, err := s.addNote(lineName, newNote{kind: NoteCall, audio: audio, audioType: audioType, callID: callID, status: NoteWaiting, wait: recordingGrace})
+	if err != nil {
+		return Note{}, err
+	}
+	return s.noteByCall(callID)
+}
+
+// SkipCallNote leaves a note saying why a call isn't being recorded.
+func (s *Store) SkipCallNote(lineName, callID, reason string) error {
+	if _, err := s.noteByCall(callID); err == nil {
+		return nil
+	} else if !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	_, err := s.addNote(lineName, newNote{kind: NoteCall, callID: callID, status: NoteSkipped, reason: reason})
+	if errors.Is(err, ErrNotPremium) || errors.Is(err, ErrNotesOff) {
+		return nil
+	}
+	return err
+}
+
+func (s *Store) noteByCall(callID string) (Note, error) {
+	n, err := scanNote(s.db.QueryRow("SELECT "+noteColumns+" FROM note WHERE call_id = ?", callID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Note{}, ErrNotFound
+	}
+	return n, err
+}
+
+// AppendRecording adds piece number part (from 0) to a call's recording. Pieces
+// come one at a time; one sent again after a lost answer is already in. A
+// recording past the account's month, its own size, or already being written
+// down takes no more, and the app stops.
+func (s *Store) AppendRecording(accountID int64, callID string, part int, data []byte) error {
+	s.recording.Lock()
+	defer s.recording.Unlock()
+	var id, size, month int64
+	var parts int
+	var audio string
+	var status NoteStatus
+	err := s.db.QueryRow(`SELECT id, parts, audio_size, audio, status,
+			CAST(strftime('%s', 'now') AS INTEGER) - CAST(strftime('%s', created_at) AS INTEGER)
+				+ (SELECT COALESCE(sum(u.seconds), 0) FROM note_usage u WHERE u.account_id = note.account_id AND u.day >= date('now', 'start of month'))
+		FROM note WHERE call_id = ? AND account_id = ?`, callID, accountID).Scan(&id, &parts, &size, &audio, &status, &month)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if status != NoteWaiting || audio == "" || part > parts {
+		return ErrRecordingStale
+	}
+	if part < parts {
+		return nil
+	}
+	if len(data) > MaxRecordingPiece || size+int64(len(data)) > MaxRecordingBytes || month > NoteMonthSeconds {
+		return ErrRecordingFull
+	}
+	if err := os.MkdirAll(s.notesDir(), 0o700); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(filepath.Join(s.Dir, audio), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`UPDATE note SET parts = parts + 1, audio_size = audio_size + ?,
+			seconds = CAST(strftime('%s', 'now') AS INTEGER) - CAST(strftime('%s', created_at) AS INTEGER),
+			next_try = datetime('now', ?)
+		WHERE id = ? AND status = 'waiting'`, len(data), fmt.Sprintf("+%d seconds", recordingGrace), id)
+	return err
+}
+
+// FinishRecording says the last piece is in: the note's turn comes now. A call
+// that ended before any piece arrived has nothing to say, and goes.
+func (s *Store) FinishRecording(accountID int64, callID string) error {
+	res, err := s.db.Exec("DELETE FROM note WHERE call_id = ? AND account_id = ? AND status = 'waiting' AND parts = 0", callID, accountID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		return nil
+	}
+	res, err = s.db.Exec("UPDATE note SET next_try = datetime('now') WHERE call_id = ? AND account_id = ? AND status = 'waiting'", callID, accountID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrRecordingStale
+	}
+	return nil
 }
 
 // ClaimNote takes the oldest note whose turn has come and marks it working.
@@ -411,6 +574,34 @@ func (s *Store) cleanupNotes() error {
 	for _, o := range list {
 		s.dropNoteAudio(o.kind, o.audio)
 	}
-	_, err = s.db.Exec("DELETE FROM note_usage WHERE day < date('now', ?)", fmt.Sprintf("-%d days", noteUsageDays))
-	return err
+	if _, err = s.db.Exec("DELETE FROM note_usage WHERE day < date('now', ?)", fmt.Sprintf("-%d days", noteUsageDays)); err != nil {
+		return err
+	}
+	return s.sweepRecordings()
+}
+
+// sweepRecordings deletes recordings no note points at (an account that went,
+// say), leaving a day for one being made.
+func (s *Store) sweepRecordings() error {
+	files, err := os.ReadDir(s.notesDir())
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		info, err := f.Info()
+		if err != nil || time.Since(info.ModTime()) < 24*time.Hour {
+			continue
+		}
+		var n int
+		if err := s.db.QueryRow("SELECT count(*) FROM note WHERE audio = ?", filepath.Join(filepath.Base(s.notesDir()), f.Name())).Scan(&n); err != nil {
+			return err
+		}
+		if n == 0 {
+			os.Remove(filepath.Join(s.notesDir(), f.Name()))
+		}
+	}
+	return nil
 }

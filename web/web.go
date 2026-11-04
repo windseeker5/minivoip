@@ -36,6 +36,9 @@ type Server struct {
 	OnVoicemail func(line string)
 	// OnNote runs when a note is queued, to wake the notes worker.
 	OnNote func()
+	// RefuseNotes says why a recording shouldn't start for an account, or "".
+	// Nil means notes aren't set up.
+	RefuseNotes func(accountID int64) string
 	// Push sends notifications to the owner's devices (nil in tests).
 	Push *push.Sender
 	// CallLine is the line behind the landing page's "Call us now" button.
@@ -115,6 +118,9 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
 	mux.Handle("POST /app/push/receipt", s.auth(s.pushReceipt))
 	mux.Handle("POST /app/calls/{id}/decline", s.auth(s.declineCall))
+	mux.Handle("POST /app/calls/{id}/recording", s.auth(s.recordingStart))
+	mux.Handle("POST /app/calls/{id}/recording/done", s.auth(s.recordingDone))
+	mux.Handle("POST /app/calls/{id}/recording/{part}", s.auth(s.recordingPiece))
 	mux.HandleFunc("GET /api/android/config", s.androidConfig)
 	mux.HandleFunc("GET /download/minivoip.apk", s.androidAPK)
 

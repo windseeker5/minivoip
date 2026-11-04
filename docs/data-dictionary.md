@@ -183,16 +183,18 @@ Premium's written record of a call, a meeting room or a voicemail (`store/notes.
 | `status` | text: `waiting`, `working`, `done`, `failed` or `skipped` | `waiting` includes a note between two tries. A server that stops leaves `working`, put back at the next start |
 | `reason` | text | Why it `failed` or was `skipped`: `not_set_up` (a key is missing), `not_premium`, `month_limit`, `day_limit` (everyone's day, or a line's 30 voicemail notes in a day), `silent` (nothing said), `no_audio`, `transcribe`, `summarize`. A `summarize` failure still has its transcript |
 | `language` | text: `fr` or `en` | What the summary and next actions are written in: the account's at the time. The transcript keeps the words as spoken |
-| `audio` | text | The recording, a path under the data folder; empty once transcribed or given up on. A call's or a room's file is deleted then; a voicemail's stays, it's the owner's message |
+| `audio` | text | The recording, a path under the data folder (`voicemail/…`, or `notes/…` for a call); empty once transcribed or given up on. A call's or a room's file is deleted then; a voicemail's stays, it's the owner's message |
 | `audio_type` | text | Its content type |
 | `seconds` | integer | The recording's length: first as told, then as the service measured it |
 | `transcript` | text (JSON list of `{speaker, start, text}`) | Who said what, word for word |
 | `summary` | text | One page at most (cut at 20,000 characters) |
 | `next_actions` | text (JSON list of text) | What the owner has to do (at most 30) |
 | `tries` | integer | Tries so far, 4 at most; a stop in the middle counts, so it can't spend money without end |
-| `next_try` | text (UTC) | When its turn comes |
+| `next_try` | text (UTC) | When its turn comes. A call being recorded keeps pushing it 2 minutes ahead, so it waits for the last piece |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 | `done_at` | text (UTC), nullable | When it was finished or given up on |
+| `call_id` | text | The call it records (`call_log.call_id`); empty otherwise. A call has one note |
+| `parts`, `audio_size` | integer | How many pieces of a call's recording arrived, and how many bytes |
 | `voicemail_id` | integer, nullable → `voicemail.id` (delete sets null) | A voicemail's message. Deleting the message deletes the note (`DeleteVoicemail`); a message that expires after 90 days leaves its note |
 
 ## note_usage
@@ -224,3 +226,4 @@ How much audio each account's notes covered each day (UTC). Apart from `note`, s
 | 15 | 2026-11-04 | `note`, `note_usage` (Premium notes and the hours they used) |
 | 16 | 2026-11-04 | `note.voicemail_id` |
 | 17 | 2026-11-04 | `account.take_notes` (the "Take notes" switch, on) |
+| 18 | 2026-11-04 | `note.call_id`, `note.parts`, `note.audio_size` (a call's recording, in pieces) |

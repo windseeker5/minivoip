@@ -12,8 +12,9 @@ A small business (example: Joe's B&B) signs up on our website, gets a line, inst
 |---|---|---|
 | Language | **Go** for everything (website, dashboard, call setup) | Light on RAM, one file to deploy, handles thousands of waiting phones easily. And the owner wants to learn Go. |
 | Web pages and components | **templ** + **shadcn-templ** + Tailwind v4 | shadcn look, the most popular Go option (see [research.md](research.md#web-components-for-go)) |
-| Voice during a call | **Direct between visitor and phone**; our server isn't in the middle | A connected call keeps working even if the home server or its internet goes down. No call recording needed. |
-| Voice menu and voicemail (web callers) | Run **in the visitor's browser** | So the server never handles audio |
+| Voice during a call | **Direct between visitor and phone**; our server isn't in the middle | A connected call keeps working even if the home server or its internet goes down. |
+| Voice menu and voicemail (web callers) | Run **in the visitor's browser** | So the server never handles live audio |
+| Recordings for Premium notes | Made **in the owner's browser**, uploaded in pieces, deleted once transcribed | Still no live audio on the server, and a failed recording can't touch the call. Only when notes are on, and callers are told first. |
 | Database | **SQLite** (one file) | No database server to run |
 | Real phone lines | **Not in the first version**; planned for later | See "Growing later" |
 | Container | **Later.** Develop locally first with auto-reload. | See [plan.md](plan.md) |
@@ -193,6 +194,13 @@ for the summary, and hours are counted only then.
 - **Voicemails** (`store.NoteVoicemail`, called after the upload): Premium only. Under 2 seconds gets no note, so
   silence costs nothing. A line's voicemails get 30 notes a day; after that the message says why it has none, so a robot
   can't use up the owner's hours or everyone's day. The message itself always arrives, and its audio stays.
+- **Calls** are recorded in the owner's app, never on the server's side of the call (`assets/js/recorder.js`, `web/recording.go`):
+  once answered, the owner's microphone on one sound channel and the caller's voice on the other, so the transcript says
+  who is who (Scribe bills each channel, so a call costs about twice a voicemail per hour). A piece goes up every 30
+  seconds, so a crash loses little. Only the line's logged-in owner can start one, only while that call is on (`Hub.Answered`),
+  and a call has one note. Past the month's hours, the day's ceiling or without keys, nothing is recorded and the note says why.
+  The note's turn comes when the app says the last piece is in, or 2 minutes after the last piece. If recording fails, the
+  call goes on. Mute silences the owner's channel too. Audio is deleted once transcribed or given up on.
 - **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing on every
   step of the call window, out loud before the menu (even a recorded one) and before the tone, written at the meeting room's
   door, in the room, and said to a guest pressing Join. In the account's language. A caller who presses a choice early

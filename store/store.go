@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	_ "modernc.org/sqlite"
 )
@@ -20,6 +21,8 @@ type Store struct {
 	db *sql.DB
 	// Dir is the folder holding the database; audio files go under it.
 	Dir string
+	// recording keeps pieces of recordings from landing in the wrong order.
+	recording sync.Mutex
 }
 
 // migrations run in order; PRAGMA user_version remembers how many ran.
@@ -241,6 +244,13 @@ var migrations = []string{
 	// 17: the "Take notes" switch, on unless the owner turns it off.
 	`
 	ALTER TABLE account ADD COLUMN take_notes INTEGER NOT NULL DEFAULT 1;
+	`,
+	// 18: a call's note and its recording as it arrives, piece by piece.
+	`
+	ALTER TABLE note ADD COLUMN call_id TEXT NOT NULL DEFAULT '';
+	ALTER TABLE note ADD COLUMN parts INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE note ADD COLUMN audio_size INTEGER NOT NULL DEFAULT 0;
+	CREATE UNIQUE INDEX note_call ON note(call_id) WHERE call_id <> '';
 	`,
 }
 

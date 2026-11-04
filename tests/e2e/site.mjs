@@ -725,6 +725,16 @@ try {
     await caller.click('[data-action="hangup"]:visible');
     await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   }
+  // A Premium call: without keys it isn't recorded, and its note says why.
+  if (relayed) {
+    const notesFile = existsSync(".env") ? readFileSync(".env", "utf8") : "";
+    const keys = /^ELEVENLABS_API_KEY=\S/m.test(notesFile) && /^ANTHROPIC_API_KEY=\S/m.test(notesFile);
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const calls = db.prepare(`SELECT n.status, n.reason, n.audio, n.call_id AS id FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'call'`).all(LINE);
+    db.close();
+    check(calls.length === 1 && calls[0].id, `an answered Premium call has one note (${calls.length})`);
+    if (!keys) check(calls[0]?.status === "skipped" && calls[0]?.reason === "not_set_up" && calls[0]?.audio === "", "without keys it isn't recorded, and says so");
+  }
   await owner.goto(BASE + "/app");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await caller.goto(BASE + `/call/${LINE}`);
@@ -775,7 +785,7 @@ try {
   step = "voicemail notes";
   const voicemailNotes = () => {
     const db = new DatabaseSync(DB, { readOnly: true });
-    const rows = db.prepare(`SELECT n.status, n.reason, n.kind, n.language, n.voicemail_id AS message FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? ORDER BY n.id`).all(LINE);
+    const rows = db.prepare(`SELECT n.status, n.reason, n.kind, n.language, n.voicemail_id AS message FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'voicemail' ORDER BY n.id`).all(LINE);
     db.close();
     return rows;
   };
@@ -1525,6 +1535,7 @@ try {
   const files = db.prepare(`SELECT v.file FROM voicemail v JOIN line l ON l.id = v.line_id
     JOIN account a ON a.id = l.account_id WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const f of files) rmSync(join(dirname(DB), "voicemail", f.file), { force: true });
+  for (const n of db.prepare("SELECT n.audio FROM note n JOIN account a ON a.id = n.account_id WHERE a.name LIKE 'e2e-%@example.com' AND n.audio LIKE 'notes/%'").all()) rmSync(join(dirname(DB), n.audio), { force: true });
   const prompts = db.prepare(`SELECT l.greeting_audio AS f FROM line l JOIN account a ON a.id = l.account_id
       WHERE a.name LIKE 'e2e-%@example.com'
     UNION SELECT l.voicemail_audio FROM line l JOIN account a ON a.id = l.account_id

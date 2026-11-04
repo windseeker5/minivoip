@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func notesAccount(t *testing.T, s *Store, email, line string) User {
@@ -401,5 +402,177 @@ func TestLineKnowsAboutNotes(t *testing.T) {
 	s.SetPlan(u.AccountID, Basic)
 	if l, _ = s.LineByName("joes"); l.Notes {
 		t.Fatal("Basic has no notes, whatever its switch says")
+	}
+}
+
+func TestRecordingInPieces(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	sue := notesAccount(t, s, "sue@example.com", "sues")
+	n, err := s.StartRecording("joes", "c1", "audio/webm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.Kind != NoteCall || n.Status != NoteWaiting || !strings.HasPrefix(n.Audio, "notes/call-") || !strings.HasSuffix(n.Audio, ".webm") {
+		t.Fatalf("note: %+v", n)
+	}
+	if again, err := s.StartRecording("joes", "c1", "audio/webm"); err != nil || again.ID != n.ID {
+		t.Fatalf("a call has one note: %+v %v", again, err)
+	}
+	// Its turn doesn't come while pieces are arriving.
+	if _, ok, _ := s.ClaimNote(); ok {
+		t.Fatal("claimed before the last piece")
+	}
+	if err := s.AppendRecording(u.AccountID, "c1", 0, []byte("one ")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AppendRecording(u.AccountID, "c1", 0, []byte("one ")); err != nil {
+		t.Fatalf("a piece sent again: %v", err)
+	}
+	if err := s.AppendRecording(u.AccountID, "c1", 5, []byte("x")); !errors.Is(err, ErrRecordingStale) {
+		t.Fatalf("a piece from the future: %v", err)
+	}
+	if err := s.AppendRecording(sue.AccountID, "c1", 1, []byte("x")); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("someone else's: %v", err)
+	}
+	if err := s.AppendRecording(u.AccountID, "no-such-call", 0, []byte("x")); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("no such call: %v", err)
+	}
+	if err := s.AppendRecording(u.AccountID, "c1", 1, []byte("two")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FinishRecording(sue.AccountID, "c1"); !errors.Is(err, ErrRecordingStale) {
+		t.Fatalf("someone else finishing: %v", err)
+	}
+	if err := s.FinishRecording(u.AccountID, "c1"); err != nil {
+		t.Fatal(err)
+	}
+	claimed, ok, err := s.ClaimNote()
+	if !ok || err != nil || claimed.ID != n.ID {
+		t.Fatalf("its turn: %+v %v %v", claimed, ok, err)
+	}
+	if b, _ := os.ReadFile(s.NoteAudioPath(claimed)); string(b) != "one two" {
+		t.Fatalf("the file: %q", b)
+	}
+	if err := s.AppendRecording(u.AccountID, "c1", 2, []byte("late")); !errors.Is(err, ErrRecordingStale) {
+		t.Fatalf("a piece after its turn: %v", err)
+	}
+	if err := s.SaveTranscript(claimed, []NoteLine{{Speaker: SpeakerOwner, Text: "Oui"}}, 9); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(s.Dir, claimed.Audio)); err == nil {
+		t.Fatal("the recording stayed after it was written down")
+	}
+}
+
+// An app that crashes never says it's done: the note goes ahead with what it has.
+func TestRecordingAfterACrash(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	s.StartRecording("joes", "c1", "audio/webm")
+	s.AppendRecording(u.AccountID, "c1", 0, []byte("sound"))
+	if _, ok, _ := s.ClaimNote(); ok {
+		t.Fatal("claimed too soon")
+	}
+	s.db.Exec("UPDATE note SET next_try = datetime('now', '-1 seconds')")
+	if n, ok, _ := s.ClaimNote(); !ok || n.Kind != NoteCall {
+		t.Fatalf("claim: %+v %v", n, ok)
+	}
+}
+
+// A call that ended before its first piece has nothing to say.
+func TestRecordingWithNoPieces(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	s.StartRecording("joes", "c1", "audio/webm")
+	if err := s.FinishRecording(u.AccountID, "c1"); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ := s.Notes(u.AccountID); len(list) != 0 {
+		t.Fatalf("notes: %+v", list)
+	}
+}
+
+func TestRecordingLimits(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	s.StartRecording("joes", "big", "audio/webm")
+	if err := s.AppendRecording(u.AccountID, "big", 0, make([]byte, MaxRecordingPiece+1)); !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("a piece too big: %v", err)
+	}
+	s.db.Exec("UPDATE note SET audio_size = ? WHERE call_id = 'big'", MaxRecordingBytes)
+	if err := s.AppendRecording(u.AccountID, "big", 0, []byte("x")); !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("a recording too big: %v", err)
+	}
+	s.db.Exec("UPDATE note SET audio_size = 0 WHERE call_id = 'big'")
+	s.ChargeNotes(u.AccountID, NoteMonthSeconds)
+	s.db.Exec("UPDATE note SET created_at = datetime('now', '-5 seconds') WHERE call_id = 'big'")
+	if err := s.AppendRecording(u.AccountID, "big", 0, []byte("x")); !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("past the month: %v", err)
+	}
+	s.db.Exec("UPDATE note SET audio_size = ? WHERE call_id = 'big'", int64(MaxRecordingDisk))
+	if _, err := s.StartRecording("joes", "next", "audio/webm"); !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("the disk's share: %v", err)
+	}
+	if _, err := s.StartRecording("nope", "c9", "audio/webm"); !errors.Is(err, ErrRecordingFull) {
+		t.Fatalf("disk first: %v", err)
+	}
+	s.db.Exec("UPDATE note SET audio_size = 0")
+	s.SetTakeNotes(u.AccountID, false)
+	if _, err := s.StartRecording("joes", "off", "audio/webm"); !errors.Is(err, ErrNotesOff) {
+		t.Fatalf("switch off: %v", err)
+	}
+	s.SetTakeNotes(u.AccountID, true)
+	s.SetPlan(u.AccountID, Basic)
+	if _, err := s.StartRecording("joes", "basic", "audio/webm"); !errors.Is(err, ErrNotPremium) {
+		t.Fatalf("Basic: %v", err)
+	}
+}
+
+func TestSkipCallNote(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	if err := s.SkipCallNote("joes", "c1", NoteNotSetUp); err != nil {
+		t.Fatal(err)
+	}
+	s.SkipCallNote("joes", "c1", NoteDayLimit)
+	list, _ := s.Notes(u.AccountID)
+	if len(list) != 1 || list[0].Status != NoteSkipped || list[0].Reason != NoteNotSetUp || list[0].Audio != "" {
+		t.Fatalf("notes: %+v", list)
+	}
+	s.SetPlan(u.AccountID, Basic)
+	if err := s.SkipCallNote("joes", "c2", NoteNotSetUp); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ = s.Notes(u.AccountID); len(list) != 1 {
+		t.Fatalf("Basic gets no note: %+v", list)
+	}
+}
+
+// A recording no note points at goes after a day, and one being made stays.
+func TestSweepRecordings(t *testing.T) {
+	s := open(t)
+	u := notesAccount(t, s, "joe@example.com", "joes")
+	n, _ := s.StartRecording("joes", "c1", "audio/webm")
+	s.AppendRecording(u.AccountID, "c1", 0, []byte("sound"))
+	mine := filepath.Join(s.Dir, n.Audio)
+	lost := filepath.Join(s.Dir, "notes", "call-lost.webm")
+	fresh := filepath.Join(s.Dir, "notes", "call-fresh.webm")
+	os.WriteFile(lost, []byte("x"), 0o600)
+	os.WriteFile(fresh, []byte("x"), 0o600)
+	old := time.Now().Add(-25 * time.Hour)
+	os.Chtimes(lost, old, old)
+	os.Chtimes(mine, old, old)
+	if err := s.Cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(lost); err == nil {
+		t.Error("a lost recording stayed")
+	}
+	if _, err := os.Stat(fresh); err != nil {
+		t.Error("a new one went")
+	}
+	if _, err := os.Stat(mine); err != nil {
+		t.Error("a note's recording went")
 	}
 }

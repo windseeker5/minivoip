@@ -11,6 +11,7 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -28,24 +29,34 @@ const (
 
 // Scribe is ElevenLabs' speech to text, with who said what. The language isn't
 // set: the service hears it, so the transcript keeps the words as spoken, even
-// when a caller speaks English to a French account.
+// when a caller speaks English to a French account. A recording with named
+// channels is written down channel by channel, each billed in full.
 type Scribe struct {
 	Key string
 	URL string // the real service unless a test sets it
 }
 
-type scribeAnswer struct {
-	AudioSeconds *float64 `json:"audio_duration_secs"`
-	Words        []struct {
-		Text    string   `json:"text"`
-		Type    string   `json:"type"` // word, spacing or audio_event
-		Start   *float64 `json:"start"`
-		End     *float64 `json:"end"`
-		Speaker string   `json:"speaker_id"`
-	} `json:"words"`
+type scribeWord struct {
+	Text    string   `json:"text"`
+	Type    string   `json:"type"` // word, spacing or audio_event
+	Start   *float64 `json:"start"`
+	End     *float64 `json:"end"`
+	Speaker string   `json:"speaker_id"`
+	Channel *int     `json:"channel_index"`
 }
 
-func (c *Scribe) Transcribe(ctx context.Context, file, contentType string) (Transcript, error) {
+type scribeAnswer struct {
+	AudioSeconds *float64     `json:"audio_duration_secs"`
+	Words        []scribeWord `json:"words"`
+	// With separate channels, one transcript per channel, if the service doesn't
+	// put them together as asked.
+	Transcripts []struct {
+		Channel *int         `json:"channel_index"`
+		Words   []scribeWord `json:"words"`
+	} `json:"transcripts"`
+}
+
+func (c *Scribe) Transcribe(ctx context.Context, file, contentType string, channels []string) (Transcript, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return Transcript{}, err
@@ -56,7 +67,7 @@ func (c *Scribe) Transcribe(ctx context.Context, file, contentType string) (Tran
 	body, send := io.Pipe()
 	form := multipart.NewWriter(send)
 	go func() {
-		send.CloseWithError(writeScribeForm(form, f, filepath.Base(file), contentType))
+		send.CloseWithError(writeScribeForm(form, f, filepath.Base(file), contentType, len(channels) > 0))
 	}()
 
 	url := c.URL
@@ -87,11 +98,17 @@ func (c *Scribe) Transcribe(ctx context.Context, file, contentType string) (Tran
 	if err := json.Unmarshal(answer, &a); err != nil {
 		return Transcript{}, fmt.Errorf("scribe: answer: %w", err)
 	}
-	return a.transcript(), nil
+	return a.transcript(channels), nil
 }
 
-func writeScribeForm(form *multipart.Writer, f io.Reader, name, contentType string) error {
-	for _, field := range [][2]string{{"model_id", scribeModel}, {"diarize", "true"}, {"timestamps_granularity", "word"}} {
+func writeScribeForm(form *multipart.Writer, f io.Reader, name, contentType string, channels bool) error {
+	fields := [][2]string{{"model_id", scribeModel}, {"timestamps_granularity", "word"}}
+	if channels {
+		fields = append(fields, [2]string{"use_multi_channel", "true"}, [2]string{"multichannel_output_style", "combined"})
+	} else {
+		fields = append(fields, [2]string{"diarize", "true"})
+	}
+	for _, field := range fields {
 		if err := form.WriteField(field[0], field[1]); err != nil {
 			return err
 		}
@@ -110,7 +127,20 @@ func writeScribeForm(form *multipart.Writer, f io.Reader, name, contentType stri
 }
 
 // transcript puts the words together, a new line each time someone else speaks.
-func (a scribeAnswer) transcript() Transcript {
+// channels names who is on each channel; without them the service's labels stay.
+func (a scribeAnswer) transcript(channels []string) Transcript {
+	words := a.Words
+	for _, ch := range a.Transcripts {
+		for _, w := range ch.Words {
+			if w.Channel == nil {
+				w.Channel = ch.Channel
+			}
+			words = append(words, w)
+		}
+	}
+	if len(a.Transcripts) > 0 {
+		sort.SliceStable(words, func(i, j int) bool { return wordStart(words[i]) < wordStart(words[j]) })
+	}
 	var t Transcript
 	var text strings.Builder
 	var last float64
@@ -120,29 +150,41 @@ func (a scribeAnswer) transcript() Transcript {
 		}
 		text.Reset()
 	}
-	for _, w := range a.Words {
+	for _, w := range words {
 		if w.End != nil {
 			last = max(last, *w.End)
 		}
 		switch w.Type {
 		case "word":
-			if len(t.Lines) == 0 || t.Lines[len(t.Lines)-1].Speaker != w.Speaker {
+			speaker := w.Speaker
+			if w.Channel != nil && *w.Channel >= 0 && *w.Channel < len(channels) {
+				speaker = channels[*w.Channel]
+			}
+			if len(t.Lines) == 0 || t.Lines[len(t.Lines)-1].Speaker != speaker {
 				flush()
-				line := store.NoteLine{Speaker: w.Speaker}
-				if w.Start != nil {
-					line.Start = *w.Start
-				}
-				t.Lines = append(t.Lines, line)
+				t.Lines = append(t.Lines, store.NoteLine{Speaker: speaker, Start: wordStart(w)})
+			} else if text.Len() > 0 && len(a.Transcripts) > 0 {
+				text.WriteString(" ") // channels put together lose their spacing
 			}
 			text.WriteString(w.Text)
 		case "spacing":
-			text.WriteString(w.Text)
+			if len(a.Transcripts) == 0 {
+				text.WriteString(w.Text)
+			}
 		}
 	}
 	flush()
-	if a.AudioSeconds != nil {
+	// With channels the service may add them up, so only the last word counts.
+	if a.AudioSeconds != nil && len(channels) == 0 {
 		last = *a.AudioSeconds
 	}
 	t.Seconds = int64(math.Ceil(last))
 	return t
+}
+
+func wordStart(w scribeWord) float64 {
+	if w.Start != nil {
+		return *w.Start
+	}
+	return 0
 }

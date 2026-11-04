@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"minivoip/lines"
+	"minivoip/store"
 )
 
 // sampleCallLine is an example business with one choice of each kind.
@@ -221,6 +222,25 @@ func TestRoomSaysNotesAreOn(t *testing.T) {
 	l.Options = nil
 	if !strings.Contains(render(t, Room(l, false, "https://x/room/auberge")), "Cette réunion sera") {
 		t.Error("a line with no menu still has a room that records")
+	}
+}
+
+// The Notes tab names a call's speakers.
+func TestSpeakerNames(t *testing.T) {
+	for _, c := range []struct {
+		kind    store.NoteKind
+		speaker string
+		want    string
+	}{
+		{store.NoteCall, store.SpeakerOwner, "You"},
+		{store.NoteCall, store.SpeakerCaller, "Caller"},
+		{store.NoteVoicemail, "speaker_0", "Caller"},
+		{store.NoteRoom, "speaker_1", "Person 2"},
+		{store.NoteRoom, "", "Someone"},
+	} {
+		if got := speakerName(c.kind, c.speaker); got != c.want {
+			t.Errorf("%s %q: %q", c.kind, c.speaker, got)
+		}
 	}
 }
 

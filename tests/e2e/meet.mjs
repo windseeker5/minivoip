@@ -3,6 +3,7 @@
 // TestAppPreview), and connects two headless browsers through a small fake
 // call socket in this script that passes messages like calls/hub.go. The call
 // itself is real WebRTC between the two browsers (fake camera, fake screen).
+// Notes on: the app records the real call and sends it to a fake upload here.
 // The real server's calls are in site.mjs.
 // Run from the repo root: node tests/e2e/meet.mjs
 import { createRequire } from "node:module";
@@ -25,12 +26,38 @@ const { chromium } = createRequire(import.meta.url)(pw);
 const cache = join(homedir(), ".cache/ms-playwright");
 const shell = readdirSync(cache).filter((d) => d.startsWith("chromium_headless_shell-")).sort().pop();
 
+// The fake upload: what the app's recorder sends for call c1.
+const rec = { mode: "on", started: 0, parts: [], done: 0, type: "" };
+const recReset = (mode) => Object.assign(rec, { mode, started: 0, parts: [], done: 0, type: "" });
 const types = { ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
 const server = createServer((req, res) => {
   const u = new URL(req.url, "http://x");
   const send = (code, type, data) => { res.writeHead(code, { "Content-Type": type }); res.end(data); };
   if (u.pathname === "/call/auberge") return send(200, "text/html", readFileSync(join(PRE, "call.html")));
   if (u.pathname === "/app") return send(200, "text/html", readFileSync(join(PRE, "app.html")));
+  if (u.pathname === "/app-notes") return send(200, "text/html", readFileSync(join(PRE, "app-notes.html")));
+  if (u.pathname === "/call/notes") return send(200, "text/html", readFileSync(join(PRE, "call-notes.html")));
+  if (u.pathname === "/rec.bin") return send(200, "application/octet-stream", Buffer.concat(rec.parts));
+  if (u.pathname.startsWith("/app/calls/c1/recording")) {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      const tail = u.pathname.split("/recording")[1];
+      if (tail === "") {
+        rec.started++;
+        rec.type = u.searchParams.get("type");
+        if (rec.mode === "start-error") return send(500, "text/plain", "no");
+        if (rec.mode === "limit") return send(200, "application/json", '{"record":false,"reason":"month_limit"}');
+        return send(200, "application/json", '{"record":true}');
+      }
+      if (tail === "/done") { rec.done++; return send(204, "text/plain", ""); }
+      if (rec.mode === "upload-error") return send(500, "text/plain", "no");
+      if (rec.mode === "refused" && rec.parts.length >= 1) return send(409, "text/plain", "no");
+      rec.parts[Number(tail.slice(1))] = Buffer.concat(chunks);
+      send(204, "text/plain", "");
+    });
+    return;
+  }
   if (u.pathname === "/app/calls") return send(200, "text/html", readFileSync(join(PRE, "calls.html")));
   if (u.pathname === "/api/ice") return send(200, "application/json", '{"iceServers":[]}');
   if (u.pathname === "/sw.js") return send(200, "text/javascript", readFileSync(join(REPO, "assets/js/sw.js")));
@@ -59,6 +86,7 @@ const to = (ws, m) => ws && ws.send(JSON.stringify(m));
 async function context(w, h, role) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, permissions: ["microphone", "camera"] });
   await ctx.addInitScript(() => {
+    window.MinivoipRecorderSlice = 1500; // a piece every 1.5 seconds, not 30
     // A fake browser voice, quick, so the menu's hold message ends fast.
     Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
       speak(u) { setTimeout(() => u.onend && u.onend({}), 200); }, cancel() {},
@@ -255,6 +283,98 @@ await owner.context().close();
   check(await until(async () => (await o.getAttribute('[data-action="camera"]', "aria-pressed")) === "true") && await o.isHidden("text=blocked the camera"), "after the junk, the Camera button still tells the truth");
   await v.click('[data-action="hangup"]:visible');
   await o.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
+  await v.context().close();
+  await o.context().close();
+}
+
+// Notes on: a real call, recorded in the owner's app ---------------------------
+async function notesCall(mode, during) {
+  recReset(mode);
+  const o = await context(1280, 860, "owner");
+  await o.goto(BASE + "/app-notes");
+  await o.waitForFunction(() => document.querySelector("[data-phone]").dataset.online === "true");
+  const v = await context(390, 844, "visitor");
+  await v.goto(BASE + "/call/notes");
+  await v.click('[data-action="call"]:visible');
+  await v.waitForSelector('[data-key="1"]:visible');
+  await v.click('[data-key="1"]');
+  await o.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  check(rec.started === 0, `${mode}: nothing is recorded while it rings`);
+  await o.click('[data-action="accept"]');
+  await v.waitForFunction(() => document.querySelector("[data-call]").dataset.state === "talking", null, { timeout: 15000 });
+  await o.waitForSelector("text=On the line", { timeout: 10000 });
+  await during(o, v);
+  // The call is still fine, whatever happened to the recording.
+  const st = await o.evaluate(() => window.minivoipCallStats());
+  check(st && st.bytesIn > 1000 && await o.isVisible('[data-action="hangup"]'), `${mode}: the call goes on (${st && st.bytesIn} bytes)`);
+  await v.click('[data-action="hangup"]:visible');
+  await o.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
+  return { o, v };
+}
+const peaks = (o) => o.evaluate(async () => {
+  const b = await (await fetch("/rec.bin")).arrayBuffer();
+  const audio = await new OfflineAudioContext(2, 48000, 48000).decodeAudioData(b);
+  const level = (data) => { let sum = 0; for (let i = 0; i < data.length; i++) sum += data[i] * data[i]; return Math.sqrt(sum / data.length); };
+  const half = Math.floor(audio.length / 2);
+  return { channels: audio.numberOfChannels, seconds: audio.duration,
+    owner: [level(audio.getChannelData(0).subarray(0, half)), level(audio.getChannelData(0).subarray(half))],
+    caller: [level(audio.getChannelData(1).subarray(0, half)), level(audio.getChannelData(1).subarray(half))] };
+});
+{
+  console.log("--- notes on");
+  // The owner mutes halfway: their channel goes quiet, and the caller's doesn't.
+  const { o, v } = await notesCall("on", async (o) => {
+    await o.waitForSelector("[data-rec-note].is-on", { timeout: 5000 });
+    check(/Recording for your notes/.test(await o.textContent("[data-rec-note]")), "the owner sees the call is being recorded");
+    await o.waitForTimeout(4000);
+    check(rec.parts.length >= 2, `pieces go up during the call (${rec.parts.length})`);
+    await o.screenshot({ path: `${SHOTS}/meet-owner-recording.png` });
+    await o.click('[data-action="mute"]');
+    await o.waitForTimeout(5000);
+    await o.click('[data-action="mute"]');
+  });
+  await until(() => rec.done > 0);
+  check(rec.done === 1, `the app says the last piece is in (${rec.done})`);
+  check(rec.started === 1 && /^audio\/(webm|mp4|ogg)/.test(rec.type), `it starts once, with a recording type (${rec.type})`);
+  check(rec.parts.every(Boolean), `no piece is missing (${rec.parts.length})`);
+  const p = await peaks(o);
+  check(p.channels === 2 && p.seconds > 8, `the pieces make one file: two channels, ${p.seconds.toFixed(1)} s`);
+  check(p.owner[0] > 0.001 && p.caller[0] > 0.001, `both voices are in it (owner ${p.owner[0].toFixed(4)}, caller ${p.caller[0].toFixed(4)})`);
+  check(p.owner[1] < p.owner[0] / 2 && p.caller[1] > p.caller[0] / 2, `each on its own channel: mute silences only the owner's (owner ${p.owner[1].toFixed(4)}, caller ${p.caller[1].toFixed(4)})`);
+  check(await o.isHidden("[data-rec-note]"), "after the call the recording line is gone");
+  await v.context().close();
+  await o.context().close();
+}
+for (const [mode, words] of [["limit", "10 hours"], ["start-error", "Recording stopped"], ["upload-error", null], ["refused", null]]) {
+  const before = errors.length;
+  const { o, v } = await notesCall(mode, async (o) => {
+    await o.waitForTimeout(mode === "upload-error" ? 2500 : 4000);
+    if (words) check((await o.textContent("[data-rec-note]")).includes(words), `${mode}: the owner is told (${await o.textContent("[data-rec-note]")})`);
+    if (mode === "limit") check(rec.parts.length === 0, "limit: nothing is sent");
+    if (mode === "refused") check(rec.parts.length === 1 && /stopped/.test(await o.textContent("[data-rec-note]")), `refused: it stops after the server says so (${rec.parts.length})`);
+  });
+  if (mode === "upload-error") check(await until(() => rec.done > 0, 3000) || rec.parts.length === 0, "upload-error: the failed pieces don't hold up the end of the call");
+  errors.splice(before);
+  await v.context().close();
+  await o.context().close();
+}
+{
+  // Notes off: no recorder at all.
+  recReset("on");
+  const o = await context(1280, 860, "owner");
+  await o.goto(BASE + "/app");
+  await o.waitForFunction(() => document.querySelector("[data-phone]").dataset.online === "true");
+  const v = await context(390, 844, "visitor");
+  await v.goto(BASE + "/call/auberge");
+  await v.click('[data-action="call"]:visible');
+  await v.waitForSelector('[data-key="1"]:visible');
+  await v.click('[data-key="1"]');
+  await o.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  await o.click('[data-action="accept"]');
+  await v.waitForFunction(() => document.querySelector("[data-call]").dataset.state === "talking", null, { timeout: 15000 });
+  await o.waitForTimeout(2000);
+  check(rec.started === 0 && await o.isHidden("[data-rec-note]"), "notes off: nothing is recorded");
+  await v.click('[data-action="hangup"]:visible');
   await v.context().close();
   await o.context().close();
 }

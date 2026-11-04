@@ -107,8 +107,11 @@ func TestAppPreview(t *testing.T) {
 	empty.History, empty.Voicemails = nil, nil
 	basic := d
 	basic.Line.Premium = false
+	taking := d
+	taking.Line.Notes = true
 	files := map[string]templ.Component{
 		"app.html":         Phone(d),
+		"app-notes.html":   Phone(taking),
 		"app-empty.html":   Phone(empty),
 		"app-basic.html":   Phone(basic),
 		"calls.html":       AppCalls(d.History),

@@ -17,9 +17,10 @@ import (
 	"minivoip/store"
 )
 
-// Transcriber writes down what was said in a recording.
+// Transcriber writes down what was said in a recording. channels names who is
+// on each of its sound channels; with none, the service tells voices apart.
 type Transcriber interface {
-	Transcribe(ctx context.Context, file, contentType string) (Transcript, error)
+	Transcribe(ctx context.Context, file, contentType string, channels []string) (Transcript, error)
 }
 
 // Summarizer writes the note from a transcript, in the given language. What
@@ -42,11 +43,15 @@ type Summary struct {
 // service can't read.
 var ErrPermanent = errors.New("won't work on another try")
 
+// CallChannels is who is on a call recording's two sound channels (recorder.js).
+var CallChannels = []string{store.SpeakerOwner, store.SpeakerCaller}
+
 // MaxTries is how many times a note is tried before it fails.
 const MaxTries = 4
 
 // DefaultDaySeconds is the ceiling across all accounts in a day (UTC), to protect
-// Ken's bill: 20 hours of audio is about $7 of both services.
+// Ken's bill: 20 hours of audio is about $7 of both services, up to $11 for calls
+// (their two channels are billed apart).
 const DefaultDaySeconds = 20 * 3600
 
 // A recording says at most this many bytes a second, even in Safari's bigger
@@ -172,23 +177,32 @@ func (w *Worker) transcribe(ctx context.Context, n store.Note) (store.Note, bool
 		w.end(n, store.NoteFailed, store.NoteNoAudio)
 		return n, true
 	}
-	if reason, err := w.limit(n, info.Size()); err != nil {
+	if reason, err := w.limit(n.AccountID, max(n.Seconds, info.Size()/maxBytesPerSecond)); err != nil {
 		w.tryAgain(ctx, n, store.NoteTranscribe, err)
 		return n, true
 	} else if reason != "" {
 		w.end(n, store.NoteSkipped, reason)
 		return n, true
 	}
-	t, err := w.Transcriber.Transcribe(ctx, path, n.AudioType)
+	var channels []string
+	if n.Kind == store.NoteCall {
+		channels = CallChannels
+	}
+	t, err := w.Transcriber.Transcribe(ctx, path, n.AudioType, channels)
 	if err != nil {
 		w.tryAgain(ctx, n, store.NoteTranscribe, err)
 		return n, true
 	}
-	if err := w.Store.SaveTranscript(n, t.Lines, t.Seconds); err != nil {
+	// A call's clock counts the quiet at its end, which the words don't show.
+	seconds := t.Seconds
+	if n.Kind == store.NoteCall {
+		seconds = max(seconds, n.Seconds)
+	}
+	if err := w.Store.SaveTranscript(n, t.Lines, seconds); err != nil {
 		w.tryAgain(ctx, n, store.NoteTranscribe, err)
 		return n, true
 	}
-	n.Transcript, n.Seconds = t.Lines, t.Seconds
+	n.Transcript, n.Seconds = t.Lines, seconds
 	if len(t.Lines) == 0 {
 		w.end(n, store.NoteSkipped, store.NoteSilent) // nothing to summarize, nothing to pay for
 		return n, true
@@ -197,10 +211,9 @@ func (w *Worker) transcribe(ctx context.Context, n store.Note) (store.Note, bool
 	return n, false
 }
 
-// limit says which limit stops this note before any money is spent, or "".
-func (w *Worker) limit(n store.Note, size int64) (string, error) {
-	seconds := max(n.Seconds, size/maxBytesPerSecond)
-	month, err := w.Store.NoteSecondsThisMonth(n.AccountID)
+// limit says which limit stops this much audio before any money is spent, or "".
+func (w *Worker) limit(accountID, seconds int64) (string, error) {
+	month, err := w.Store.NoteSecondsThisMonth(accountID)
 	if err != nil {
 		return "", err
 	}
@@ -215,6 +228,20 @@ func (w *Worker) limit(n store.Note, size int64) (string, error) {
 		return store.NoteDayLimit, nil
 	}
 	return "", nil
+}
+
+// Refuse says why a recording shouldn't start for this account, or "": so a call
+// isn't recorded for a note that can't be written.
+func (w *Worker) Refuse(accountID int64) string {
+	if !w.SetUp() {
+		return store.NoteNotSetUp
+	}
+	reason, err := w.limit(accountID, 1)
+	if err != nil {
+		log.Printf("notes: %v", err)
+		return store.NoteTranscribe
+	}
+	return reason
 }
 
 func (w *Worker) end(n store.Note, status store.NoteStatus, reason string) {

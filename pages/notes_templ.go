@@ -118,10 +118,13 @@ func hoursUsed(seconds int64) string {
 	return strconv.FormatFloat(math.Round(h*10)/10, 'f', -1, 64) + " hours"
 }
 
-// speakerName turns the service's label into words: a voicemail has one voice,
-// the others "Person 1", "Person 2".
+// speakerName turns a label into words: a call knows who is who, a voicemail has
+// one voice, the others "Person 1", "Person 2".
 func speakerName(k store.NoteKind, speaker string) string {
-	if k == store.NoteVoicemail {
+	switch {
+	case speaker == store.SpeakerOwner:
+		return "You"
+	case speaker == store.SpeakerCaller || k == store.NoteVoicemail:
 		return "Caller"
 	}
 	if n, err := strconv.Atoi(strings.TrimPrefix(speaker, "speaker_")); err == nil {
@@ -207,7 +210,7 @@ func NotesLocked(email string, kept int) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(kept))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 136, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 139, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -332,7 +335,7 @@ func Notes(d NotesTab) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(hoursUsed(d.Seconds))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 170, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 173, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -345,7 +348,7 @@ func Notes(d NotesTab) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(min(d.Seconds, store.NoteMonthSeconds), 10))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 172, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 175, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
@@ -358,7 +361,7 @@ func Notes(d NotesTab) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(store.NoteMonthSeconds))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 172, Col: 129}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 175, Col: 129}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -381,7 +384,7 @@ func Notes(d NotesTab) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(languageName(d.Language))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 178, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 181, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -435,7 +438,7 @@ func Notes(d NotesTab) templ.Component {
 					var templ_7745c5c3_Var17 string
 					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(n.Status))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 191, Col: 42}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 194, Col: 42}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 					if templ_7745c5c3_Err != nil {
@@ -458,7 +461,7 @@ func Notes(d NotesTab) templ.Component {
 					var templ_7745c5c3_Var18 templ.SafeURL
 					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(noteURL(n))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 192, Col: 27}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 195, Col: 27}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
@@ -479,7 +482,7 @@ func Notes(d NotesTab) templ.Component {
 					var templ_7745c5c3_Var19 string
 					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(noteKindName(n.Kind))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 198, Col: 60}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 201, Col: 60}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 					if templ_7745c5c3_Err != nil {
@@ -492,7 +495,7 @@ func Notes(d NotesTab) templ.Component {
 					var templ_7745c5c3_Var20 string
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(when(n.CreatedAt))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 199, Col: 86}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 202, Col: 86}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
@@ -505,7 +508,7 @@ func Notes(d NotesTab) templ.Component {
 					var templ_7745c5c3_Var21 string
 					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(noteLine(n))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 201, Col: 101}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 204, Col: 101}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 					if templ_7745c5c3_Err != nil {
@@ -627,7 +630,7 @@ func NotePage(email string, n store.Note) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(n.ID, 10))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 229, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 232, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 			if templ_7745c5c3_Err != nil {
@@ -650,7 +653,7 @@ func NotePage(email string, n store.Note) templ.Component {
 			var templ_7745c5c3_Var26 templ.SafeURL
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(notesTab))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 230, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 233, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -671,7 +674,7 @@ func NotePage(email string, n store.Note) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(noteKindName(n.Kind))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 234, Col: 103}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 237, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -684,7 +687,7 @@ func NotePage(email string, n store.Note) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(when(n.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 235, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 238, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -693,7 +696,7 @@ func NotePage(email string, n store.Note) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(noteLength(n))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 235, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 238, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -716,7 +719,7 @@ func NotePage(email string, n store.Note) templ.Component {
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(p)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 239, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 242, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {
@@ -753,7 +756,7 @@ func NotePage(email string, n store.Note) templ.Component {
 				var templ_7745c5c3_Var33 string
 				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(n.Language))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 242, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 245, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33)
 				if templ_7745c5c3_Err != nil {
@@ -766,7 +769,7 @@ func NotePage(email string, n store.Note) templ.Component {
 				var templ_7745c5c3_Var34 string
 				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(n.Summary)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 244, Col: 82}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 247, Col: 82}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
@@ -801,7 +804,7 @@ func NotePage(email string, n store.Note) templ.Component {
 				var templ_7745c5c3_Var37 string
 				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(n.Language))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 246, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 249, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 				if templ_7745c5c3_Err != nil {
@@ -829,7 +832,7 @@ func NotePage(email string, n store.Note) templ.Component {
 						var templ_7745c5c3_Var38 string
 						templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(a)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 253, Col: 15}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 256, Col: 15}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 						if templ_7745c5c3_Err != nil {
@@ -881,7 +884,7 @@ func NotePage(email string, n store.Note) templ.Component {
 					var templ_7745c5c3_Var41 string
 					templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(speakerName(n.Kind, l.Speaker))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 267, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 270, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 					if templ_7745c5c3_Err != nil {
@@ -894,7 +897,7 @@ func NotePage(email string, n store.Note) templ.Component {
 					var templ_7745c5c3_Var42 string
 					templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(noteClock(l.Start))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 268, Col: 83}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 271, Col: 83}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 					if templ_7745c5c3_Err != nil {
@@ -907,7 +910,7 @@ func NotePage(email string, n store.Note) templ.Component {
 					var templ_7745c5c3_Var43 string
 					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(l.Text)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 270, Col: 72}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 273, Col: 72}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 					if templ_7745c5c3_Err != nil {
@@ -962,7 +965,7 @@ func NotePage(email string, n store.Note) templ.Component {
 			var templ_7745c5c3_Var45 templ.SafeURL
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(notesTab + "/" + strconv.FormatInt(n.ID, 10) + "/delete"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 283, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/notes.templ`, Line: 286, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {

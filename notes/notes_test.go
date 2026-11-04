@@ -18,15 +18,17 @@ import (
 
 // fakeScribe and fakeClaude stand in for the two services.
 type fakeScribe struct {
-	calls  int
-	fails  int // this many calls fail first
-	err    error
-	answer Transcript
-	during func()
+	calls    int
+	fails    int // this many calls fail first
+	err      error
+	answer   Transcript
+	during   func()
+	channels []string
 }
 
-func (f *fakeScribe) Transcribe(ctx context.Context, file, contentType string) (Transcript, error) {
+func (f *fakeScribe) Transcribe(ctx context.Context, file, contentType string, channels []string) (Transcript, error) {
 	f.calls++
+	f.channels = channels
 	if f.during != nil {
 		f.during()
 	}
@@ -367,6 +369,30 @@ func TestVoicemailsFromStartToEnd(t *testing.T) {
 	}
 }
 
+// A call from its first piece to its note: the recording goes once it's written.
+func TestCallFromStartToEnd(t *testing.T) {
+	s := newSetup(t)
+	n, err := s.st.StartRecording("joes", "c1", "audio/webm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.st.AppendRecording(s.acct, "c1", 0, []byte("sound"))
+	path := s.st.NoteAudioPath(n)
+	s.drain()
+	if s.scribe.calls != 0 {
+		t.Fatal("written down before the last piece")
+	}
+	s.st.FinishRecording(s.acct, "c1")
+	s.drain()
+	done := s.note(t, n.ID)
+	if done.Status != store.NoteDone || s.scribe.calls != 1 || len(s.scribe.channels) != 2 {
+		t.Fatalf("%s, %d calls, channels %v", done.Status, s.scribe.calls, s.scribe.channels)
+	}
+	if exists(path) {
+		t.Fatal("the recording stayed")
+	}
+}
+
 // A browser can't play a recording down: its size says how long it can be.
 func TestLimitsSeeThroughAShortClaim(t *testing.T) {
 	s := newSetup(t)
@@ -479,7 +505,7 @@ func TestClientsFollowNoRedirect(t *testing.T) {
 	defer srv.Close()
 	file := filepath.Join(t.TempDir(), "msg.webm")
 	os.WriteFile(file, []byte("sound"), 0o600)
-	if _, err := (&Scribe{Key: "k", URL: srv.URL}).Transcribe(context.Background(), file, "audio/webm"); err == nil {
+	if _, err := (&Scribe{Key: "k", URL: srv.URL}).Transcribe(context.Background(), file, "audio/webm", nil); err == nil {
 		t.Error("scribe: a redirect counted as an answer")
 	}
 	if _, err := (&Claude{Key: "k", URL: srv.URL}).Summarize(context.Background(), twoLines.Lines, store.French); err == nil {
@@ -553,7 +579,7 @@ func TestScribeClient(t *testing.T) {
 	defer srv.Close()
 	file := filepath.Join(t.TempDir(), "msg.webm")
 	os.WriteFile(file, []byte("sound"), 0o600)
-	got, err := (&Scribe{Key: "secret", URL: srv.URL}).Transcribe(context.Background(), file, "audio/webm")
+	got, err := (&Scribe{Key: "secret", URL: srv.URL}).Transcribe(context.Background(), file, "audio/webm", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -577,13 +603,101 @@ func TestScribeClient(t *testing.T) {
 	}
 }
 
+// A call's two channels name who said what, and its hours aren't counted twice.
+func TestScribeChannels(t *testing.T) {
+	var form map[string]string
+	answers := map[string]string{
+		"put together": `{"audio_duration_secs":24,"words":[
+			{"text":"Bonjour","type":"word","start":0.5,"end":1,"channel_index":1},
+			{"text":" ","type":"spacing","start":1,"end":1.1,"channel_index":1},
+			{"text":"Marie","type":"word","start":1.1,"end":1.5,"channel_index":1},
+			{"text":"Oui","type":"word","start":2,"end":2.5,"channel_index":0},
+			{"text":"Merci","type":"word","start":11,"end":11.5,"channel_index":1}]}`,
+		"one per channel": `{"audio_duration_secs":24,"transcripts":[
+			{"channel_index":0,"words":[{"text":"Oui","type":"word","start":2,"end":2.5}]},
+			{"channel_index":1,"words":[
+				{"text":"Bonjour","type":"word","start":0.5,"end":1},
+				{"text":" ","type":"spacing","start":1,"end":1.1},
+				{"text":"Marie","type":"word","start":1.1,"end":1.5},
+				{"text":"Merci","type":"word","start":11,"end":11.5}]}]}`,
+	}
+	for name, answer := range answers {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.ParseMultipartForm(1 << 20)
+			form = map[string]string{}
+			for k, v := range r.MultipartForm.Value {
+				form[k] = v[0]
+			}
+			io.WriteString(w, answer)
+		}))
+		file := filepath.Join(t.TempDir(), "call.webm")
+		os.WriteFile(file, []byte("sound"), 0o600)
+		got, err := (&Scribe{Key: "k", URL: srv.URL}).Transcribe(context.Background(), file, "audio/webm", CallChannels)
+		srv.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if form["use_multi_channel"] != "true" || form["multichannel_output_style"] != "combined" || form["diarize"] != "" {
+			t.Errorf("%s: form %v", name, form)
+		}
+		want := []store.NoteLine{{Speaker: "caller", Start: 0.5, Text: "Bonjour Marie"}, {Speaker: "owner", Start: 2, Text: "Oui"}, {Speaker: "caller", Start: 11, Text: "Merci"}}
+		if len(got.Lines) != len(want) {
+			t.Fatalf("%s: lines %+v", name, got.Lines)
+		}
+		for i := range want {
+			if got.Lines[i] != want[i] {
+				t.Errorf("%s: line %d: %+v", name, i, got.Lines[i])
+			}
+		}
+		if got.Seconds != 12 {
+			t.Errorf("%s: seconds %d, the channels counted twice?", name, got.Seconds)
+		}
+	}
+}
+
+// Worker: a call's note goes by channels and by the call's own clock; the rest
+// don't.
+func TestWorkerAndCallChannels(t *testing.T) {
+	s := newSetup(t)
+	id, _ := s.add(t, store.NoteCall, 600)
+	s.drain()
+	if len(s.scribe.channels) != 2 || s.scribe.channels[0] != "owner" {
+		t.Fatalf("channels: %v", s.scribe.channels)
+	}
+	if n := s.note(t, id); n.Seconds != 600 {
+		t.Fatalf("a call's quiet end counts: %d", n.Seconds)
+	}
+	id, _ = s.add(t, store.NoteVoicemail, 600)
+	s.drain()
+	if s.scribe.channels != nil {
+		t.Fatalf("a voicemail has no channels: %v", s.scribe.channels)
+	}
+	if n := s.note(t, id); n.Seconds != 42 {
+		t.Fatalf("a voicemail goes by what the service measured: %d", n.Seconds)
+	}
+}
+
+func TestRefuse(t *testing.T) {
+	s := newSetup(t)
+	if r := s.w.Refuse(s.acct); r != "" {
+		t.Fatalf("all fine: %q", r)
+	}
+	s.st.ChargeNotes(s.acct, store.NoteMonthSeconds)
+	if r := s.w.Refuse(s.acct); r != store.NoteMonthLimit {
+		t.Fatalf("past the month: %q", r)
+	}
+	if r := NewWorker(s.st, nil, nil).Refuse(s.acct); r != store.NoteNotSetUp {
+		t.Fatalf("no keys: %q", r)
+	}
+}
+
 func TestScribeWithoutWordsOrDuration(t *testing.T) {
 	a := scribeAnswer{}
-	if tr := a.transcript(); len(tr.Lines) != 0 || tr.Seconds != 0 {
+	if tr := a.transcript(nil); len(tr.Lines) != 0 || tr.Seconds != 0 {
 		t.Fatalf("%+v", tr)
 	}
 	json.Unmarshal([]byte(`{"words":[{"text":"Oui","type":"word","start":1,"end":2.5,"speaker_id":"speaker_0"}]}`), &a)
-	if tr := a.transcript(); len(tr.Lines) != 1 || tr.Seconds != 3 {
+	if tr := a.transcript(nil); len(tr.Lines) != 1 || tr.Seconds != 3 {
 		t.Fatalf("%+v", tr)
 	}
 }
@@ -597,7 +711,7 @@ func TestServiceErrors(t *testing.T) {
 			w.WriteHeader(status)
 			io.WriteString(w, strings.Repeat("no", 1000))
 		}))
-		_, scribeErr := (&Scribe{Key: "k", URL: srv.URL}).Transcribe(context.Background(), file, "audio/webm")
+		_, scribeErr := (&Scribe{Key: "k", URL: srv.URL}).Transcribe(context.Background(), file, "audio/webm", nil)
 		_, claudeErr := (&Claude{Key: "k", URL: srv.URL}).Summarize(context.Background(), twoLines.Lines, store.French)
 		srv.Close()
 		for _, err := range []error{scribeErr, claudeErr} {

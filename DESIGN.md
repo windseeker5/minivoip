@@ -120,7 +120,8 @@ the same form on the dashboard and in the app, in their colours), `assets/js/men
 - **Three numbered cards, in the order a caller hears them:** 1 Welcome, 2 Choices, 3 Voicemail greeting (when a call
   is missed, while away, and on a "Take a voicemail" choice). The top has "Hear it like a caller".
 - **Recording cards** (`voiceCard`): the record button is always in the card's top right corner (an ink pill "Record
-  my voice", or a white "Record again"), and a tag says "Your voice" or "Computer voice". With a recording: a player with
+  my voice", or a white "Record again"), with a white "Upload a file" beside it (MP3 or M4A, also OGG and WebM; 1 minute
+  and 3 MB at most, checked in the browser), and a tag says "Your recording" or "Computer voice". With a recording: a player with
   the voice drawn as bars and "Use a computer voice instead". Without: the words to read out.
 - **What to say when you record** (peach, on the welcome): the page writes out the greeting and the choices, since a
   recording replaces the spoken list. A red line asks to record again when the choices have changed since.

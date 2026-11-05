@@ -85,9 +85,12 @@
   });
 
   // ----------------------------------------------------------- recordings
-  // Each [data-recorder] records the owner's voice, uploads it right away and
-  // keeps its name in the hidden field until the page is saved.
+  // Each [data-recorder] records the owner's voice or takes a sound file,
+  // uploads it right away and keeps its name in the hidden field until the page
+  // is saved.
   var MAX_PROMPT_MS = 60000;
+  var MAX_PROMPT_BYTES = 3 << 20; // store.MaxPromptBytes
+  var FILE_TYPES = { mp3: "audio/mpeg", m4a: "audio/mp4", ogg: "audio/ogg", webm: "audio/webm" };
   var active = null; // the recorder in use: one at a time
   var playing = null; // the player in use: one at a time
 
@@ -111,14 +114,16 @@
         stream.getTracks().forEach(function (t) { t.stop(); });
         box.querySelector("[data-rec-stop]").hidden = true;
         box.querySelector("[data-rec-start]").hidden = false;
+        box.querySelector("[data-rec-file]").hidden = false;
         active = null;
-        upload(box, new Blob(chunks, { type: (rec.mimeType || type || "audio/webm").split(";")[0] }));
+        upload(box, new Blob(chunks, { type: (rec.mimeType || type || "audio/webm").split(";")[0] }), "Recorded. Save to use it.");
       };
       active = rec;
       rec.start(500);
       timer.textContent = "0:00";
       status.textContent = "";
       box.querySelector("[data-rec-start]").hidden = true;
+      box.querySelector("[data-rec-file]").hidden = true;
       box.querySelector("[data-rec-stop]").hidden = false;
       box.querySelector("[data-rec-stop]").focus();
     }, function () {
@@ -126,11 +131,27 @@
     });
   }
 
-  function upload(box, blob) {
+  // A file goes the same way as a recording, once this browser has read it as
+  // sound and it's no longer than a recording can be.
+  function recFile(box, file) {
+    var status = box.querySelector("[data-rec-status]");
+    var type = FILE_TYPES[file.name.split(".").pop().toLowerCase()] || (/^audio\/(mpeg|mp4|ogg|webm)$/.test(file.type) && file.type);
+    if (!type) { status.textContent = "Use an MP3 or M4A file."; return; }
+    if (file.size > MAX_PROMPT_BYTES) { status.textContent = "This file is too big: 3 MB at most."; return; }
+    status.textContent = "Reading the file…";
+    file.arrayBuffer().then(window.minivoipDecode).then(function (audio) {
+      if (audio.duration > MAX_PROMPT_MS / 1000 + 1) { status.textContent = "This file is too long: 1 minute at most."; return; }
+      upload(box, new Blob([file], { type: type }), "Uploaded. Save to use it.");
+    }, function () {
+      status.textContent = "This file can't be played. Use an MP3 or M4A file.";
+    });
+  }
+
+  function upload(box, blob, done) {
     var status = box.querySelector("[data-rec-status]");
     status.textContent = "Saving the recording…";
     var body = new FormData();
-    body.append("audio", blob, "prompt" + (/mp4/.test(blob.type) ? ".m4a" : /ogg/.test(blob.type) ? ".ogg" : ".webm"));
+    body.append("audio", blob, "prompt" + (/mp4/.test(blob.type) ? ".m4a" : /ogg/.test(blob.type) ? ".ogg" : /mpeg/.test(blob.type) ? ".mp3" : ".webm"));
     fetch("/dashboard/prompt", { method: "POST", body: body }).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { throw new Error(t); });
       return r.json();
@@ -140,7 +161,7 @@
       voiced(box, true);
       drawPlayer(box.querySelector("[data-rec-player]"));
       if (box.querySelector('[name="greeting_audio"]')) { recordedWords = welcomeWords(); checkStale(); }
-      status.textContent = "Recorded. Save to use it.";
+      status.textContent = done;
       markChanged();
     }).catch(function (err) {
       status.textContent = (err.message || "The recording couldn't be saved.").trim();
@@ -168,7 +189,7 @@
     start.classList.toggle("is-ink", !on && start.hasAttribute("data-strong"));
     var chip = box.querySelector("[data-rec-chip]");
     if (chip) {
-      chip.textContent = on ? "Your voice" : "Computer voice";
+      chip.textContent = on ? "Your recording" : "Computer voice";
       chip.classList.toggle("is-you", on);
     }
   }
@@ -319,6 +340,7 @@
 
   // ---------------------------------------------------------------- events
   form.addEventListener("input", function (e) {
+    if (e.target.matches("[data-rec-input]")) return;
     markChanged();
     var row = e.target.closest("[data-choice]");
     if (row) update(row);
@@ -328,6 +350,10 @@
 
   form.addEventListener("change", function (e) {
     if (e.target.matches("[data-action-select]")) update(e.target.closest("[data-choice]"));
+    if (e.target.matches("[data-rec-input]") && e.target.files[0]) {
+      recFile(e.target.closest("[data-recorder]"), e.target.files[0]);
+      e.target.value = ""; // so the same file can be picked again
+    }
   });
 
   form.addEventListener("click", function (e) {
@@ -353,6 +379,8 @@
       toggle(e.target.closest("[data-rec-player]"));
     } else if (e.target.closest("[data-rec-start]")) {
       recStart(e.target.closest("[data-recorder]"));
+    } else if (e.target.closest("[data-rec-file]")) {
+      e.target.closest("[data-recorder]").querySelector("[data-rec-input]").click();
     } else if (e.target.closest("[data-rec-stop]")) {
       if (active && active.state === "recording") active.stop();
     } else if (e.target.closest("[data-rec-clear]")) {

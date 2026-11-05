@@ -10,7 +10,7 @@ import (
 	"regexp"
 )
 
-// Prompts are the owner's recorded messages (greeting, choice messages).
+// Prompts are the owner's recorded or uploaded messages (greeting, choice messages).
 // They're public: callers' browsers fetch them at /prompt/<name>. Names are
 // random, so they can't be guessed. Each belongs to the account that recorded
 // it (table prompt): nobody else can use it in a menu, or delete it by

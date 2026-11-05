@@ -93,7 +93,7 @@ B&B and may become a SaaS.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
   `account` (sign up, log in), `dashboard` + `dashboard.js` (a side menu, tabs at the bottom on a phone: Home, What callers hear, Messages, Notes, Business; Home's
   data is `pages.HomeTab` in `pages/dashboard_home.go`, its windows are native dialogs), `hear` + `menu.js` + `assets/css/hear.css` ("What callers hear", `/dashboard/menu`: the same
-  form on the dashboard and in the app's tab, saved without leaving the page; recordings upload to `POST /dashboard/prompt`, `store/prompts.go`; `peaks.js` reads a recording's voice bars), `voicemail` + `voicemail.js`
+  form on the dashboard and in the app's tab, saved without leaving the page; recordings and sound files ("Upload a file": MP3, M4A, OGG, WebM, checked in the browser) upload to `POST /dashboard/prompt`, `store/prompts.go`; `peaks.js` reads a recording's voice bars), `voicemail` + `voicemail.js`
   (the dashboard's list), `notes` + `notes.js` (the Notes tab, `/dashboard/notes`, Premium, `web/notes.go`; `Viewer.Premium` puts the tag on Basic's menu), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
   (the owner's app `/app`, login required: Calls, Messages, What callers hear and Room tabs, the account from the round letter; a side menu and a detail
   pane on a computer; the incoming call screen).

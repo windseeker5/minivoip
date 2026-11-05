@@ -34,7 +34,7 @@ func choiceWords(o lines.Option) string {
 // voiceWord is the tag on a recording: whose voice callers hear.
 func voiceWord(audio string) string {
 	if audio != "" {
-		return "Your voice"
+		return "Your recording"
 	}
 	return "Computer voice"
 }
@@ -86,7 +86,7 @@ templ hearForm(l lines.Line, inApp bool) {
 				<b>What to say when you record</b>
 				<span data-script>{ l.WelcomeWords() }</span>
 			</div>
-			<p class="hr-warn" data-script-stale hidden>You changed your choices. Record your welcome again so callers hear them.</p>
+			<p class="hr-warn" data-script-stale hidden>You changed your choices. Record or upload your welcome again so callers hear them.</p>
 		}
 		<section class="hr-card" id="choices">
 			<div class="hr-head">
@@ -160,7 +160,9 @@ templ voiceCard(id, step, title, hint, field, audio string) {
 	</section>
 }
 
-// recButtons records and stops. Prominent while there's no recording (strong).
+// recButtons records and stops, or takes a sound file (the input has no name:
+// menu.js uploads the file, the form never sends it). Recording is prominent
+// while there's no recording (strong).
 templ recButtons(audio string, strong bool) {
 	<button type="button" data-rec-start data-strong?={ strong } class={ "hr-pill", templ.KV("is-ink", strong && audio == "") }>
 		@icon.Mic(icon.Props{Class: "size-4"})
@@ -170,6 +172,11 @@ templ recButtons(audio string, strong bool) {
 			<span data-rec-start-label>Record again</span>
 		}
 	</button>
+	<button type="button" data-rec-file class="hr-pill">
+		@icon.Upload(icon.Props{Class: "size-4"})
+		Upload a file
+	</button>
+	<input type="file" data-rec-input hidden accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/webm,.mp3,.m4a,.ogg,.webm"/>
 	<button type="button" data-rec-stop hidden class="hr-pill is-rec">
 		@icon.Square(icon.Props{Class: "size-3"})
 		Stop <span class="hr-time" data-rec-timer>0:00</span>

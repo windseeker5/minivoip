@@ -3,12 +3,17 @@
 // and the "What callers hear" players.
 (function () {
   var waves = {};
+  // The sound in a file's bytes; fails if this browser can't read it.
+  window.minivoipDecode = function (buf) {
+    var C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    return new Promise(function (ok, fail) {
+      var told = new C(1, 2, 44100).decodeAudioData(buf, ok, fail);
+      if (told) told.catch(function () {}); // fail already heard it
+    });
+  };
   window.minivoipPeaks = function (url, n) {
     var key = url + ":" + n;
-    if (!waves[key]) waves[key] = fetch(url).then(function (r) { return r.arrayBuffer(); }).then(function (buf) {
-      var C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-      return new Promise(function (ok, fail) { new C(1, 2, 44100).decodeAudioData(buf, ok, fail); });
-    }).then(function (audio) {
+    if (!waves[key]) waves[key] = fetch(url).then(function (r) { return r.arrayBuffer(); }).then(window.minivoipDecode).then(function (audio) {
       var data = audio.getChannelData(0), step = Math.max(1, Math.floor(data.length / n)), out = [], top = 0;
       for (var i = 0; i < n; i++) {
         var m = 0;

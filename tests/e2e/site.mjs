@@ -22,8 +22,9 @@
 
 import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite"; // built into Node 22.5+
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { homedir } from "node:os";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createServer } from "node:http";
 import { createDecipheriv, createECDH, hkdfSync, randomBytes } from "node:crypto";
@@ -426,7 +427,7 @@ try {
   const hoursFile = await rows.nth(1).locator('[name="say_audio"]').inputValue();
   const voicemailFile = await owner.inputValue('[name="voicemail_audio"]');
   check(/^prompt-/.test(greetingFile) && /^prompt-/.test(hoursFile) && /^prompt-/.test(voicemailFile), "recorded greeting, message and voicemail greeting are saved");
-  check((await greetingRec.locator("[data-rec-chip]").textContent()) === "Your voice" && await greetingRec.locator("[data-rec-text]").isHidden() && await greetingRec.locator("[data-rec-player]").isVisible(), "a recorded card says Your voice and shows its player");
+  check((await greetingRec.locator("[data-rec-chip]").textContent()) === "Your recording" && await greetingRec.locator("[data-rec-text]").isHidden() && await greetingRec.locator("[data-rec-player]").isVisible(), "a recorded card says Your recording and shows its player");
   await greetingRec.locator("[data-rec-bars] i").first().waitFor({ state: "attached", timeout: 5000 });
   await greetingRec.locator("[data-rec-play]").click();
   await greetingRec.locator('[data-rec-play][aria-label="Pause"]').waitFor({ timeout: 5000 });
@@ -453,12 +454,57 @@ try {
   await listener.waitForFunction(() => /Anything else/.test(document.querySelector("[data-menu-status]").textContent), null, { timeout: 15000 });
   check(heardFiles.includes(greetingFile) && heardFiles.includes(hoursFile), "the caller hears the recorded greeting and message");
 
+  step = "upload a sound file";
+  const uploads = mkdtempSync(join(tmpdir(), "minivoip-upload-"));
+  const sine = (name, seconds) => {
+    const path = join(uploads, name);
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", `sine=frequency=220:duration=${seconds}`, "-b:a", "32k", path]);
+    return path;
+  };
+  const fileInput = greetingRec.locator("[data-rec-input]");
+  const pickFile = async (path, says) => {
+    await fileInput.setInputFiles(path);
+    await greetingRec.locator("[data-rec-status]").filter({ hasText: says }).waitFor({ timeout: 10000 });
+  };
+  check(await greetingRec.locator("[data-rec-file]").isVisible() && await rows.nth(1).locator("[data-rec-file]").count() === 1, "the welcome and each choice's message can take a file");
+  const keptWelcome = await owner.inputValue('[name="greeting_audio"]');
+  writeFileSync(join(uploads, "notes.txt"), "not sound");
+  await pickFile(join(uploads, "notes.txt"), "Use an MP3 or M4A file");
+  writeFileSync(join(uploads, "fake.mp3"), "not sound at all");
+  await pickFile(join(uploads, "fake.mp3"), "can't be played");
+  await pickFile(sine("long.mp3", 62), "too long");
+  writeFileSync(join(uploads, "big.mp3"), Buffer.alloc((3 << 20) + 1));
+  await pickFile(join(uploads, "big.mp3"), "too big");
+  check(await owner.inputValue('[name="greeting_audio"]') === keptWelcome && await owner.isHidden("[data-save]"), "a file that isn't right is refused, with the reason, and changes nothing");
+  await pickFile(sine("welcome.mp3", 2), "Uploaded. Save to use it.");
+  const uploadedFile = await owner.inputValue('[name="greeting_audio"]');
+  check(/^prompt-[0-9a-f]+\.mp3$/.test(uploadedFile) && uploadedFile !== keptWelcome && await owner.isVisible("[data-save]"), "an MP3 uploads and waits for Save");
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector("text=Saved.");
+  await greetingRec.locator("[data-rec-bars] i").first().waitFor({ state: "attached", timeout: 5000 });
+  const uploadedRes = await owner.request.get(`${BASE}/prompt/${uploadedFile}`);
+  check(uploadedRes.ok() && uploadedRes.headers()["content-type"] === "audio/mpeg", "the uploaded file is served as sound");
+  await owner.screenshot({ path: `${SHOTS}/menu-uploaded.png`, fullPage: true });
+  const uploadPhone = await newPage(390, 760);
+  await uploadPhone.context().addCookies(await owner.context().cookies());
+  await uploadPhone.goto(`${BASE}/dashboard/menu`);
+  await uploadPhone.screenshot({ path: `${SHOTS}/menu-uploaded-phone.png` });
+  await uploadPhone.context().close();
+  const uploadListener = await newPage(390, 760);
+  await uploadListener.goto(BASE + `/call/${LINE}`);
+  const uploadHeard = uploadListener.waitForRequest((r) => r.url().includes(uploadedFile), { timeout: 10000 });
+  await uploadListener.click('[data-action="call"]:visible');
+  await uploadHeard;
+  check(true, "the caller hears the uploaded welcome");
+  await uploadListener.context().close();
+  rmSync(uploads, { recursive: true, force: true });
+
   step = "back to computer voice";
   await greetingRec.locator("[data-rec-clear]").click();
   await owner.click("main button[type=submit]");
   await owner.waitForSelector("text=Saved.");
   check(await owner.inputValue('[name="greeting_audio"]') === "", "the greeting can go back to the computer voice");
-  const gone = await owner.request.get(`${BASE}/prompt/${greetingFile}`);
+  const gone = await owner.request.get(`${BASE}/prompt/${uploadedFile}`);
   check(gone.status() === 404, `the unused recording is deleted (${gone.status()})`);
 
   // The voicemail greeting: a caller who presses "Leave a message" hears the
@@ -575,6 +621,7 @@ try {
   await phoneSize.click('[role="tab"][data-tab="menu"]');
   await phoneSize.waitForSelector('[data-panel="menu"] [data-menu-form]');
   check(await phoneSize.isVisible('[data-panel="menu"] [name="voicemail_audio"] ~ .hr-head [data-rec-start]'), "the phone app can record the voicemail greeting");
+  check(await phoneSize.isVisible('[data-panel="menu"] [name="voicemail_audio"] ~ .hr-head [data-rec-file]'), "the phone app can upload a file for the voicemail greeting");
   const appRows = phoneSize.locator('[data-panel="menu"] [data-choice]');
   await openRow(appRows.nth(1));
   await appRows.nth(1).locator("[name=label]").fill("Our hours");

@@ -58,6 +58,7 @@ Ken, 2026-11-01: say plainly what it is for the owner, so anyone gets it. No app
 - Beside the steps: "Paste this on your site", the code `<a href="<this site>/call/your-business">Call us</a>`, and a picture of the orange Call us button it makes: "That's the button it makes. No website? Share the link, or print it as a QR code for your door."
 1. **Record your menu.** Say hello and set the choices, right from your browser.
 2. **Get the app.** The Android app rings like a real call. On a computer or an iPhone, use the web app.
+   Beside it on a computer, a small QR code, "Scan for Android"; on a phone, the link "Get the Android app" instead.
 3. **Add the button.** Paste one line on your site, or share your call link and QR code.
 
 ## Questions (`faqs`)

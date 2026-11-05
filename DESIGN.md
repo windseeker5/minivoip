@@ -79,7 +79,7 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
 #0b0b0c) with white cards (`card`: 16px radius, a 1px ring, `bg-card`).
 
 - **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, What callers hear, Messages
-  (orange count of new voicemails), Notes (a "Premium" tag on Basic), Business, the open one shaded; at its foot a "Phone app" card and the account
+  (orange count of new voicemails), Notes (a "Premium" tag on Basic), Business, the open one shaded; at its foot a "Phone app" card (it opens the window with the app's QR code; a Download button on a phone) and the account
   button (letter, "Your account", email). Its menu (a native popover) holds the email, Change password, Language of your notes, the phone app, Log out, and
   "minivoip admin" for staff only: minivoip's own admin is never a tab. On a phone a top bar (logo, account) and
   the five tabs fixed at the bottom, like an app. A "Questions?" line closes each page.

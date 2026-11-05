@@ -132,6 +132,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /room/{line}/recording", s.auth(s.roomRecordingStart))
 	mux.HandleFunc("GET /api/android/config", s.androidConfig)
 	mux.HandleFunc("GET /download/minivoip.apk", s.androidAPK)
+	mux.HandleFunc("GET /qr/android.svg", s.androidQR)
 
 	mux.Handle("GET /admin/promo", s.admin(s.promoPage))
 	mux.Handle("POST /admin/promo", s.admin(s.createPromo))
@@ -190,6 +191,8 @@ func (s *Server) auth(next func(http.ResponseWriter, *http.Request, store.User))
 			Admin:       u.IsAdmin,
 			NewMessages: func() int { return s.Store.NewVoicemails(u.AccountID) },
 			Premium:     func() bool { return s.onPremium(u) },
+			Host:        baseURL(r),
+			AppVersion:  androidLatest,
 		})
 		next(w, r.WithContext(ctx), u)
 	})

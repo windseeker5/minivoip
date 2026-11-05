@@ -1150,14 +1150,14 @@ func howItWorks(site string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</span><div><h3 class=\"lp-display text-[1.375rem] leading-tight font-semibold tracking-[-0.02em]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</span><div class=\"flex items-start gap-5\"><div class=\"min-w-0 flex-1\"><h3 class=\"lp-display text-[1.375rem] leading-tight font-semibold tracking-[-0.02em]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var43 string
 			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(s.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 379, Col: 103}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 380, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
@@ -1170,31 +1170,51 @@ func howItWorks(site string) templ.Component {
 			var templ_7745c5c3_Var44 string
 			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(s.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 380, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 381, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</p></div></li>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if i == getAppStep {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<a href=\"/download/minivoip.apk\" class=\"mt-1 inline-flex min-h-11 items-center text-[17px] font-semibold underline underline-offset-4 sm:hidden\" data-android-link>Get the Android app</a>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if i == getAppStep {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<figure class=\"hidden w-24 flex-none text-center sm:block\" data-android-qr><img src=\"/qr/android.svg\" width=\"96\" height=\"96\" loading=\"lazy\" alt=\"QR code to download the Android app\" class=\"block size-24 rounded-xl shadow-[0_0_0_1px_var(--border)]\"><figcaption class=\"mt-1.5 text-xs text-muted-foreground\">Scan for Android</figcaption></figure>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div></li>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</ol><div class=\"min-w-0 border-t pt-6\"><div class=\"flex items-center justify-between gap-3\"><p class=\"text-[15px] font-semibold\">Paste this on your site</p><button type=\"button\" class=\"min-h-11 rounded-full px-4 text-sm font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted\" data-copy-code>Copy</button></div><pre class=\"lp-code\" data-code><span class=\"t\">&lt;a</span> <span class=\"a\">href</span>=<span class=\"s\">\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "</ol><div class=\"min-w-0 border-t pt-6\"><div class=\"flex items-center justify-between gap-3\"><p class=\"text-[15px] font-semibold\">Paste this on your site</p><button type=\"button\" class=\"min-h-11 rounded-full px-4 text-sm font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted\" data-copy-code>Copy</button></div><pre class=\"lp-code\" data-code><span class=\"t\">&lt;a</span> <span class=\"a\">href</span>=<span class=\"s\">\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(site)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 390, Col: 116}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 401, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "/call/<wbr><b>your-business</b>\"</span><span class=\"t\">&gt;</span>Call us<span class=\"t\">&lt;/a&gt;</span></pre><div class=\"mt-6 flex flex-col gap-4 rounded-2xl bg-muted p-6 sm:flex-row sm:items-center sm:p-8\"><span class=\"inline-flex shrink-0 items-center gap-2.5 self-start rounded-full bg-[#f46422] py-3.5 pr-6 pl-5 text-base font-semibold text-[#111113]\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "/call/<wbr><b>your-business</b>\"</span><span class=\"t\">&gt;</span>Call us<span class=\"t\">&lt;/a&gt;</span></pre><div class=\"mt-6 flex flex-col gap-4 rounded-2xl bg-muted p-6 sm:flex-row sm:items-center sm:p-8\"><span class=\"inline-flex shrink-0 items-center gap-2.5 self-start rounded-full bg-[#f46422] py-3.5 pr-6 pl-5 text-base font-semibold text-[#111113]\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1202,13 +1222,16 @@ func howItWorks(site string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, " Call us</span><p class=\"text-[15px]/[1.5] text-muted-foreground\">That's the button it makes. No website? Share the link, or print it as a QR code for your door.</p></div></div></div></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, " Call us</span><p class=\"text-[15px]/[1.5] text-muted-foreground\">That's the button it makes. No website? Share the link, or print it as a QR code for your door.</p></div></div></div></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
 }
+
+// getAppStep is "Get the app", which has the Android app's QR code.
+const getAppStep = 1
 
 func stepNumber(i int) string {
 	return []string{"1", "2", "3"}[i]
@@ -1237,7 +1260,7 @@ func faqList(line *lines.Line) templ.Component {
 			templ_7745c5c3_Var46 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<section id=\"faq\" class=\"scroll-mt-[72px] px-4 py-24 sm:px-8 sm:py-32\"><div class=\"mx-auto max-w-[780px]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<section id=\"faq\" class=\"scroll-mt-[72px] px-4 py-24 sm:px-8 sm:py-32\"><div class=\"mx-auto max-w-[780px]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1245,19 +1268,19 @@ func faqList(line *lines.Line) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<div class=\"mt-10 divide-y border-y sm:mt-14\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<div class=\"mt-10 divide-y border-y sm:mt-14\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, f := range faqs {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "<details class=\"group\"><summary class=\"flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-lg font-medium [&::-webkit-details-marker]:hidden\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<details class=\"group\"><summary class=\"flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-lg font-medium [&::-webkit-details-marker]:hidden\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var47 string
 			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(f.Q)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 418, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 432, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 			if templ_7745c5c3_Err != nil {
@@ -1267,43 +1290,43 @@ func faqList(line *lines.Line) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "</summary><p class=\"max-w-[34rem] pb-6 text-[17px]/[1.55] text-muted-foreground\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "</summary><p class=\"max-w-[34rem] pb-6 text-[17px]/[1.55] text-muted-foreground\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(f.A)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 421, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 435, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</p></details>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "</p></details>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "</div><p class=\"mt-10 flex flex-col items-center gap-4 text-center text-lg font-medium sm:flex-row sm:justify-center\" data-faq-call>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</div><p class=\"mt-10 flex flex-col items-center gap-4 text-center text-lg font-medium sm:flex-row sm:justify-center\" data-faq-call>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if line != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "Another question? Press Call and ask me. <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "Another question? Press Call and ask me. <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var49 templ.SafeURL
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/call/" + line.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 428, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 442, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\" target=\"_blank\" data-minivoip-call class=\"inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "\" target=\"_blank\" data-minivoip-call class=\"inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1311,17 +1334,17 @@ func faqList(line *lines.Line) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, " Call</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, " Call</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "Another question? <a href=\"mailto:kdresdell@minipass.me\" class=\"underline underline-offset-4\">Write to me</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "Another question? <a href=\"mailto:kdresdell@minipass.me\" class=\"underline underline-offset-4\">Write to me</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</p></div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "</p></div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1352,25 +1375,25 @@ func finalCall(line *lines.Line) templ.Component {
 			templ_7745c5c3_Var50 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<footer class=\"lp-ink\"><div class=\"mx-auto flex max-w-[1280px] flex-col items-center px-4 py-20 text-center sm:px-8 sm:py-28\"><h2 class=\"lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl\">Let your customers reach a real person.</h2><p class=\"mt-5 text-lg text-[var(--ink-muted)]\">$2 a month. Set it up from your browser.</p><div class=\"mt-9 flex flex-col items-center gap-3 sm:flex-row\"><a href=\"/signup\" class=\"flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full bg-[var(--ink-fg)] px-7 sm:w-auto text-base font-semibold text-[var(--ink-bg)] transition-opacity hover:opacity-90\">Get my line</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<footer class=\"lp-ink\"><div class=\"mx-auto flex max-w-[1280px] flex-col items-center px-4 py-20 text-center sm:px-8 sm:py-28\"><h2 class=\"lp-display text-[2.5rem] leading-[1] font-semibold tracking-[-0.04em] text-balance sm:text-6xl\">Let your customers reach a real person.</h2><p class=\"mt-5 text-lg text-[var(--ink-muted)]\">$2 a month. Set it up from your browser.</p><div class=\"mt-9 flex flex-col items-center gap-3 sm:flex-row\"><a href=\"/signup\" class=\"flex h-[52px] w-full max-w-[320px] items-center justify-center rounded-full bg-[var(--ink-fg)] px-7 sm:w-auto text-base font-semibold text-[var(--ink-bg)] transition-opacity hover:opacity-90\">Get my line</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if line != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var51 templ.SafeURL
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/call/" + line.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 451, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/home.templ`, Line: 465, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "\" target=\"_blank\" data-minivoip-call class=\"inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--ink-rule)] sm:w-auto transition-colors hover:bg-white/10\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "\" target=\"_blank\" data-minivoip-call class=\"inline-flex h-[52px] w-full max-w-[320px] items-center justify-center gap-2 rounded-full px-6 text-base font-semibold shadow-[inset_0_0_0_1px_var(--ink-rule)] sm:w-auto transition-colors hover:bg-white/10\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1378,12 +1401,12 @@ func finalCall(line *lines.Line) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, " Call us now</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, " Call us now</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "</div></div><div class=\"mx-auto max-w-[1280px] px-4 sm:px-8\"><div class=\"flex flex-col items-center justify-between gap-2 border-t border-[var(--ink-rule)] py-6 text-[13px] text-[var(--ink-muted)] sm:flex-row\"><div class=\"flex flex-col items-center gap-1 sm:flex-row sm:gap-3\"><a href=\"/\" class=\"flex min-h-11 shrink-0 items-center\" aria-label=\"minivoip home\"><img src=\"/assets/brand/logo-minivoip-dark.svg\" alt=\"minivoip\" width=\"132\" height=\"24\" class=\"h-5 w-auto\"></a> <span>Part of the mini family, with minipass and minicrm.</span></div><div class=\"flex flex-wrap items-center justify-center gap-x-5\"><a href=\"/login\" class=\"flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline\">Log in</a> <a href=\"/download/minivoip.apk\" class=\"flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline\">Get the Android app</a> <a href=\"mailto:kdresdell@minipass.me\" class=\"flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline\">kdresdell@minipass.me</a></div></div></div></footer>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "</div></div><div class=\"mx-auto max-w-[1280px] px-4 sm:px-8\"><div class=\"flex flex-col items-center justify-between gap-2 border-t border-[var(--ink-rule)] py-6 text-[13px] text-[var(--ink-muted)] sm:flex-row\"><div class=\"flex flex-col items-center gap-1 sm:flex-row sm:gap-3\"><a href=\"/\" class=\"flex min-h-11 shrink-0 items-center\" aria-label=\"minivoip home\"><img src=\"/assets/brand/logo-minivoip-dark.svg\" alt=\"minivoip\" width=\"132\" height=\"24\" class=\"h-5 w-auto\"></a> <span>Part of the mini family, with minipass and minicrm.</span></div><div class=\"flex flex-wrap items-center justify-center gap-x-5\"><a href=\"/login\" class=\"flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline\">Log in</a> <a href=\"/download/minivoip.apk\" class=\"flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline\">Get the Android app</a> <a href=\"mailto:kdresdell@minipass.me\" class=\"flex min-h-11 items-center underline-offset-4 hover:text-[var(--ink-fg)] hover:underline\">kdresdell@minipass.me</a></div></div></div></footer>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

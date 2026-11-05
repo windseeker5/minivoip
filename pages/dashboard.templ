@@ -57,14 +57,15 @@ templ dashShell(title, email, current string) {
 					}
 				</nav>
 				<div class="mt-auto flex flex-col gap-1.5">
-					<a href="/app" class="focus-inset flex items-center gap-3 rounded-xl p-2.5 shadow-[inset_0_0_0_1px_var(--border)] hover:bg-muted">
+					<a href="/app" data-phone-window class="focus-inset flex items-center gap-3 rounded-xl p-2.5 shadow-[inset_0_0_0_1px_var(--border)] hover:bg-muted">
 						<span class="grid size-9 flex-none place-items-center rounded-[10px] bg-muted">
 							@icon.Smartphone(icon.Props{Class: "size-[18px]"})
 						</span>
-						<span class="min-w-0">
+						<span class="min-w-0 flex-1">
 							<span class="block font-medium">Phone app</span>
-							<span class="block text-xs text-muted-foreground">Answer calls on your phone</span>
+							<span class="block text-xs text-muted-foreground">Get it on your phone</span>
 						</span>
+						@icon.QrCode(icon.Props{Class: "size-[18px] flex-none text-muted-foreground"})
 					</a>
 					<button type="button" popovertarget="account-menu" class="focus-inset flex items-center gap-2.5 rounded-xl p-2.5 text-left hover:bg-muted" data-account-button>
 						@avatar(email)
@@ -102,7 +103,9 @@ templ dashShell(title, email, current string) {
 				}
 			</nav>
 			@accountMenu(email)
+			@phoneSheet(email)
 		</div>
+		<script src="/assets/js/phonewindow.js" defer></script>
 	}
 }
 
@@ -180,7 +183,7 @@ templ accountMenu(email string) {
 				@icon.Languages(icon.Props{Class: "size-4 text-muted-foreground"})
 				Language of your notes
 			</a>
-			<a href="/app" class={ menuItem }>
+			<a href="/app" data-phone-window class={ menuItem }>
 				@icon.Smartphone(icon.Props{Class: "size-4 text-muted-foreground"})
 				Phone app
 			</a>
@@ -470,7 +473,6 @@ templ Dashboard(h HomeTab) {
 			<p class="mt-5 text-sm text-muted-foreground">Gmail: Settings, See all settings, Signature. Outlook: Settings, Mail, Compose and reply.</p>
 		}
 		@roomSheet(h)
-		@phoneSheet(h)
 		@copyStatus()
 		<script src="/assets/js/dashboard.js" defer></script>
 	}
@@ -654,31 +656,44 @@ templ roomSheet(h HomeTab) {
 	}
 }
 
-// phoneSheet says how to make calls ring the owner's phone.
-templ phoneSheet(h HomeTab) {
-	@sheet("dlg-phone", "Make your phone ring") {
-		<p class="mt-2 text-muted-foreground">Calls ring the minivoip app on your phone, even when it's closed.</p>
-		<ol class="mt-6 flex flex-col gap-5">
-			<li>
-				<p class="font-semibold">1. On your phone, open this address</p>
-				<div class="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-start">
-					@shownValue("app-link", h.Host+"/app")
-					@copyButton("app-link", "Copy", "", false)
-				</div>
-			</li>
-			<li>
-				<p class="font-semibold">2. Log in</p>
-				<p class="mt-1 text-sm text-muted-foreground">With { h.Email }.</p>
-			</li>
-			<li>
-				<p class="font-semibold">3. Turn on notifications when it asks</p>
-				<p class="mt-1 text-sm text-muted-foreground">On iPhone, first tap Share, then "Add to Home Screen", and open minivoip from your home screen.</p>
-			</li>
-		</ol>
-		@button.Button(button.Props{Href: "/app", Variant: button.VariantOutline, Class: "mt-6 " + pill}) {
-			@icon.Smartphone()
-			I'm on my phone: open the app
-		}
+// latestApp ends a sentence about what the app's address gives.
+func latestApp(version string) string {
+	if version == "" {
+		return "the latest app."
+	}
+	return "the latest app, version " + version + "."
+}
+
+// phoneSheet is how to get the phone app, on every dashboard page: a QR code for
+// Android on a computer, a button on a phone. The code's address always serves the
+// latest app.
+templ phoneSheet(email string) {
+	{{ version := appVersion(ctx) }}
+	@sheet("dlg-phone", "Get the phone app") {
+		<div class="mt-5 hidden items-center gap-6 sm:flex">
+			<div class="w-[168px] flex-none" data-phone-qr>
+				<img src="/qr/android.svg" width="168" height="168" alt="QR code to download the Android app" class="block size-full rounded-2xl shadow-[0_0_0_1px_var(--border)]"/>
+			</div>
+			<div>
+				<p class="font-semibold">Android</p>
+				<p class="mt-1 text-muted-foreground" data-phone-words>{ "Scan this with your phone's camera. You always get " + latestApp(version) }</p>
+				<p class="mt-2 text-sm text-muted-foreground">Your phone may ask you to allow the install.</p>
+			</div>
+		</div>
+		<div class="sm:hidden">
+			<p class="mt-2 text-muted-foreground">{ "You get " + latestApp(version) + " Your phone may ask you to allow the install." }</p>
+			@button.Button(button.Props{Href: "/download/minivoip.apk", Class: "mt-4 w-full " + pill, Attributes: templ.Attributes{"data-phone-download": ""}}) {
+				Download for Android
+			}
+		</div>
+		<div class="mt-5 border-t pt-5">
+			<p class="font-semibold">{ "iPhone" }<span class="max-sm:hidden">{ " or computer" }</span></p>
+			<p class="mt-1 text-muted-foreground">
+				Nothing to install.
+				<a href="/app" class="font-medium text-foreground underline underline-offset-4" data-phone-web>Open the web app</a><span class="max-sm:hidden wrap-anywhere">{ ", or go to " + viewer(ctx).Host + "/app on your iPhone" }</span>.
+			</p>
+			<p class="mt-5 text-sm text-muted-foreground">Then log in with { email } and turn on notifications.</p>
+		</div>
 	}
 }
 

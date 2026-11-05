@@ -17,8 +17,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    Browsers run headless only (`playwright-core` with the cached `chromium_headless_shell`), never a visible
    window and never the Playwright MCP. Only ask Ken for what a machine can't do, like his real phone or his ears.
 3. **Every feature or bug fix happens on its own branch**, never straight on `main`. When Ken says "ship it", do it
-   all yourself with the `gh` command line: push the branch, open a pull request on GitHub, merge it into `main`,
-   then switch back to an up-to-date `main` locally. Don't ship (or push) before Ken says so.
+   all yourself with the `gh` command line: push the branch, open a pull request on GitHub, squash and merge it into
+   `main`, delete the branch (`gh pr merge --squash --delete-branch`), then switch back to an up-to-date `main` locally. Don't ship (or push) before Ken says so.
 4. **Build connected features.** Every new page is linked from the pages around it (landing page, log in,
    dashboard, phone app), and the whole path is tested from the landing page, not just the page in isolation.
 
@@ -157,7 +157,7 @@ B&B and may become a SaaS.
   as `window.MinivoipAndroid` in `phone.js`), a service that keeps the microphone open when the screen locks during a call (`CallAlive`), plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
   call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,
   Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`; its
-  version is in `data/android/version`, and the app's account page shows the installed version (`MinivoipAndroid.version()`)
+  version is in `data/android/version`. `/qr/android.svg` (`web/appqr.go`) is the QR code of that download, on the landing page's "Get the app" and in the dashboard's phone window (`phoneSheet`, `assets/js/phonewindow.js`: the menus' Phone app, on every dashboard page; a button instead on a phone). The app's account page shows the installed version (`MinivoipAndroid.version()`)
   with "Update to …" when a newer one is published.
 - `relay/`: built-in TURN relay (pion/turn) on 3478 UDP+TCP, voice on 49160-49200 UDP (the ports the router
   forwards; the old coturn used them). Public address: `MINIVOIP_PUBLIC_IP`, else DNS of `MINIVOIP_TURN_HOST`

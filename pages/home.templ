@@ -375,9 +375,20 @@ templ howItWorks(site string) {
 					for i, s := range steps {
 						<li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-2 border-t py-6 first:pt-6">
 							<span class="lp-display text-[1.75rem] leading-none font-semibold text-muted-foreground tabular-nums">{ stepNumber(i) }</span>
-							<div>
-								<h3 class="lp-display text-[1.375rem] leading-tight font-semibold tracking-[-0.02em]">{ s.Title }</h3>
-								<p class="mt-1.5 text-[17px]/[1.55] text-muted-foreground">{ s.Text }</p>
+							<div class="flex items-start gap-5">
+								<div class="min-w-0 flex-1">
+									<h3 class="lp-display text-[1.375rem] leading-tight font-semibold tracking-[-0.02em]">{ s.Title }</h3>
+									<p class="mt-1.5 text-[17px]/[1.55] text-muted-foreground">{ s.Text }</p>
+									if i == getAppStep {
+										<a href="/download/minivoip.apk" class="mt-1 inline-flex min-h-11 items-center text-[17px] font-semibold underline underline-offset-4 sm:hidden" data-android-link>Get the Android app</a>
+									}
+								</div>
+								if i == getAppStep {
+									<figure class="hidden w-24 flex-none text-center sm:block" data-android-qr>
+										<img src="/qr/android.svg" width="96" height="96" loading="lazy" alt="QR code to download the Android app" class="block size-24 rounded-xl shadow-[0_0_0_1px_var(--border)]"/>
+										<figcaption class="mt-1.5 text-xs text-muted-foreground">Scan for Android</figcaption>
+									</figure>
+								}
 							</div>
 						</li>
 					}
@@ -400,6 +411,9 @@ templ howItWorks(site string) {
 		</div>
 	</section>
 }
+
+// getAppStep is "Get the app", which has the Android app's QR code.
+const getAppStep = 1
 
 func stepNumber(i int) string {
 	return []string{"1", "2", "3"}[i]

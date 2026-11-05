@@ -1478,3 +1478,23 @@ func TestPasswordChangeForgetsDevices(t *testing.T) {
 		t.Fatalf("%d devices left", n)
 	}
 }
+
+// The app's QR code is public, a picture, and made for the address asked.
+func TestAndroidQR(t *testing.T) {
+	_, _, h := testSite(t)
+	r := httptest.NewRequest("GET", "/qr/android.svg", nil)
+	r.Host = "voip.example"
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "image/svg+xml" || !strings.HasPrefix(w.Body.String(), "<svg") {
+		t.Fatalf("%d %s: %.100s", w.Code, w.Header().Get("Content-Type"), w.Body.String())
+	}
+	first := w.Body.String()
+	r = httptest.NewRequest("GET", "/qr/android.svg", nil)
+	r.Host = "other.example"
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Body.String() == first {
+		t.Error("the code doesn't follow the site's address")
+	}
+}

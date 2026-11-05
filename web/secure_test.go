@@ -1255,12 +1255,12 @@ func TestNotesTab(t *testing.T) {
 	}
 	// The owner.
 	w := get(h, "/dashboard/notes", token)
-	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Summary: Bonjour Joe") || !strings.Contains(w.Body.String(), "2 minutes of 10 hours used") {
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Summary: Bonjour Joe") || !strings.Contains(w.Body.String(), "2 minutes sur 10 heures") {
 		t.Fatalf("the list: %d %s", w.Code, w.Body.String())
 	}
 	w = get(h, path, token)
 	body := w.Body.String()
-	for _, want := range []string{"Summary: Bonjour Joe", "Do: Bonjour Joe", "Person 2", "0:05", "1:05"} {
+	for _, want := range []string{"Summary: Bonjour Joe", "Do: Bonjour Joe", "Personne 2", "0:05", "1:05"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page doesn't say %q", want)
 		}

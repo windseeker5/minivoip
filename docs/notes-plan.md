@@ -42,7 +42,7 @@ Ken decided:
 
 Proposed by Claude; Ken can overrule any of these before starting:
 - The **summary and next actions** follow the account's language. The **transcript** keeps the words as spoken.
-- The language setting also sets the Notes tab's words. The rest of the site is still in English (Ken wants French first: to do).
+- The language setting also sets the Notes tab's words. The rest of the site stays in English: Ken's French rule is for notes only (2026-11-04).
 - Transcripts: ElevenLabs Scribe, about $0.22 an hour on its price page in July 2026, with speaker labels and French.
   Check the price again before relying on it. Summaries: Claude (load the `claude-api` skill when writing that code).
   Both sit behind a small interface, so either can be swapped.

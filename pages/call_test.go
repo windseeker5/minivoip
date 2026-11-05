@@ -227,28 +227,28 @@ func TestRoomSaysNotesAreOn(t *testing.T) {
 
 func TestNoteSaysWhatItMissed(t *testing.T) {
 	for missed, want := range map[int64]string{0: "", 4: "", 5: "About 1 minute wasn't recorded", 300: "About 5 minutes wasn't recorded"} {
-		got := noteMissed(store.Note{Status: store.NoteDone, Missed: missed})
+		got := noteMissed(store.Note{Status: store.NoteDone, Missed: missed}, store.English)
 		if want == "" && got != "" || want != "" && !strings.HasPrefix(got, want) {
 			t.Errorf("%d: %q", missed, got)
 		}
 	}
-	if got := noteMissed(store.Note{Status: store.NoteWaiting, Missed: 300}); got != "" {
+	if got := noteMissed(store.Note{Status: store.NoteWaiting, Missed: 300}, store.English); got != "" {
 		t.Errorf("still being written: %q", got)
 	}
-	page := render(t, NotePage("marie@example.com", store.Note{ID: 1, Kind: store.NoteCall, Status: store.NoteDone, Missed: 120, Summary: "Ok"}))
+	page := render(t, NotePage("marie@example.com", store.English, store.Note{ID: 1, Kind: store.NoteCall, Status: store.NoteDone, Missed: 120, Summary: "Ok"}))
 	if !strings.Contains(page, "data-note-missed") {
 		t.Error("the note doesn't say what it missed")
 	}
 }
 
 func TestNotePeople(t *testing.T) {
-	if got := notePeople(store.Note{}); got != "" {
+	if got := notePeople(store.Note{}, store.English); got != "" {
 		t.Errorf("no one: %q", got)
 	}
-	if got := notePeople(store.Note{People: []string{"Ana", "Bo"}}); got != " · with Ana, Bo" {
+	if got := notePeople(store.Note{People: []string{"Ana", "Bo"}}, store.English); got != " · with Ana, Bo" {
 		t.Errorf("two: %q", got)
 	}
-	page := render(t, NotePage("marie@example.com", store.Note{ID: 1, Kind: store.NoteRoom, Status: store.NoteDone, People: []string{"<b>Eve</b>"}, Summary: "Ok"}))
+	page := render(t, NotePage("marie@example.com", store.English, store.Note{ID: 1, Kind: store.NoteRoom, Status: store.NoteDone, People: []string{"<b>Eve</b>"}, Summary: "Ok"}))
 	if strings.Contains(page, "<b>Eve") || !strings.Contains(page, "&lt;b&gt;Eve") {
 		t.Error("a guest's name isn't plain text")
 	}
@@ -267,9 +267,51 @@ func TestSpeakerNames(t *testing.T) {
 		{store.NoteRoom, "speaker_1", "Person 2"},
 		{store.NoteRoom, "", "Someone"},
 	} {
-		if got := speakerName(c.kind, c.speaker); got != c.want {
+		if got := speakerName(c.kind, c.speaker, store.English); got != c.want {
 			t.Errorf("%s %q: %q", c.kind, c.speaker, got)
 		}
+	}
+}
+
+// A note speaks the account's language, French unless it chose English, in two
+// sections: the highlights with the next actions, then the full transcript.
+func TestNoteFollowsTheLanguage(t *testing.T) {
+	n := store.Note{ID: 1, Kind: store.NoteCall, Status: store.NoteDone, CreatedAt: "2026-11-04 12:05:00", Summary: "Ok", NextActions: []string{"Rappeler"},
+		Transcript: []store.NoteLine{{Speaker: store.SpeakerCaller, Text: "Hello"}}}
+	for _, c := range []struct {
+		l          store.Language
+		want, gone []string
+	}{
+		{"", []string{"Faits saillants", "Prochaines actions", "Transcription complète", "Appelant", "Supprimer cette note", " nov., "}, []string{"Highlights", "Next actions", "Full transcript"}},
+		{store.French, []string{"Faits saillants", `lang="fr"`}, []string{"Highlights"}},
+		{store.English, []string{"Highlights", "Next actions", "Full transcript", "Caller", "Delete this note", "Nov 4"}, []string{"Faits saillants", "Transcription complète"}},
+	} {
+		page := render(t, NotePage("marie@example.com", c.l, n))
+		for _, want := range c.want {
+			if !strings.Contains(page, want) {
+				t.Errorf("%q: missing %q", c.l, want)
+			}
+		}
+		for _, gone := range c.gone {
+			if strings.Contains(page, gone) {
+				t.Errorf("%q: still says %q", c.l, gone)
+			}
+		}
+		if got := strings.Count(page, "<section"); got != 2 {
+			t.Errorf("%q: %d sections", c.l, got)
+		}
+	}
+	if got := hoursUsed(9000, store.French); got != "2,5 heures" {
+		t.Errorf("French hours: %q", got)
+	}
+	if got := noteWhen("not a date", store.French); got != "not a date" {
+		t.Errorf("a bad date: %q", got)
+	}
+	if got := render(t, Notes(NotesTab{Language: store.French})); !strings.Contains(got, "Prendre des notes") {
+		t.Error("the tab isn't in French")
+	}
+	if got := render(t, NotesLocked("marie@example.com", store.English, 2)); !strings.Contains(got, "Your 2 saved notes") {
+		t.Error("the locked tab isn't in English")
 	}
 }
 

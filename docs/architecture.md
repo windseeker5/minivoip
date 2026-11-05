@@ -230,7 +230,7 @@ for the summary, and hours are counted only then.
   this honest too: a page that loaded before notes were on says it told nobody, and then nothing is recorded or written down.
   There's no way to refuse but hanging up, or turning off "Take notes" as the owner. Not legal advice: the rules where
   the business operates apply.
-- **The Notes tab** (`web/notes.go`, `pages/notes.templ`) is for the account's logged-in owner on Premium, checked on the
+- **The Notes tab** (`web/notes.go`, `pages/notes.templ`) speaks the account's language (`say`), and a note has two sections: the highlights with the next actions, then the full transcript, as spoken. It is for the account's logged-in owner on Premium, checked on the
   server: someone else's note answers 404, and so does any note on Basic, whose tab shows only the Premium tag and how
   many notes are saved. Delete works on any plan. The "Take notes" switch is per account.
 - **What people say is untrusted.** Claude gets no tools and only the one transcript, as JSON between tags (JSON writes

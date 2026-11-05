@@ -105,7 +105,7 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
 "Take notes" switch (ink when on; it saves itself, `notes.js`), the month's hours over a thin ink bar, and the language
 with a Change link. Below it, hairline rows, newest first: an icon for the kind, Call / Meeting room / Voicemail, the
 date, and two lines at most of the summary or of how the note is doing, always in plain words ("Being written", "Notes
-aren't set up yet"). **One note,** on one page: Summary, Next actions, then "Who said what" (who and when on the left,
+aren't set up yet"). **One note,** in the account's language, on one page, in two sections: Highlights with Next actions, then "Full transcript" (who and when on the left,
 the words on the right; on a phone one above the other), each its own white card, then Hear the message and Delete. The
 summary carries `lang`, so screen readers read French as French. A page with a note being written looks again every 15
 seconds. **On Basic** the tab is one card with the Premium tag. A voicemail in Messages has "Read the note".

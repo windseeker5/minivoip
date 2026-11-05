@@ -860,12 +860,13 @@ try {
     await owner.click('aside a[href="/dashboard/notes"]');
     await owner.waitForSelector("[data-notes]");
     check(await owner.isChecked("#take-notes"), "Take notes is on by default");
-    check(/2\.5 hours of 10 hours used/.test(await owner.textContent("[data-notes-used]")), "the tab shows the hours used this month");
+    check((await owner.textContent("[data-notes]")).includes("Prendre des notes"), "a French account's Notes tab is in French");
+    check(/2,5 heures sur 10 heures/.test(await owner.textContent("[data-notes-used]")), "the tab shows the hours used this month");
     const lines = await owner.locator("[data-note-line]").allTextContents();
     const clamp = await owner.locator("[data-note-line]").first().evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight));
     check(clamp <= 2.1, `a long summary stops at two lines in the list (${clamp})`);
     check(/^Marie Tremblay/.test(lines[0]), "the list is newest first, and shows the summary");
-    for (const words of ["Being written", "We wrote down what was said", "Nothing was said", "Notes aren't set up yet", "this month's 10 hours"]) {
+    for (const words of ["En cours de rédaction", "Nous avons transcrit", "Rien n'a été dit", "pas encore configurées", "vos 10 heures"]) {
       check(lines.some((l) => l.includes(words)), `a note says: ${words}`);
     }
     await owner.screenshot({ path: `${SHOTS}/notes.png`, fullPage: true });
@@ -891,11 +892,14 @@ try {
     await owner.click(`a[href="/dashboard/notes/${writtenNote}"]`);
     await owner.waitForSelector("[data-note-summary]");
     check((await owner.textContent("[data-note-summary]")).includes("Marie Tremblay veut"), "the page starts with the summary");
+    const sections = await owner.locator("[data-note] section").count();
+    const heads = await owner.locator("[data-note] section h2, [data-note] section h3").allTextContents();
+    check(sections === 2 && heads.join("|") === "Faits saillants|Prochaines actions|Transcription complète", `two sections: highlights with next actions, then the transcript (${heads.join(", ")})`);
     check((await owner.locator("[data-note-actions] li").count()) === 2, "then the next actions");
     const said = await owner.locator("[data-note-said]").allTextContents();
-    check(said.length === 4 && said[2].includes("<img src=x"), "then who said what, as plain text");
+    check(said.length === 4 && said[2].includes("<img src=x"), "then the full transcript, as plain text");
     check((await owner.locator("[data-note-transcript] img").count()) === 0 && (await owner.title()) !== "hacked", "a caller's words can't become part of the page");
-    check(await owner.isVisible("[data-note-transcript] >> text=Person 2"), "speakers have plain names");
+    check(await owner.isVisible("[data-note-transcript] >> text=Personne 2"), "speakers have plain names");
     await owner.screenshot({ path: `${SHOTS}/note.png`, fullPage: true });
     const noteStranger = await newPage();
     check((await noteStranger.request.get(`${BASE}/dashboard/notes/${writtenNote}`, { maxRedirects: 0 })).status() === 303, "a stranger is sent to log in");
@@ -924,7 +928,7 @@ try {
     await owner.click("[data-note-link]");
     await owner.waitForSelector("[data-note]");
     check(true, "a message links to its note");
-    await owner.click('a[href="/dashboard/voicemail"]:visible >> text=Hear the message');
+    await owner.click('a[href="/dashboard/voicemail"]:visible >> text=Écouter le message');
     await owner.waitForSelector("[data-voicemail]");
     check(true, "the note links back to the message");
 

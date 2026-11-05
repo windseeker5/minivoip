@@ -4,6 +4,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"minivoip/components/button"
 	"minivoip/components/icon"
@@ -22,21 +23,34 @@ type NotesTab struct {
 	TakeNotes bool
 }
 
-func noteKindName(k store.NoteKind) string {
-	switch k {
-	case store.NoteCall:
-		return "Call"
-	case store.NoteRoom:
-		return "Meeting room"
+// say picks the words for the account's language: French unless it chose English.
+func say(l store.Language, french, english string) string {
+	if l == store.English {
+		return english
 	}
-	return "Voicemail"
+	return french
 }
 
-func languageName(l store.Language) string {
-	if l == store.English {
-		return "English"
+func noteKindName(k store.NoteKind, l store.Language) string {
+	switch k {
+	case store.NoteCall:
+		return say(l, "Appel", "Call")
+	case store.NoteRoom:
+		return say(l, "Salle de réunion", "Meeting room")
 	}
-	return "French"
+	return say(l, "Message vocal", "Voicemail")
+}
+
+var frenchMonths = [...]string{"janv.", "févr.", "mars", "avr.", "mai", "juin", "juill.", "août", "sept.", "oct.", "nov.", "déc."}
+
+// noteWhen is a note's date, "4 nov., 16 h 42" in French.
+func noteWhen(utc string, l store.Language) string {
+	t, err := time.ParseInLocation(time.DateTime, utc, time.UTC)
+	if l == store.English || err != nil {
+		return when(utc)
+	}
+	t = t.Local()
+	return strconv.Itoa(t.Day()) + " " + frenchMonths[t.Month()-1] + ", " + strconv.Itoa(t.Hour()) + " h " + pad(int64(t.Minute()))
 }
 
 func noteURL(n store.Note) templ.SafeURL {
@@ -48,61 +62,67 @@ func noteBusy(n store.Note) bool {
 }
 
 // noteProblem says why a note isn't whole, in the owner's words; "" when it is.
-func noteProblem(n store.Note) string {
+func noteProblem(n store.Note, l store.Language) string {
 	switch n.Reason {
 	case store.NoteSwitchedOff:
-		return "Take notes was turned off, so there's no note."
+		return say(l, "« Prendre des notes » a été désactivé, il n'y a donc pas de note.", "Take notes was turned off, so there's no note.")
 	case store.NoteBusy:
-		return "No note: too many recordings were waiting."
+		return say(l, "Pas de note : trop d'enregistrements étaient en attente.", "No note: too many recordings were waiting.")
 	case store.NoteNotTold:
-		return "Someone hadn't been told notes were on, so nothing was recorded."
+		return say(l, "Quelqu'un n'avait pas été averti de la prise de notes, donc rien n'a été enregistré.", "Someone hadn't been told notes were on, so nothing was recorded.")
 	case store.NoteNoRecorder:
-		return "This browser can't record, so there's no note. Try Chrome, Edge, Firefox or Safari."
+		return say(l, "Ce navigateur ne peut pas enregistrer, il n'y a donc pas de note. Essayez Chrome, Edge, Firefox ou Safari.", "This browser can't record, so there's no note. Try Chrome, Edge, Firefox or Safari.")
 	case store.NoteNotSetUp:
-		return "Notes aren't set up yet."
+		return say(l, "Les notes ne sont pas encore configurées.", "Notes aren't set up yet.")
 	case store.NoteNotPremium:
-		return "Notes come with Premium."
+		return say(l, "Les notes sont offertes avec Premium.", "Notes come with Premium.")
 	case store.NoteMonthLimit:
-		return "No note: you had used this month's 10 hours."
+		return say(l, "Pas de note : vos 10 heures de ce mois-ci étaient déjà utilisées.", "No note: you had used this month's 10 hours.")
 	case store.NoteDayLimit:
-		return "No note: too many were asked for today."
+		return say(l, "Pas de note : trop de demandes aujourd'hui.", "No note: too many were asked for today.")
 	case store.NoteSilent:
-		return "Nothing was said, so there's no note."
+		return say(l, "Rien n'a été dit, il n'y a donc pas de note.", "Nothing was said, so there's no note.")
 	case store.NoteNoAudio:
-		return "The recording was gone before it could be written down."
+		return say(l, "L'enregistrement a disparu avant d'être transcrit.", "The recording was gone before it could be written down.")
 	case store.NoteTranscribe:
-		return "We couldn't write this one down."
+		return say(l, "Nous n'avons pas pu transcrire celui-ci.", "We couldn't write this one down.")
 	case store.NoteSummarize:
-		return "We wrote down what was said, but couldn't summarize it."
+		return say(l, "Nous avons transcrit ce qui a été dit, mais sans pouvoir le résumer.", "We wrote down what was said, but couldn't summarize it.")
 	}
 	return ""
 }
 
 // noteLine is a row's second line: the summary's start, or how the note is doing.
-func noteLine(n store.Note) string {
+func noteLine(n store.Note, l store.Language) string {
 	if noteBusy(n) {
-		return "Being written. This takes a minute or two."
+		return noteBeingWritten(l)
 	}
-	if p := noteProblem(n); p != "" {
+	if p := noteProblem(n, l); p != "" {
 		return p
 	}
 	return n.Summary
 }
 
+func noteBeingWritten(l store.Language) string {
+	return say(l, "En cours de rédaction. Cela prend une minute ou deux.", "Being written. This takes a minute or two.")
+}
+
 // noteMissed says what a recording didn't catch, when the browser noticed.
-func noteMissed(n store.Note) string {
+func noteMissed(n store.Note, l store.Language) string {
 	if n.Missed < 5 || noteBusy(n) {
 		return ""
 	}
-	return "About " + hoursUsed(max(n.Missed, 60)) + " wasn't recorded: the phone was locked, or the app was in the background."
+	used := hoursUsed(max(n.Missed, 60), l)
+	return say(l, "Partie non enregistrée (environ "+used+") : le téléphone était verrouillé, ou l'application en arrière-plan.",
+		"About "+used+" wasn't recorded: the phone was locked, or the app was in the background.")
 }
 
 // notePeople names who came to a meeting, as they named themselves: "with Ana, Bo".
-func notePeople(n store.Note) string {
+func notePeople(n store.Note, l store.Language) string {
 	if len(n.People) == 0 {
 		return ""
 	}
-	return " · with " + strings.Join(n.People, ", ")
+	return say(l, " · avec ", " · with ") + strings.Join(n.People, ", ")
 }
 
 // noteLength is a recording's length, like 12:05, if it's known.
@@ -119,7 +139,7 @@ func noteClock(seconds float64) string {
 }
 
 // hoursUsed says how much of the month's hours went, like "12 minutes" or "2.5 hours".
-func hoursUsed(seconds int64) string {
+func hoursUsed(seconds int64, l store.Language) string {
 	if seconds < 3600 {
 		m := int64(math.Ceil(float64(seconds) / 60))
 		if m == 1 {
@@ -129,38 +149,39 @@ func hoursUsed(seconds int64) string {
 	}
 	h := float64(min(seconds, store.NoteMonthSeconds)) / 3600
 	if h == 1 {
-		return "1 hour"
+		return say(l, "1 heure", "1 hour")
 	}
-	return strconv.FormatFloat(math.Round(h*10)/10, 'f', -1, 64) + " hours"
+	hours := strconv.FormatFloat(math.Round(h*10)/10, 'f', -1, 64)
+	return say(l, strings.ReplaceAll(hours, ".", ",")+" heures", hours+" hours")
 }
 
 // speakerName turns a label into words: a call knows who is who, a voicemail has
 // one voice, the others "Person 1", "Person 2".
-func speakerName(k store.NoteKind, speaker string) string {
+func speakerName(k store.NoteKind, speaker string, l store.Language) string {
 	switch {
 	case speaker == store.SpeakerOwner:
-		return "You"
+		return say(l, "Vous", "You")
 	case speaker == store.SpeakerCaller || k == store.NoteVoicemail:
-		return "Caller"
+		return say(l, "Appelant", "Caller")
 	}
 	if n, err := strconv.Atoi(strings.TrimPrefix(speaker, "speaker_")); err == nil {
-		return "Person " + strconv.Itoa(n+1)
+		return say(l, "Personne ", "Person ") + strconv.Itoa(n+1)
 	}
-	return "Someone"
+	return say(l, "Quelqu'un", "Someone")
 }
 
 // NotesLocked is the Notes tab on Basic. A former Premium account's notes stay
 // until their year is over, and it's told so.
-templ NotesLocked(email string, kept int) {
+templ NotesLocked(email string, l store.Language, kept int) {
 	@dashShell("Notes", email, notesTab) {
-		<div class="max-w-3xl" data-notes-locked>
+		<div class="max-w-3xl" lang={ say(l, "fr", "en") } data-notes-locked>
 			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Notes</h1>
 			<div class={ card + " mt-6" }>
 				@premiumTag("inline-block")
-				<p class="mt-3">After each call, meeting and voicemail: a one-page summary, what to do next, and who said what.</p>
-				<p class="mt-2 text-muted-foreground">You're on Basic. Premium opens after the beta.</p>
+				<p class="mt-3">{ say(l, "Après chaque appel, réunion et message vocal : les faits saillants, les prochaines actions et la transcription complète.", "After each call, meeting and voicemail: the highlights, the next actions and the full transcript.") }</p>
+				<p class="mt-2 text-muted-foreground">{ say(l, "Vous êtes sur Basic. Premium ouvrira après la bêta.", "You're on Basic. Premium opens after the beta.") }</p>
 				if kept > 0 {
-					<p class="mt-2 text-muted-foreground">Your { strconv.Itoa(kept) } saved notes stay for a year from the day they were written, and come back with Premium.</p>
+					<p class="mt-2 text-muted-foreground">{ say(l, "Vos "+strconv.Itoa(kept)+" notes enregistrées restent un an à partir du jour où elles ont été rédigées, et reviennent avec Premium.", "Your "+strconv.Itoa(kept)+" saved notes stay for a year from the day they were written, and come back with Premium.") }</p>
 				}
 			</div>
 		</div>
@@ -170,15 +191,16 @@ templ NotesLocked(email string, kept int) {
 // Notes is the Notes tab on Premium: the switch and the hours, then the list.
 // notes.js saves the switch, and reloads while a note is being written.
 templ Notes(d NotesTab) {
+	{{ l := d.Language }}
 	@dashShell("Notes", d.Email, notesTab) {
-		<div class="max-w-3xl" data-notes>
+		<div class="max-w-3xl" lang={ say(l, "fr", "en") } data-notes>
 			<h1 class="text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">Notes</h1>
-			<p class="mt-2 text-muted-foreground">After each call, meeting and voicemail: a one-page summary, what to do next, and who said what.</p>
+			<p class="mt-2 text-muted-foreground">{ say(l, "Après chaque appel, réunion et message vocal : les faits saillants, les prochaines actions et la transcription complète.", "After each call, meeting and voicemail: the highlights, the next actions and the full transcript.") }</p>
 			<div class={ card + " mt-6 flex flex-col gap-5" }>
 				<form method="post" action="/dashboard/notes/switch" class="flex items-center justify-between gap-4" data-notes-switch>
 					<label for="take-notes" class="min-w-0">
-						<span class="block font-semibold">Take notes</span>
-						<span class="block text-sm text-muted-foreground">Callers are told first. Off: no new notes.</span>
+						<span class="block font-semibold">{ say(l, "Prendre des notes", "Take notes") }</span>
+						<span class="block text-sm text-muted-foreground">{ say(l, "Les appelants sont avertis d'abord. Désactivé : aucune nouvelle note.", "Callers are told first. Off: no new notes.") }</span>
 					</label>
 					<span class="relative grid h-11 w-12 flex-none place-items-center">
 						<input id="take-notes" type="checkbox" role="switch" name="on" value="1" checked?={ d.TakeNotes } class="peer absolute inset-0 z-10 m-0 cursor-pointer opacity-0"/>
@@ -187,30 +209,30 @@ templ Notes(d NotesTab) {
 					</span>
 					<noscript>
 						@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline}) {
-							Save
+							{ say(l, "Enregistrer", "Save") }
 						}
 					</noscript>
 				</form>
 				<div class="border-t pt-5">
 					<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-						<p class="font-semibold">This month</p>
-						<p class="text-sm text-muted-foreground tabular-nums" data-notes-used>{ hoursUsed(d.Seconds) } of 10 hours used</p>
+						<p class="font-semibold">{ say(l, "Ce mois-ci", "This month") }</p>
+						<p class="text-sm text-muted-foreground tabular-nums" data-notes-used>{ hoursUsed(d.Seconds, l) }{ say(l, " sur 10 heures", " of 10 hours used") }</p>
 					</div>
-					<progress value={ strconv.FormatInt(min(d.Seconds, store.NoteMonthSeconds), 10) } max={ strconv.Itoa(store.NoteMonthSeconds) } aria-label="Hours of notes used this month" class="mt-3 block h-1.5 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-foreground [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-foreground"></progress>
+					<progress value={ strconv.FormatInt(min(d.Seconds, store.NoteMonthSeconds), 10) } max={ strconv.Itoa(store.NoteMonthSeconds) } aria-label={ say(l, "Heures de notes utilisées ce mois-ci", "Hours of notes used this month") } class="mt-3 block h-1.5 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-foreground [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-foreground"></progress>
 					if d.Seconds >= store.NoteMonthSeconds {
-						<p class="mt-3 text-sm" role="status" data-notes-full>You've used this month's 10 hours. New calls, meetings and messages won't get a note, or be recorded for one, until next month.</p>
+						<p class="mt-3 text-sm" role="status" data-notes-full>{ say(l, "Vos 10 heures de ce mois-ci sont utilisées. Jusqu'au mois prochain, les nouveaux appels, réunions et messages n'auront pas de note et ne seront pas enregistrés pour en faire une.", "You've used this month's 10 hours. New calls, meetings and messages won't get a note, or be recorded for one, until next month.") }</p>
 					}
 				</div>
 				<p class="border-t pt-5 text-sm text-muted-foreground">
-					Written in { languageName(d.Language) }.
-					<a href="/dashboard/language" class="font-medium text-foreground underline underline-offset-4" data-notes-language>Change</a>
+					{ say(l, "Rédigées en français.", "Written in English.") }
+					<a href="/dashboard/language" class="font-medium text-foreground underline underline-offset-4" data-notes-language>{ say(l, "Changer", "Change") }</a>
 				</p>
 			</div>
 			if len(d.List) == 0 {
 				<div class="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-10 text-center" data-notes-empty>
 					@icon.NotebookText(icon.Props{Class: "size-8 text-muted-foreground"})
-					<p class="font-medium">No notes yet</p>
-					<p class="max-w-xs text-sm text-muted-foreground">Your next call, meeting or voicemail will show up here.</p>
+					<p class="font-medium">{ say(l, "Aucune note pour l'instant", "No notes yet") }</p>
+					<p class="max-w-xs text-sm text-muted-foreground">{ say(l, "Votre prochain appel, réunion ou message vocal apparaîtra ici.", "Your next call, meeting or voicemail will show up here.") }</p>
 				</div>
 			} else {
 				<ul class={ card + " mt-6 divide-y py-1 sm:py-1" }>
@@ -222,10 +244,10 @@ templ Notes(d NotesTab) {
 								</span>
 								<span class="min-w-0 flex-1">
 									<span class="flex flex-wrap items-baseline justify-between gap-x-3">
-										<span class="min-w-0 wrap-anywhere"><span class="font-semibold">{ noteKindName(n.Kind) }</span><span class="text-sm text-muted-foreground" data-note-people>{ notePeople(n) }</span></span>
-										<span class="text-sm text-muted-foreground tabular-nums">{ when(n.CreatedAt) }</span>
+										<span class="min-w-0 wrap-anywhere"><span class="font-semibold">{ noteKindName(n.Kind, l) }</span><span class="text-sm text-muted-foreground" data-note-people>{ notePeople(n, l) }</span></span>
+										<span class="text-sm text-muted-foreground tabular-nums">{ noteWhen(n.CreatedAt, l) }</span>
 									</span>
-									<span class="mt-0.5 line-clamp-2 text-sm text-muted-foreground" data-note-line>{ noteLine(n) }</span>
+									<span class="mt-0.5 line-clamp-2 text-sm text-muted-foreground" data-note-line>{ noteLine(n, l) }</span>
 								</span>
 								@icon.ChevronRight(icon.Props{Class: "size-4 flex-none text-muted-foreground"})
 							</a>
@@ -249,55 +271,58 @@ templ noteKindIcon(k store.NoteKind) {
 	}
 }
 
-// NotePage is one note, on one page: summary, next actions, then who said what.
-// What people said goes through as plain text, like everything templ writes.
-templ NotePage(email string, n store.Note) {
-	@dashShell(noteKindName(n.Kind)+" note", email, notesTab) {
-		<div class="max-w-3xl" data-note={ strconv.FormatInt(n.ID, 10) } if noteBusy(n) { data-note-busy }>
+// NotePage is one note, in two sections: the highlights with the next actions, then
+// the full transcript. The page's words follow the account's language; what people
+// said stays as spoken, and goes through as plain text, like everything templ writes.
+templ NotePage(email string, l store.Language, n store.Note) {
+	@dashShell(noteKindName(n.Kind, l), email, notesTab) {
+		<div class="max-w-3xl" lang={ say(l, "fr", "en") } data-note={ strconv.FormatInt(n.ID, 10) } if noteBusy(n) { data-note-busy }>
 			<a href={ templ.SafeURL(notesTab) } class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0">
 				@icon.ArrowLeft(icon.Props{Class: "size-4"})
 				Notes
 			</a>
-			<h1 class="mt-2 text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">{ noteKindName(n.Kind) }</h1>
-			<p class="mt-1 text-muted-foreground tabular-nums wrap-anywhere">{ when(n.CreatedAt) }{ noteLength(n) }{ notePeople(n) }</p>
+			<h1 class="mt-2 text-[22px] font-semibold tracking-[-0.025em] md:text-[26px]">{ noteKindName(n.Kind, l) }</h1>
+			<p class="mt-1 text-muted-foreground tabular-nums wrap-anywhere">{ noteWhen(n.CreatedAt, l) }{ noteLength(n) }{ notePeople(n, l) }</p>
 			if noteBusy(n) {
-				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>Being written. This takes a minute or two.</p>
-			} else if p := noteProblem(n); p != "" {
+				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>{ noteBeingWritten(l) }</p>
+			} else if p := noteProblem(n, l); p != "" {
 				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-state>{ p }</p>
 			}
-			if m := noteMissed(n); m != "" {
+			if m := noteMissed(n, l); m != "" {
 				<p class="mt-6 rounded-lg bg-muted px-3 py-2 text-sm" role="status" data-note-missed>{ m }</p>
 			}
 			if n.Summary != "" {
-				<section class={ card + " mt-6" } lang={ string(n.Language) } data-note-summary>
-					<h2 class="font-semibold">Summary</h2>
-					<p class="mt-2 leading-relaxed wrap-anywhere whitespace-pre-line">{ n.Summary }</p>
-				</section>
-				<section class={ card + " mt-4" } lang={ string(n.Language) } data-note-actions>
-					<h2 class="font-semibold">Next actions</h2>
-					if len(n.NextActions) == 0 {
-						<p class="mt-2 text-muted-foreground">Nothing to do.</p>
-					} else {
-						<ul class="mt-2 flex list-disc flex-col gap-1.5 pl-5 leading-relaxed wrap-anywhere">
-							for _, a := range n.NextActions {
-								<li>{ a }</li>
-							}
-						</ul>
-					}
+				<section class={ card + " mt-6" } data-note-highlights>
+					<div data-note-summary>
+						<h2 class="font-semibold">{ say(l, "Faits saillants", "Highlights") }</h2>
+						<p class="mt-2 leading-relaxed wrap-anywhere whitespace-pre-line" lang={ string(n.Language) }>{ n.Summary }</p>
+					</div>
+					<div class="mt-5 border-t pt-5" data-note-actions>
+						<h3 class="font-semibold">{ say(l, "Prochaines actions", "Next actions") }</h3>
+						if len(n.NextActions) == 0 {
+							<p class="mt-2 text-muted-foreground">{ say(l, "Rien à faire.", "Nothing to do.") }</p>
+						} else {
+							<ul class="mt-2 flex list-disc flex-col gap-1.5 pl-5 leading-relaxed wrap-anywhere" lang={ string(n.Language) }>
+								for _, a := range n.NextActions {
+									<li>{ a }</li>
+								}
+							</ul>
+						}
+					</div>
 				</section>
 			}
 			if len(n.Transcript) > 0 {
 				<section class={ card + " mt-4" } data-note-transcript>
-					<h2 class="font-semibold">Who said what</h2>
-					<p class="mt-1 text-sm text-muted-foreground">Word for word, from a machine, so some words can be wrong.</p>
+					<h2 class="font-semibold">{ say(l, "Transcription complète", "Full transcript") }</h2>
+					<p class="mt-1 text-sm text-muted-foreground">{ say(l, "Mot à mot, écrit par une machine : certains mots peuvent être erronés.", "Word for word, from a machine, so some words can be wrong.") }</p>
 					<div class="mt-3 divide-y">
-						for _, l := range n.Transcript {
+						for _, t := range n.Transcript {
 							<div class="grid gap-x-4 gap-y-0.5 py-3 sm:grid-cols-[7rem_minmax(0,1fr)]">
 								<p class="text-sm">
-									<span class="font-medium">{ speakerName(n.Kind, l.Speaker) }</span>
-									<span class="ml-1 text-muted-foreground tabular-nums">{ noteClock(l.Start) }</span>
+									<span class="font-medium">{ speakerName(n.Kind, t.Speaker, l) }</span>
+									<span class="ml-1 text-muted-foreground tabular-nums">{ noteClock(t.Start) }</span>
 								</p>
-								<p class="leading-relaxed wrap-anywhere" data-note-said>{ l.Text }</p>
+								<p class="leading-relaxed wrap-anywhere" data-note-said>{ t.Text }</p>
 							</div>
 						}
 					</div>
@@ -307,13 +332,13 @@ templ NotePage(email string, n store.Note) {
 				if n.VoicemailID != 0 {
 					@button.Button(button.Props{Href: "/dashboard/voicemail", Variant: button.VariantOutline, Class: pill}) {
 						@icon.Voicemail()
-						Hear the message
+						{ say(l, "Écouter le message", "Hear the message") }
 					}
 				}
 				<form method="post" action={ templ.SafeURL(notesTab + "/" + strconv.FormatInt(n.ID, 10) + "/delete") } class="ml-auto">
 					@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Class: pill}) {
 						@icon.Trash2()
-						Delete this note
+						{ say(l, "Supprimer cette note", "Delete this note") }
 					}
 				</form>
 			</div>

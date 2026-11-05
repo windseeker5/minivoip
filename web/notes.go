@@ -22,7 +22,12 @@ func (s *Server) notesPage(w http.ResponseWriter, r *http.Request, u store.User)
 		return
 	}
 	if !s.onPremium(u) {
-		render(w, r, pages.NotesLocked(u.Email, len(list)))
+		l, err := s.Store.Language(u.AccountID)
+		if err != nil {
+			serverError(w, r, err)
+			return
+		}
+		render(w, r, pages.NotesLocked(u.Email, l, len(list)))
 		return
 	}
 	d := pages.NotesTab{Email: u.Email, List: list}
@@ -53,7 +58,12 @@ func (s *Server) notePage(w http.ResponseWriter, r *http.Request, u store.User) 
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, pages.NotePage(u.Email, n))
+	l, err := s.Store.Language(u.AccountID)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	render(w, r, pages.NotePage(u.Email, l, n))
 }
 
 // noteDelete works on any plan: what's said about someone can always go.

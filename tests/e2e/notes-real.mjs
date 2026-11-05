@@ -129,6 +129,7 @@ try {
   await owner.goto(BASE + `/dashboard/notes/${call?.id}`);
   check(/Tremblay/.test(await owner.textContent("[data-note-summary]")), "the Notes tab shows the summary");
   check(await owner.locator("[data-note-actions] li").count() > 0, "and the next actions");
+  check((await owner.textContent("[data-note]")).includes("Faits saillants") && (await owner.textContent("[data-note]")).includes("Transcription complète"), "in French, in two sections");
   check(/Tremblay/.test(await owner.textContent("[data-note-transcript]")), "and the transcript");
   await owner.screenshot({ path: `${SHOTS}/real-note.png`, fullPage: true });
   await owner.setViewportSize({ width: 390, height: 844 });

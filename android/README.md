@@ -25,7 +25,7 @@ cp app/build/outputs/apk/release/app-release.apk ../data/android/minivoip.apk
 echo 0.3 > ../data/android/version   # the versionName you just built
 ```
 
-Phones download it at `/download/minivoip.apk` (the app's account page, "Get the Android app"). Bump `versionCode` and
+Phones download it at `/download/minivoip.apk` (the app's account page, "Get the Android app"; the QR code on the landing page and in the dashboard's phone window, which always gives the latest, so it never needs changing). Bump `versionCode` and
 `versionName` in `app/build.gradle.kts` for each new build, and write the new `versionName` to
 `data/android/version`: the app tells the page its version (`MinivoipAndroid.version()`, from 0.3), and the account page
 shows it, with "Update to …" when the published one is newer.

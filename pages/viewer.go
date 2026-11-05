@@ -14,6 +14,11 @@ type Viewer struct {
 	// Premium says whether the account is on Premium, for the Notes tab's tag;
 	// also only called when a dashboard page renders.
 	Premium func() bool
+	// Host is this site's address as the user sees it, like https://voip.dresdell.com.
+	Host string
+	// AppVersion is the Android app phones download, "" when unknown; also only
+	// called when a dashboard page renders.
+	AppVersion func() string
 }
 
 // WithViewer tells the page templates who is logged in.
@@ -31,6 +36,13 @@ func isAdmin(ctx context.Context) bool { return viewer(ctx).Admin }
 func onBasic(ctx context.Context) bool {
 	f := viewer(ctx).Premium
 	return f != nil && !f()
+}
+
+func appVersion(ctx context.Context) string {
+	if f := viewer(ctx).AppVersion; f != nil {
+		return f()
+	}
+	return ""
 }
 
 func newMessages(ctx context.Context) int {

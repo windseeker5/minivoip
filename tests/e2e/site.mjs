@@ -274,6 +274,20 @@ try {
   await visitorSite.waitForTimeout(8500);
   const steps = await visitorSite.evaluate(() => [...document.querySelectorAll("[data-hero-steps] .lp-step")].map((s) => getComputedStyle(s).opacity));
   check(steps.length === 5 && steps.every((o) => o === "1"), `the hero's five steps all show (${steps.join(", ")})`);
+  // The Android app's QR code, in "Get the app": a link instead on a phone.
+  await visitorSite.locator("[data-android-qr]").scrollIntoViewIfNeeded();
+  check(await visitorSite.isVisible("[data-android-qr]") && !(await visitorSite.isVisible("[data-android-link]")), "the landing page's step 2 has the Android QR code");
+  await visitorSite.waitForFunction(() => document.querySelector("[data-android-qr] img").naturalWidth > 0);
+  await visitorSite.locator("#steps > div").screenshot({ path: `${SHOTS}/landing-qr.png` });
+  const qrSvg = await visitorSite.request.get(BASE + "/qr/android.svg");
+  check(qrSvg.ok() && /image\/svg\+xml/.test(qrSvg.headers()["content-type"]) && (await qrSvg.text()).startsWith("<svg"), "the QR code is a picture anyone can load");
+  const appFile = await visitorSite.request.get(BASE + "/download/minivoip.apk");
+  check(appFile.ok() && (await appFile.body()).length > 100000, "the address it holds serves the app");
+  const landingPhone = await newPage(390, 844);
+  await landingPhone.goto(BASE + "/");
+  check(await landingPhone.isVisible("[data-android-link]") && !(await landingPhone.isVisible("[data-android-qr]")), "on a phone, a link instead of the QR code");
+  check((await landingPhone.getAttribute("[data-android-link]", "href")) === "/download/minivoip.apk", "the link downloads the app");
+  await landingPhone.context().close();
   const wave = await visitorSite.evaluate(() => {
     const c = document.querySelector("[data-hero-wave]");
     const px = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
@@ -494,9 +508,29 @@ try {
   check(band.startsWith("One step left: make your phone ring."), `the setup band shows the one step left: a menu of its own and a logo are done, the phone isn't (${band.slice(0, 60)})`);
   check((await owner.getAttribute("[data-line-status]", "data-on")) === null && (await owner.textContent("[data-line-status]")).includes("until your phone is set up"), "the line's status says calls go to messages until the phone is set up");
   await owner.click('[data-setup-band] [data-open="dlg-phone"]');
-  check(await owner.isVisible("#dlg-phone") && (await owner.getAttribute("#app-link", "data-value")).endsWith("/app"), "Set up my phone opens the steps with the phone app's address");
+  check(await owner.isVisible("#dlg-phone") && await owner.isVisible("[data-phone-qr] img") && (await owner.getAttribute("[data-phone-web]", "href")) === "/app", "Set up my phone opens the window with the app's QR code and the web app");
+  check(/latest app, version \d+\.\d+\.$/.test(await owner.textContent("[data-phone-words]")), "the window says which version you get");
+  check(await owner.evaluate(() => document.querySelector("[data-phone-qr] img").naturalWidth > 0), "the QR code shows");
+  await owner.screenshot({ path: `${SHOTS}/phone-window.png` });
   await owner.click('#dlg-phone button[aria-label="Close"]');
   check(!(await owner.isVisible("#dlg-phone")), "Close shuts the window");
+  // Phone app, from the side menu of any dashboard page, on the page that has no other windows too.
+  await owner.goto(BASE + "/dashboard/password");
+  await owner.click("aside [data-phone-window]");
+  check(await owner.isVisible("#dlg-phone"), "the side menu's Phone app opens the window, from any dashboard page");
+  await owner.mouse.click(5, 5);
+  check(!(await owner.isVisible("#dlg-phone")), "a click outside closes it");
+  const phoneWindow = await newPage(390, 844);
+  await phoneWindow.context().addCookies(await owner.context().cookies());
+  await phoneWindow.goto(BASE + "/dashboard");
+  await phoneWindow.click("[data-account-button]");
+  await phoneWindow.click("#account-menu [data-phone-window]");
+  check(await phoneWindow.isVisible("[data-phone-download]") && !(await phoneWindow.isVisible("[data-phone-qr]")), "on a phone, a Download button instead of the QR code");
+  check((await phoneWindow.getAttribute("[data-phone-download]", "href")) === "/download/minivoip.apk", "it downloads the app");
+  check((await phoneWindow.evaluate(() => document.documentElement.scrollWidth)) <= 390, "phone width: the window doesn't scroll sideways");
+  await phoneWindow.screenshot({ path: `${SHOTS}/phone-window-phone.png` });
+  await phoneWindow.context().close();
+  await owner.goto(BASE + "/dashboard");
   // The website code shows only when asked for.
   check(!(await owner.isVisible("#button-code")), "the website code is hidden until asked for");
   await owner.click('[data-open="dlg-website"]');

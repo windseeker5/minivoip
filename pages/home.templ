@@ -32,7 +32,6 @@ type plan struct {
 	Price   string
 	Line    string
 	Items   []string
-	Soon    string // a feature on its way, shown after the items
 	Premium bool
 }
 
@@ -43,13 +42,14 @@ var plans = []plan{
 		"Sends callers to the right page of your site",
 		"Rings your phone and your computer",
 		"Voicemail with an alert",
-	}, "", false},
+	}, false},
 	{"Premium", "$10", "Talk, show, close the deal.", []string{
 		"Everything in Basic",
 		"Share your screen in seconds",
 		"Draw together on a whiteboard",
 		"Video, and a meeting room for your team",
-	}, "Notes taken for you, with a summary in your app after each call", true},
+		"Notes after each call, meeting and voicemail: a summary, what to do next, who said what. In your dashboard, up to 10 hours a month",
+	}, true},
 }
 
 type step struct {
@@ -74,6 +74,7 @@ var faqs = []faq{
 	{"Can people call me from a regular phone?", "Not yet. Calls come from your website, your call link or a QR code. A real phone number is planned as an add-on."},
 	{"Will my phone ring like a normal call?", "On Android, yes: the minivoip app rings with your ringtone and shows the call screen, even when your phone is locked. Computers ring while the app is open. On iPhone, for now you get a notification with a sound and answer by tapping it; a ringing iPhone app is next."},
 	{"Does the visitor need to install anything?", "No. They click the button and talk from their browser, after allowing the microphone."},
+	{"Are calls recorded?", "On Basic, never: only the voicemails people leave you. On Premium, yes while your notes are on, and you can turn them off. Callers are told first, in writing and out loud. The sound goes to two outside services to be written down and summarized, and a call's recording is then deleted. Your notes stay in your dashboard for a year, or until you delete them."},
 }
 
 // Home is the landing page; loggedIn swaps "Log in" for the dashboard link.
@@ -326,12 +327,6 @@ templ planCard(p plan) {
 					{ item }
 				</li>
 			}
-			if p.Soon != "" {
-				<li class="flex items-start gap-3 border-t py-3 text-muted-foreground">
-					<span class="mt-0.5 shrink-0 rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground">Soon</span>
-					{ p.Soon }
-				</li>
-			}
 		</ul>
 		if p.Premium {
 			@premiumForm()
@@ -348,7 +343,7 @@ templ planCard(p plan) {
 // and shows the thanks in place.
 templ premiumForm() {
 	<form method="post" action="/premium" class="mt-auto flex flex-col gap-3" data-premium-form>
-		<label for="premium-email" class="text-[15px]/[1.5] text-muted-foreground">Leave your email. I'll set you up and tell you when the call notes are ready.</label>
+		<label for="premium-email" class="text-[15px]/[1.5] text-muted-foreground">Leave your email. I'll write back and set you up.</label>
 		@input.Input(input.Props{ID: "premium-email", Name: "email", Type: "email", Placeholder: "you@business.com", Required: true, Class: "h-12 rounded-full bg-background px-5 text-[15px]", Attributes: templ.Attributes{"autocomplete": "email"}})
 		@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Size: button.SizeLg, Class: "h-12 w-full rounded-full bg-background text-[15px] font-semibold"}) {
 			Get Premium

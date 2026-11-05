@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	_ "modernc.org/sqlite"
 )
@@ -20,6 +21,8 @@ type Store struct {
 	db *sql.DB
 	// Dir is the folder holding the database; audio files go under it.
 	Dir string
+	// recording keeps pieces of recordings from landing in the wrong order.
+	recording sync.Mutex
 }
 
 // migrations run in order; PRAGMA user_version remembers how many ran.
@@ -195,6 +198,74 @@ var migrations = []string{
 	// (sizeVoicemails fills it in for the old ones).
 	`
 	ALTER TABLE voicemail ADD COLUMN size INTEGER NOT NULL DEFAULT 0;
+	`,
+	// 14: the language of an account's call notes. Existing accounts get French.
+	`
+	ALTER TABLE account ADD COLUMN language TEXT NOT NULL DEFAULT 'fr' CHECK (language IN ('fr', 'en'));
+	`,
+	// 15: Premium notes (transcript, summary, next actions) and the hours they
+	// used, kept apart so deleting a note doesn't give its hours back.
+	`
+	CREATE TABLE note (
+		id           INTEGER PRIMARY KEY,
+		account_id   INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+		line_id      INTEGER NOT NULL REFERENCES line(id) ON DELETE CASCADE,
+		kind         TEXT NOT NULL CHECK (kind IN ('voicemail', 'call', 'room')),
+		status       TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'working', 'done', 'failed', 'skipped')),
+		reason       TEXT NOT NULL DEFAULT '',
+		language     TEXT NOT NULL CHECK (language IN ('fr', 'en')),
+		audio        TEXT NOT NULL DEFAULT '',
+		audio_type   TEXT NOT NULL DEFAULT '',
+		seconds      INTEGER NOT NULL DEFAULT 0,
+		transcript   TEXT NOT NULL DEFAULT '',
+		summary      TEXT NOT NULL DEFAULT '',
+		next_actions TEXT NOT NULL DEFAULT '',
+		tries        INTEGER NOT NULL DEFAULT 0,
+		next_try     TEXT NOT NULL DEFAULT (datetime('now')),
+		created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+		done_at      TEXT
+	);
+	CREATE INDEX note_account ON note(account_id, created_at);
+	CREATE INDEX note_status ON note(status, next_try);
+	CREATE TABLE note_usage (
+		account_id  INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+		day         TEXT NOT NULL,
+		seconds     INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (account_id, day)
+	);
+	CREATE INDEX note_usage_day ON note_usage(day);
+	`,
+	// 16: a voicemail's note. Deleting the message deletes the note
+	// (DeleteVoicemail); a message that expires leaves its note behind.
+	`
+	ALTER TABLE note ADD COLUMN voicemail_id INTEGER REFERENCES voicemail(id) ON DELETE SET NULL;
+	CREATE INDEX note_voicemail ON note(voicemail_id);
+	`,
+	// 17: the "Take notes" switch, on unless the owner turns it off.
+	`
+	ALTER TABLE account ADD COLUMN take_notes INTEGER NOT NULL DEFAULT 1;
+	`,
+	// 18: a call's note and its recording as it arrives, piece by piece.
+	`
+	ALTER TABLE note ADD COLUMN call_id TEXT NOT NULL DEFAULT '';
+	ALTER TABLE note ADD COLUMN parts INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE note ADD COLUMN audio_size INTEGER NOT NULL DEFAULT 0;
+	CREATE UNIQUE INDEX note_call ON note(call_id) WHERE call_id <> '';
+	`,
+	// 19: who came to a meeting, as they named themselves at the door.
+	`
+	ALTER TABLE note ADD COLUMN people TEXT NOT NULL DEFAULT '';
+	`,
+	// 20: how much of a recording its browser reckons it missed.
+	`
+	ALTER TABLE note ADD COLUMN missed_seconds INTEGER NOT NULL DEFAULT 0;
+	`,
+	// 21: what the services really bill for (a call's two channels are billed
+	// apart), and how much of it voicemails used: strangers can leave those.
+	`
+	ALTER TABLE note_usage ADD COLUMN billed INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE note_usage ADD COLUMN voicemail INTEGER NOT NULL DEFAULT 0;
+	UPDATE note_usage SET billed = seconds;
 	`,
 }
 

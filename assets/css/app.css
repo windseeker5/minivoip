@@ -242,6 +242,8 @@ body:has(> .ap), html:has(.ap) { background: #f6f6f7; color-scheme: light; }
 /* Cameras, a screen or the whiteboard (meet.js): the stage fills the call
    screen, the words shrink to the line on top. */
 .ap-stage { display: none; }
+.ap-rec-note { margin-top: 12px; color: var(--ap-muted); font-size: 13px; text-align: center; }
+.ap-rec-note.is-on::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--ap-red); transform: translateY(-1px); }
 .ap-meet-note { margin-top: 12px; padding: 10px 14px; border-radius: 12px; background: var(--ap-red-soft); color: var(--ap-red); font-size: 14px; }
 .ap-call[data-stage-on="on"] .ap-call-in { max-width: none; height: 100%; min-height: 0;
   padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }

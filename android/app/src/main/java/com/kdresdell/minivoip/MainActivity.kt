@@ -135,6 +135,11 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    override fun onDestroy() {
+        CallAlive.stop(this) // the page holding the call is gone
+        super.onDestroy()
+    }
+
     @Deprecated("Back goes back in the pages first.")
     override fun onBackPressed() {
         // Over the lock screen, Back leaves: the app's pages stay behind the lock.
@@ -224,6 +229,20 @@ class MainActivity : Activity() {
             setShowWhenLocked(false)
             setTurnScreenOn(false)
         }
+
+        // callStarted and callStopped keep the microphone open while a call or a
+        // meeting is on, even if the screen locks (0.4 and older don't have them).
+        @JavascriptInterface
+        fun callStarted() = runOnUiThread {
+            // Android lets this service start only then. Asked at any other time it
+            // can refuse so late that the app crashes, and the call with it.
+            if (App.visible && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                CallAlive.start(this@MainActivity)
+            }
+        }
+
+        @JavascriptInterface
+        fun callStopped() = runOnUiThread { CallAlive.stop(this@MainActivity) }
 
         // version is this app's version name ("0.3"), so the page can say
         // when a newer one is ready (0.2 and older don't have it).

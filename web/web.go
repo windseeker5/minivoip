@@ -34,6 +34,11 @@ type Server struct {
 	Dev bool
 	// OnVoicemail runs after a voicemail is saved (push notifications).
 	OnVoicemail func(line string)
+	// OnNote runs when a note is queued, to wake the notes worker.
+	OnNote func()
+	// RefuseNotes says why a recording shouldn't start for an account, or "".
+	// Nil means notes aren't set up.
+	RefuseNotes func(accountID int64) string
 	// Push sends notifications to the owner's devices (nil in tests).
 	Push *push.Sender
 	// CallLine is the line behind the landing page's "Call us now" button.
@@ -78,6 +83,14 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	s.Hub.Available = s.Store.Available
 	s.Hub.OnEnd = s.logCall
 	s.Rooms.IsOwner = s.canAnswer
+	// Not with the rooms locked: a busy database mustn't hold up every room.
+	s.Rooms.OnJoined = func(line, name string) {
+		go func() {
+			if err := s.Store.AddNotePerson(line, name); err != nil {
+				log.Printf("room %s: note: %v", line, err)
+			}
+		}()
+	}
 	// The owner's open apps show who waits in the meeting room.
 	s.Rooms.OnWaiting = func(line string, names []string) {
 		s.Hub.NotifyOwners(line, calls.Message{Type: "room", Names: names})
@@ -91,6 +104,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /logout", s.logout)
 	mux.Handle("GET /dashboard/password", s.auth(s.passwordPage))
 	mux.Handle("POST /dashboard/password", s.auth(s.changePassword))
+	mux.Handle("GET /dashboard/language", s.auth(s.languagePage))
+	mux.Handle("POST /dashboard/language", s.auth(s.saveLanguage))
 	mux.HandleFunc("POST /premium", s.askPremium)
 
 	mux.Handle("GET /dashboard", s.auth(s.dashboard))
@@ -111,6 +126,10 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /app/push/test", s.auth(s.pushTest))
 	mux.Handle("POST /app/push/receipt", s.auth(s.pushReceipt))
 	mux.Handle("POST /app/calls/{id}/decline", s.auth(s.declineCall))
+	mux.Handle("POST /app/calls/{id}/recording", s.auth(s.recordingStart))
+	mux.Handle("POST /app/calls/{id}/recording/done", s.auth(s.recordingDone))
+	mux.Handle("POST /app/calls/{id}/recording/{part}", s.auth(s.recordingPiece))
+	mux.Handle("POST /room/{line}/recording", s.auth(s.roomRecordingStart))
 	mux.HandleFunc("GET /api/android/config", s.androidConfig)
 	mux.HandleFunc("GET /download/minivoip.apk", s.androidAPK)
 
@@ -122,6 +141,11 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /logo/{name}", s.logo)
 
 	mux.Handle("GET /dashboard/voicemail", s.auth(s.voicemailPage))
+	mux.Handle("GET /dashboard/notes", s.auth(s.notesPage))
+	mux.Handle("POST /dashboard/notes/switch", s.auth(s.notesSwitch))
+	mux.Handle("GET /dashboard/notes/{id}", s.auth(s.notePage))
+	mux.Handle("POST /dashboard/notes/{id}/delete", s.auth(s.noteDelete))
+
 	mux.Handle("GET /voicemail/{id}/audio", s.auth(s.voicemailAudio))
 	mux.Handle("POST /voicemail/{id}/listened", s.auth(s.voicemailListened))
 	mux.Handle("POST /voicemail/{id}/delete", s.auth(s.voicemailDelete))
@@ -165,6 +189,7 @@ func (s *Server) auth(next func(http.ResponseWriter, *http.Request, store.User))
 		ctx := pages.WithViewer(context.WithValue(r.Context(), ctxKey{}, u), pages.Viewer{
 			Admin:       u.IsAdmin,
 			NewMessages: func() int { return s.Store.NewVoicemails(u.AccountID) },
+			Premium:     func() bool { return s.onPremium(u) },
 		})
 		next(w, r.WithContext(ctx), u)
 	})
@@ -287,7 +312,10 @@ func (s *Server) signupPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBody)
-	f := pages.AccountForm{Email: strings.TrimSpace(r.FormValue("email")), Promo: strings.TrimSpace(r.FormValue("promo"))}
+	f := pages.AccountForm{Email: strings.TrimSpace(r.FormValue("email")), Promo: strings.TrimSpace(r.FormValue("promo")), Language: store.Language(r.FormValue("language"))}
+	if !f.Language.Valid() {
+		f.Language = store.French
+	}
 	password := r.FormValue("password")
 	if !s.sameSite(r) {
 		f.Error = "This form came from another site."
@@ -321,6 +349,10 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 			return
 		default:
 			s.signupDone(r, true)
+			// A failure here leaves a working French account, changed from the account menu.
+			if err := s.Store.SetLanguage(u.AccountID, f.Language); err != nil {
+				log.Printf("signup: language: %v", err)
+			}
 			if err := s.startSession(w, r, u); err != nil {
 				serverError(w, r, err)
 				return
@@ -472,6 +504,35 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request, u store.
 	}
 	w.WriteHeader(http.StatusUnprocessableEntity)
 	render(w, r, pages.Password(u.Email, msg, false))
+}
+
+func (s *Server) languagePage(w http.ResponseWriter, r *http.Request, u store.User) {
+	l, err := s.Store.Language(u.AccountID)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	render(w, r, pages.Language(u.Email, l, "", r.URL.Query().Get("saved") == "1"))
+}
+
+func (s *Server) saveLanguage(w http.ResponseWriter, r *http.Request, u store.User) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxFormBody)
+	l := store.Language(r.FormValue("language"))
+	if !l.Valid() {
+		current, err := s.Store.Language(u.AccountID)
+		if err != nil {
+			serverError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		render(w, r, pages.Language(u.Email, current, "Choose French or English.", false))
+		return
+	}
+	if err := s.Store.SetLanguage(u.AccountID, l); err != nil {
+		serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/dashboard/language?saved=1", http.StatusSeeOther)
 }
 
 // relayLogin is the connection helpers with a two-hour relay login. The relay

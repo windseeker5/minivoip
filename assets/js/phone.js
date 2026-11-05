@@ -9,7 +9,7 @@
   if (!root) return;
   var $ = function (sel) { return root.querySelector(sel); };
 
-  var ws, pc, mic, ac, ringStop, timerIv, ringIv, meet, link;
+  var ws, pc, mic, ac, ringStop, timerIv, ringIv, meet, link, remote, recorder;
   var ringingId = null, liveId = null, wsDelay = 1000, offlineTimer = null;
   var wide = matchMedia("(min-width: 900px)");
   var android = window.MinivoipAndroid || null;
@@ -406,6 +406,7 @@
         meet = MinivoipMeet.Session({ video: root.dataset.premium === "true", askVideo: true, stage: $("[data-stage]"), me: { name: root.dataset.meName, initials: root.dataset.meInitials, logo: root.dataset.meLogo }, mic: mic, onChange: meetChanged });
         link = meet.link(id, pc, { name: "Caller", fixedName: true, onAudio: function (stream) {
           var el = $("[data-remote]");
+          remote = stream;
           el.srcObject = stream;
           el.play().catch(function () {});
         } });
@@ -457,9 +458,31 @@
     timerIv = setInterval(function () {
       $("[data-timer]").textContent = mmss((Date.now() - start) / 1000);
     }, 500);
+    // The Android app keeps the microphone open if the screen locks now.
+    if (android && android.callStarted) android.callStarted();
+    takeNotes();
   }
 
+  // Notes on: the call is recorded here, the owner on one channel and the caller
+  // on the other. Whatever goes wrong with it, the call goes on (recorder.js).
+  function recNote(state) {
+    if (window.MinivoipRecorder) MinivoipRecorder.show($("[data-rec-note]"), state, "call");
+  }
+  function takeNotes() {
+    if (root.dataset.notes !== "true" || recorder || !remote || !window.MinivoipRecorder) return;
+    recorder = MinivoipRecorder.start({ url: "/app/calls/" + encodeURIComponent(liveId) + "/recording", voices: { owner: mic, caller: remote }, mine: "owner", onState: recNote });
+  }
+
+  // A page reloading mid-call has ended it: the Android app lets the microphone go.
+  window.addEventListener("pagehide", function () {
+    if (android && android.callStopped) android.callStopped();
+  });
+
   function endCall() {
+    if (android && android.callStopped) android.callStopped();
+    if (recorder) { recorder.stop(); recorder = null; }
+    remote = null;
+    recNote("");
     clearInterval(timerIv);
     $("[data-timer]").textContent = "";
     $('[data-action="mute"]').setAttribute("aria-pressed", "false");

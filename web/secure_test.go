@@ -3,13 +3,16 @@ package web
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
 	"net/url"
+	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -85,6 +88,74 @@ func TestSignupNeedsACode(t *testing.T) {
 	form.Set("promo", "friends-2027")
 	if w := post(h, "/signup", form, ""); w.Code != http.StatusSeeOther {
 		t.Fatalf("with a code: %d", w.Code)
+	}
+}
+
+// Sign up keeps the language chosen, French unless English was picked, and a
+// made-up one is French too.
+func TestSignupLanguage(t *testing.T) {
+	for sent, want := range map[string]store.Language{"": store.French, "fr": store.French, "en": store.English, "de": store.French} {
+		_, st, h := testSite(t) // each its own site: sign ups per address are limited
+		st.CreatePromoCode("FRIENDS-2027", store.Basic, 0, "", "")
+		form := url.Values{"email": {"joe@example.com"}, "password": {"long-enough"}, "promo": {"FRIENDS-2027"}, "language": {sent}}
+		if w := post(h, "/signup", form, ""); w.Code != http.StatusSeeOther {
+			t.Fatalf("%q: %d", sent, w.Code)
+		}
+		u, err := st.Login("joe@example.com", "long-enough")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if l, _ := st.Language(u.AccountID); l != want {
+			t.Errorf("%q: got %q", sent, l)
+		}
+	}
+	// The form comes back with the choice kept when something else is wrong.
+	_, st, h := testSite(t)
+	st.CreatePromoCode("FRIENDS-2027", store.Basic, 0, "", "")
+	w := post(h, "/signup", url.Values{"email": {"a@example.com"}, "password": {"short"}, "promo": {"FRIENDS-2027"}, "language": {"en"}}, "")
+	if !regexp.MustCompile(`value="en"\s+checked`).MatchString(w.Body.String()) {
+		t.Fatal("the choice of English was lost")
+	}
+}
+
+func TestChangeLanguage(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	other, _ := st.CreateAccount("sam@example.com", "long-enough", "")
+	token, _, _ := st.NewSession(u.ID)
+	if w := post(h, "/dashboard/language", url.Values{"language": {"en"}}, ""); w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
+		t.Fatalf("logged out: %d %s", w.Code, w.Header().Get("Location"))
+	}
+	if l, _ := st.Language(u.AccountID); l != store.French {
+		t.Fatalf("changed while logged out: %q", l)
+	}
+	if w := post(h, "/dashboard/language", url.Values{"language": {"de"}}, token); w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("a made-up language: %d", w.Code)
+	}
+	if l, _ := st.Language(u.AccountID); l != store.French {
+		t.Fatalf("a made-up language changed it: %q", l)
+	}
+	if w := post(h, "/dashboard/language", url.Values{"language": {"en"}}, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("saving: %d", w.Code)
+	}
+	if l, _ := st.Language(u.AccountID); l != store.English {
+		t.Fatalf("saved: %q", l)
+	}
+	if l, _ := st.Language(other.AccountID); l != store.French {
+		t.Fatalf("someone else's account changed: %q", l)
+	}
+	// From another website, the same post is refused.
+	r := httptest.NewRequest("POST", "/dashboard/language", strings.NewReader("language=fr"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("Origin", "https://evil.example")
+	r.Header.Set("Cookie", sessionCookie+"="+token)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("from another site: %d", rec.Code)
+	}
+	if l, _ := st.Language(u.AccountID); l != store.English {
+		t.Fatalf("another site changed it: %q", l)
 	}
 }
 
@@ -619,9 +690,18 @@ func voicemailPass(t *testing.T, srv *httptest.Server, line, addr string) string
 	return m.Token
 }
 
+// voicemailTold is what the caller's page says: it told them notes are on.
+var voicemailTold = "1"
+
 func voicemailUpload(h http.Handler, token, addr string, size int) int {
+	return voicemailUploadMS(h, token, addr, size, 0)
+}
+
+func voicemailUploadMS(h http.Handler, token, addr string, size int, ms int64) int {
 	var buf bytes.Buffer
 	m := multipart.NewWriter(&buf)
+	m.WriteField("duration_ms", strconv.FormatInt(ms, 10))
+	m.WriteField("told", voicemailTold)
 	head := textproto.MIMEHeader{}
 	head.Set("Content-Disposition", `form-data; name="audio"; filename="m.webm"`)
 	head.Set("Content-Type", "audio/webm")
@@ -636,6 +716,659 @@ func voicemailUpload(h http.Handler, token, addr string, size int) int {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	return w.Code
+}
+
+// A Premium voicemail queues a note and wakes the worker; a Basic one and a very
+// short one cost nothing; deleting the message deletes its note.
+func TestVoicemailNotes(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	woken := 0
+	s.OnNote = func() { woken++ }
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	leave := func(addr string, ms int64) {
+		t.Helper()
+		if c := voicemailUploadMS(h, voicemailPass(t, srv, "joesbnb", addr), addr, 1000, ms); c != http.StatusNoContent {
+			t.Fatalf("upload: %d", c)
+		}
+	}
+	notes := func() []store.Note {
+		t.Helper()
+		list, err := st.Notes(u.AccountID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return list
+	}
+
+	leave("198.51.100.1", 30000)
+	if len(notes()) != 0 || woken != 0 {
+		t.Fatalf("a Basic voicemail: %d notes, woken %d", len(notes()), woken)
+	}
+	st.SetPlan(u.AccountID, store.Premium)
+	leave("198.51.100.2", 1500)
+	if len(notes()) != 0 || woken != 0 {
+		t.Fatalf("a very short voicemail: %d notes, woken %d", len(notes()), woken)
+	}
+	// A page that loaded before notes were on didn't tell them: no note.
+	voicemailTold = "0"
+	leave("198.51.100.5", 30000)
+	voicemailTold = "1"
+	if len(notes()) != 0 || woken != 0 {
+		t.Fatalf("a caller who wasn't told: %d notes", len(notes()))
+	}
+	leave("198.51.100.3", 30000)
+	list := notes()
+	if len(list) != 1 || woken != 1 || list[0].Kind != store.NoteVoicemail || list[0].Status != store.NoteWaiting || list[0].Seconds != 30 || list[0].Language != store.French {
+		t.Fatalf("a Premium voicemail: %+v, woken %d", list, woken)
+	}
+	if _, err := os.Stat(st.NoteAudioPath(list[0])); err != nil {
+		t.Fatalf("the note doesn't find its recording: %v", err)
+	}
+	messages, _ := st.Voicemails(u.AccountID)
+	if err := st.DeleteVoicemail(u.AccountID, messages[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(notes()) != 0 {
+		t.Fatalf("the note outlived its message: %+v", notes())
+	}
+}
+
+var calledFrom int
+
+// answeredCall rings a line through the real socket and picks up as its owner,
+// and returns the call's id.
+func answeredCall(t *testing.T, srv *httptest.Server, line, token string) (id string, hangUp func()) {
+	t.Helper()
+	return answeredCallTold(t, srv, line, token, true)
+}
+
+func answeredCallTold(t *testing.T, srv *httptest.Server, line, token string, told bool) (id string, hangUp func()) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	t.Cleanup(cancel)
+	dial := func(role string, h http.Header) *websocket.Conn {
+		c, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws?role="+role+"&line="+line, &websocket.DialOptions{HTTPHeader: h})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { c.CloseNow() })
+		return c
+	}
+	owner := dial("owner", http.Header{"Cookie": {sessionCookie + "=" + token}})
+	wsjson.Write(ctx, owner, calls.Message{Type: "hello"})
+	calledFrom++ // a visitor has 3 calls in 10 minutes
+	visitor := dial("visitor", http.Header{"X-Forwarded-For": {"198.51.100." + strconv.Itoa(100+calledFrom)}})
+	wsjson.Write(ctx, visitor, calls.Message{Type: "call", Option: "Talk", Told: told})
+	read := func(c *websocket.Conn, typ string) calls.Message {
+		t.Helper()
+		for {
+			var m calls.Message
+			if err := wsjson.Read(ctx, c, &m); err != nil {
+				t.Fatalf("waiting for %s: %v", typ, err)
+			}
+			if m.Type == typ {
+				return m
+			}
+		}
+	}
+	id = read(owner, "incoming").ID
+	// While it rings, nothing can start.
+	if w := post(srv.Config.Handler, "/app/calls/"+id+"/recording?type=audio/webm", nil, token); w.Code != http.StatusNotFound {
+		t.Fatalf("a recording while it rings: %d", w.Code)
+	}
+	wsjson.Write(ctx, owner, calls.Message{Type: "accept", ID: id})
+	read(visitor, "accepted")
+	return id, func() {
+		wsjson.Write(ctx, visitor, calls.Message{Type: "hangup", ID: id})
+		read(owner, "hangup")
+	}
+}
+
+func piece(h http.Handler, id string, part int, body string, cookie string) int {
+	r := httptest.NewRequest("POST", "/app/calls/"+id+"/recording/"+strconv.Itoa(part), strings.NewReader(body))
+	r.Header.Set("Cookie", sessionCookie+"="+cookie)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	return w.Code
+}
+
+// A recording is for the line's own logged-in owner, tied to the call on now.
+func TestRecordingACall(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	woken := 0
+	s.OnNote = func() { woken++ }
+	s.RefuseNotes = func(int64) string { return "" }
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	sue, _ := st.CreateAccount("sue@example.com", "long-enough", "")
+	st.CreateLine(sue.AccountID, "sues", "Sue's")
+	st.SetPlan(sue.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	other, _, _ := st.NewSession(sue.ID)
+	id, hangUp := answeredCall(t, srv, "joesbnb", token)
+	start := "/app/calls/" + id + "/recording?type=audio/webm"
+
+	if w := post(h, start, nil, ""); w.Code != http.StatusSeeOther {
+		t.Fatalf("logged out: %d", w.Code)
+	}
+	if w := post(h, start, nil, other); w.Code != http.StatusNotFound {
+		t.Fatalf("another account: %d", w.Code)
+	}
+	if w := post(h, "/app/calls/made-up/recording?type=audio/webm", nil, token); w.Code != http.StatusNotFound {
+		t.Fatalf("a made-up call: %d", w.Code)
+	}
+	if w := post(h, "/app/calls/"+id+"/recording?type=text/html", nil, token); w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("not a recording: %d", w.Code)
+	}
+	if w := post(h, start, nil, token); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"record":true`) {
+		t.Fatalf("start: %d %s", w.Code, w.Body.String())
+	}
+	if c := piece(h, id, 0, "one ", other); c != http.StatusNotFound {
+		t.Fatalf("someone else's piece: %d", c)
+	}
+	if c := piece(h, id, 0, "one ", token); c != http.StatusNoContent {
+		t.Fatalf("a piece: %d", c)
+	}
+	if c := piece(h, id, 7, "gap", token); c != http.StatusConflict {
+		t.Fatalf("a gap: %d", c)
+	}
+	if c := piece(h, id, 1, strings.Repeat("x", store.MaxRecordingPiece+1), token); c != http.StatusRequestEntityTooLarge {
+		t.Fatalf("too big: %d", c)
+	}
+	// The call ends: the last piece still comes in.
+	hangUp()
+	if c := piece(h, id, 1, "two", token); c != http.StatusNoContent {
+		t.Fatalf("the last piece: %d", c)
+	}
+	if w := post(h, start, nil, token); w.Code != http.StatusNotFound {
+		t.Fatalf("a call that ended can't start again: %d", w.Code)
+	}
+	if w := post(h, "/app/calls/"+id+"/recording/done", nil, other); w.Code != http.StatusConflict {
+		t.Fatalf("someone else's done: %d", w.Code)
+	}
+	if woken != 0 {
+		t.Fatalf("woken too soon: %d", woken)
+	}
+	if w := post(h, "/app/calls/"+id+"/recording/done", nil, token); w.Code != http.StatusNoContent || woken != 1 {
+		t.Fatalf("done: %d, woken %d", w.Code, woken)
+	}
+	n, ok, err := st.ClaimNote()
+	if !ok || err != nil || n.Kind != store.NoteCall || n.AudioType != "audio/webm" {
+		t.Fatalf("its turn: %+v %v %v", n, ok, err)
+	}
+	if b, _ := os.ReadFile(st.NoteAudioPath(n)); string(b) != "one two" {
+		t.Fatalf("the file: %q", b)
+	}
+	if c := piece(h, id, 2, "late", token); c != http.StatusConflict {
+		t.Fatalf("a piece once it's being written: %d", c)
+	}
+}
+
+// Nothing is recorded for a note that can't be written, and the note says why.
+func TestRecordingRefused(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	token, _, _ := st.NewSession(u.ID)
+	start := func(id string) string {
+		w := post(h, "/app/calls/"+id+"/recording?type=audio/webm", nil, token)
+		if w.Code != http.StatusOK {
+			t.Fatalf("start: %d", w.Code)
+		}
+		return w.Body.String()
+	}
+
+	// Basic: not a word, no note.
+	id, hangUp := answeredCall(t, srv, "joesbnb", token)
+	if a := start(id); !strings.Contains(a, `"record":false`) {
+		t.Fatalf("Basic: %s", a)
+	}
+	hangUp()
+	if list, _ := st.Notes(u.AccountID); len(list) != 0 {
+		t.Fatalf("Basic: %+v", list)
+	}
+
+	// No keys.
+	st.SetPlan(u.AccountID, store.Premium)
+	id, hangUp = answeredCall(t, srv, "joesbnb", token)
+	if a := start(id); !strings.Contains(a, `"record":false`) || !strings.Contains(a, store.NoteNotSetUp) {
+		t.Fatalf("no keys: %s", a)
+	}
+	if c := piece(h, id, 0, "sound", token); c != http.StatusConflict {
+		t.Fatalf("a piece with no recording: %d", c)
+	}
+	hangUp()
+
+	// Past a limit.
+	s.RefuseNotes = func(int64) string { return store.NoteMonthLimit }
+	id, hangUp = answeredCall(t, srv, "joesbnb", token)
+	if a := start(id); !strings.Contains(a, store.NoteMonthLimit) {
+		t.Fatalf("past a limit: %s", a)
+	}
+	hangUp()
+	list, _ := st.Notes(u.AccountID)
+	if len(list) != 2 || list[0].Reason != store.NoteMonthLimit || list[1].Reason != store.NoteNotSetUp || list[0].Status != store.NoteSkipped {
+		t.Fatalf("notes: %+v", list)
+	}
+
+	// A browser that can't record: the note says so.
+	s.RefuseNotes = func(int64) string { return "" }
+	id, hangUp = answeredCall(t, srv, "joesbnb", token)
+	if w := post(h, "/app/calls/"+id+"/recording", nil, token); !strings.Contains(w.Body.String(), store.NoteNoRecorder) {
+		t.Fatalf("no recorder: %s", w.Body.String())
+	}
+	hangUp()
+	if list, _ = st.Notes(u.AccountID); list[0].Reason != store.NoteNoRecorder {
+		t.Fatalf("no recorder: %+v", list[0])
+	}
+	st.DeleteNote(u.AccountID, list[0].ID)
+
+	// Safari's recording is fine, and what a locked phone missed comes along.
+	id, hangUp = answeredCall(t, srv, "joesbnb", token)
+	if w := post(h, "/app/calls/"+id+"/recording?type=audio/mp4", nil, token); !strings.Contains(w.Body.String(), `"record":true`) {
+		t.Fatalf("mp4: %s", w.Body.String())
+	}
+	r := httptest.NewRequest("POST", "/app/calls/"+id+"/recording/0?missed=75", strings.NewReader("sound"))
+	r.Header.Set("Cookie", sessionCookie+"="+token)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("a piece: %d", rec.Code)
+	}
+	hangUp()
+	list, _ = st.Notes(u.AccountID)
+	if list[0].Missed != 75 || list[0].AudioType != "audio/mp4" {
+		t.Fatalf("mp4: %+v", list[0])
+	}
+	st.DeleteNote(u.AccountID, list[0].ID)
+
+	// A caller's page from before notes were on: not recorded, and the note says so.
+	id, hangUp = answeredCallTold(t, srv, "joesbnb", token, false)
+	if a := start(id); !strings.Contains(a, `"record":false`) || !strings.Contains(a, store.NoteNotTold) {
+		t.Fatalf("not told: %s", a)
+	}
+	hangUp()
+	if list, _ = st.Notes(u.AccountID); list[0].Reason != store.NoteNotTold {
+		t.Fatalf("not told: %+v", list[0])
+	}
+	st.DeleteNote(u.AccountID, list[0].ID)
+
+	// The switch off: not a word.
+	st.SetTakeNotes(u.AccountID, false)
+	id, hangUp = answeredCall(t, srv, "joesbnb", token)
+	if a := start(id); !strings.Contains(a, `"record":false`) {
+		t.Fatalf("the switch off: %s", a)
+	}
+	hangUp()
+	if list, _ := st.Notes(u.AccountID); len(list) != 2 {
+		t.Fatalf("the switch off: %+v", list)
+	}
+}
+
+// meeting opens a real room: its owner in, and a guest let in. It returns a
+// function for the guest to leave.
+func meeting(t *testing.T, srv *httptest.Server, line, token, name string) (leave func()) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	t.Cleanup(cancel)
+	dial := func(h http.Header) *websocket.Conn {
+		c, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/room?line="+line, &websocket.DialOptions{HTTPHeader: h})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { c.CloseNow() })
+		return c
+	}
+	read := func(c *websocket.Conn, typ string) calls.RoomMessage {
+		t.Helper()
+		for {
+			var m calls.RoomMessage
+			if err := wsjson.Read(ctx, c, &m); err != nil {
+				t.Fatalf("waiting for %s: %v", typ, err)
+			}
+			if m.Type == typ {
+				return m
+			}
+		}
+	}
+	host := dial(http.Header{"Cookie": {sessionCookie + "=" + token}})
+	wsjson.Write(ctx, host, calls.RoomMessage{Type: "join", Name: "Host"})
+	read(host, "welcome")
+	calledFrom++
+	guest := dial(http.Header{"X-Forwarded-For": {"198.51.100." + strconv.Itoa(100+calledFrom)}})
+	wsjson.Write(ctx, guest, calls.RoomMessage{Type: "join", Name: name, Told: !strings.HasPrefix(name, "Untold")})
+	read(guest, "waiting")
+	door := read(host, "door")
+	for len(door.Peers) == 0 {
+		door = read(host, "door")
+	}
+	wsjson.Write(ctx, host, calls.RoomMessage{Type: "admit", To: door.Peers[0].ID})
+	read(guest, "welcome")
+	read(host, "joined")
+	return func() {
+		guest.Close(websocket.StatusNormalClosure, "")
+		read(host, "left")
+	}
+}
+
+// A meeting's recording is for the line's own host, while a guest is in the room.
+func TestRecordingAMeeting(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	s.RefuseNotes = func(int64) string { return "" }
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	sue, _ := st.CreateAccount("sue@example.com", "long-enough", "")
+	st.CreateLine(sue.AccountID, "sues", "Sue's")
+	st.SetPlan(sue.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	other, _, _ := st.NewSession(sue.ID)
+	start := "/room/joesbnb/recording?type=audio/webm"
+
+	if w := post(h, start, nil, token); w.Code != http.StatusNotFound {
+		t.Fatalf("no meeting on: %d", w.Code)
+	}
+	leave := meeting(t, srv, "joesbnb", token, "Ana Roy")
+	if w := post(h, start, nil, ""); w.Code != http.StatusSeeOther {
+		t.Fatalf("logged out: %d", w.Code)
+	}
+	if w := post(h, start, nil, other); w.Code != http.StatusNotFound {
+		t.Fatalf("another account: %d", w.Code)
+	}
+	if w := post(h, "/room/joesbnb/recording?type=text/html", nil, token); w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("not a recording: %d", w.Code)
+	}
+	w := post(h, start, nil, token)
+	var a struct {
+		Record bool   `json:"record"`
+		URL    string `json:"url"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &a); err != nil || !a.Record || !strings.HasPrefix(a.URL, "/app/calls/room-") {
+		t.Fatalf("start: %s %v", w.Body.String(), err)
+	}
+	id := strings.TrimSuffix(strings.TrimPrefix(a.URL, "/app/calls/"), "/recording")
+	if c := piece(h, id, 0, "one ", other); c != http.StatusNotFound {
+		t.Fatalf("someone else's piece: %d", c)
+	}
+	if c := piece(h, id, 0, "one ", token); c != http.StatusNoContent {
+		t.Fatalf("a piece: %d", c)
+	}
+	list, _ := st.Notes(u.AccountID)
+	if len(list) != 1 || list[0].Kind != store.NoteRoom || len(list[0].People) != 1 || list[0].People[0] != "Ana Roy" {
+		t.Fatalf("the note: %+v", list)
+	}
+	leave()
+	if w := post(h, start, nil, token); w.Code != http.StatusNotFound {
+		t.Fatalf("nobody left to meet: %d", w.Code)
+	}
+	if w := post(h, a.URL+"/done", nil, token); w.Code != http.StatusNoContent {
+		t.Fatalf("done: %d", w.Code)
+	}
+	n, ok, err := st.ClaimNote()
+	if !ok || err != nil || n.Kind != store.NoteRoom {
+		t.Fatalf("its turn: %+v %v %v", n, ok, err)
+	}
+}
+
+// Someone let in while it records is in the note; refused, the note says why.
+func TestMeetingPeopleAndRefusal(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	leave := meeting(t, srv, "joesbnb", token, "Ana Roy")
+	if w := post(h, "/room/joesbnb/recording?type=audio/webm", nil, token); !strings.Contains(w.Body.String(), store.NoteNotSetUp) {
+		t.Fatalf("no keys: %s", w.Body.String())
+	}
+	list, _ := st.Notes(u.AccountID)
+	if len(list) != 1 || list[0].Status != store.NoteSkipped || list[0].Reason != store.NoteNotSetUp || list[0].People[0] != "Ana Roy" {
+		t.Fatalf("the note: %+v", list)
+	}
+	s.RefuseNotes = func(int64) string { return "" }
+	if w := post(h, "/room/joesbnb/recording?type=audio/webm", nil, token); !strings.Contains(w.Body.String(), `"record":true`) {
+		t.Fatalf("start: %s", w.Body.String())
+	}
+	s.Rooms.OnJoined("joesbnb", "Bo")
+	for range 100 {
+		if list, _ = st.Notes(u.AccountID); len(list) == 2 && len(list[0].People) == 2 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if len(list) != 2 || len(list[0].People) != 2 || list[0].People[1] != "Bo" {
+		t.Fatalf("after Bo: %+v", list[0])
+	}
+	leave()
+}
+
+// A guest whose page didn't tell them: no recording starts.
+func TestMeetingWithSomeoneNotTold(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	s.RefuseNotes = func(int64) string { return "" }
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	leave := meeting(t, srv, "joesbnb", token, "Untold Ana")
+	defer leave()
+	if w := post(h, "/room/joesbnb/recording?type=audio/webm", nil, token); !strings.Contains(w.Body.String(), store.NoteNotTold) {
+		t.Fatalf("start: %s", w.Body.String())
+	}
+}
+
+// One account can't start recordings without end, even past a limit.
+func TestRecordingStartsAreLimited(t *testing.T) {
+	s, st, h := testSite(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	leave := meeting(t, srv, "joesbnb", token, "Ana")
+	defer leave()
+	s.Limits.Recordings = NewWindow(3, time.Hour)
+	got := burst(10, func(int) int { return post(h, "/room/joesbnb/recording?type=audio/webm", nil, token).Code })
+	if got[http.StatusOK] != 3 || got[http.StatusTooManyRequests] != 7 {
+		t.Fatalf("starts: %v", got)
+	}
+}
+
+// get opens a page as a logged-in owner (or a visitor, with no cookie).
+func get(h http.Handler, path, cookie string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest("GET", path, nil)
+	if cookie != "" {
+		r.Header.Set("Cookie", sessionCookie+"="+cookie)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	return w
+}
+
+// writtenNote makes a finished note, with words a caller could have said.
+func writtenNote(t *testing.T, st *store.Store, line, said string) int64 {
+	t.Helper()
+	id, err := st.AddNote(line, store.NoteCall, "notes/gone.webm", "audio/webm", 65)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, ok, err := st.ClaimNote()
+	if !ok || err != nil || n.ID != id {
+		t.Fatalf("claim: %+v %v %v", n, ok, err)
+	}
+	if err := st.SaveTranscript(n, []store.NoteLine{{Speaker: "speaker_1", Start: 5, Text: said}}, 65, 130); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.FinishNote(id, "Summary: "+said, []string{"Do: " + said}); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// Notes are for the line's own logged-in owner, on Premium, checked on the server.
+func TestNotesTab(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	sue, _ := st.CreateAccount("sue@example.com", "long-enough", "")
+	st.CreateLine(sue.AccountID, "sues", "Sue's")
+	st.SetPlan(sue.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	other, _, _ := st.NewSession(sue.ID)
+	id := writtenNote(t, st, "joesbnb", "Bonjour Joe")
+	path := "/dashboard/notes/" + itoa(id)
+
+	// Logged out: the login page, and nothing is said about the note.
+	for _, p := range []string{"/dashboard/notes", path} {
+		if w := get(h, p, ""); w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
+			t.Fatalf("%s, logged out: %d", p, w.Code)
+		}
+	}
+	if w := post(h, path+"/delete", nil, ""); w.Code != http.StatusSeeOther || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
+		t.Fatalf("delete, logged out: %d", w.Code)
+	}
+	// Someone else: as if it weren't there.
+	if w := get(h, path, other); w.Code != http.StatusNotFound {
+		t.Fatalf("someone else's note: %d", w.Code)
+	}
+	if w := post(h, path+"/delete", nil, other); w.Code != http.StatusNotFound {
+		t.Fatalf("deleting someone else's note: %d", w.Code)
+	}
+	if w := get(h, "/dashboard/notes", other); strings.Contains(w.Body.String(), "Bonjour Joe") {
+		t.Fatal("someone else's list shows the note")
+	}
+	// The owner.
+	w := get(h, "/dashboard/notes", token)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Summary: Bonjour Joe") || !strings.Contains(w.Body.String(), "2 minutes sur 10 heures") {
+		t.Fatalf("the list: %d %s", w.Code, w.Body.String())
+	}
+	w = get(h, path, token)
+	body := w.Body.String()
+	for _, want := range []string{"Summary: Bonjour Joe", "Do: Bonjour Joe", "Personne 2", "0:05", "1:05"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page doesn't say %q", want)
+		}
+	}
+	// Moved to Basic: the tab says so, the note stays, and only its delete works.
+	st.SetPlan(u.AccountID, store.Basic)
+	w = get(h, "/dashboard/notes", token)
+	if !strings.Contains(w.Body.String(), "data-notes-locked") || strings.Contains(w.Body.String(), "Bonjour Joe") {
+		t.Fatalf("the list on Basic: %s", w.Body.String())
+	}
+	if w := get(h, path, token); w.Code != http.StatusNotFound {
+		t.Fatalf("a note on Basic: %d", w.Code)
+	}
+	if w := post(h, "/dashboard/notes/switch", url.Values{"on": {"1"}}, token); w.Code != http.StatusNotFound {
+		t.Fatalf("the switch on Basic: %d", w.Code)
+	}
+	if !strings.Contains(get(h, "/dashboard", token).Body.String(), "data-premium-tag") {
+		t.Fatal("no Premium tag on Basic's menu")
+	}
+	st.SetPlan(u.AccountID, store.Premium)
+	if strings.Contains(get(h, "/dashboard/notes", token).Body.String(), "data-premium-tag") {
+		t.Fatal("a Premium tag on Premium's menu")
+	}
+	if w := post(h, path+"/delete", nil, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("delete: %d", w.Code)
+	}
+	if w := get(h, path, token); w.Code != http.StatusNotFound {
+		t.Fatalf("a deleted note: %d", w.Code)
+	}
+}
+
+// What a caller says stays text: it can't become part of the page.
+func TestNoteWordsArePlainText(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	said := `<img src=x onerror="alert(1)"><script>alert(2)</script>`
+	id := writtenNote(t, st, "joesbnb", said)
+	for _, p := range []string{"/dashboard/notes", "/dashboard/notes/" + itoa(id)} {
+		body := get(h, p, token).Body.String()
+		if strings.Contains(body, "<img src=x") || strings.Contains(body, "<script>alert") {
+			t.Fatalf("%s lets a caller's words into the page", p)
+		}
+		if !strings.Contains(body, "&lt;img src=x") {
+			t.Fatalf("%s doesn't show them as text", p)
+		}
+	}
+}
+
+func TestTakeNotesSwitchPage(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	if w := post(h, "/dashboard/notes/switch", nil, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("off: %d", w.Code)
+	}
+	if on, _ := st.TakeNotes(u.AccountID); on {
+		t.Fatal("still on")
+	}
+	if regexp.MustCompile(`id="take-notes"[^>]*checked`).MatchString(get(h, "/dashboard/notes", token).Body.String()) {
+		t.Fatal("the page shows it on")
+	}
+	if w := post(h, "/dashboard/notes/switch", url.Values{"on": {"1"}}, token); w.Code != http.StatusSeeOther {
+		t.Fatalf("on: %d", w.Code)
+	}
+	if on, _ := st.TakeNotes(u.AccountID); !on {
+		t.Fatal("still off")
+	}
+	if !regexp.MustCompile(`id="take-notes"[^>]*checked`).MatchString(get(h, "/dashboard/notes", token).Body.String()) {
+		t.Fatal("the page shows it off")
+	}
+	r := httptest.NewRequest("POST", "/dashboard/notes/switch", strings.NewReader("on=0"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("Origin", "https://evil.example")
+	r.Header.Set("Cookie", sessionCookie+"="+token)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if on, _ := st.TakeNotes(u.AccountID); w.Code != http.StatusForbidden || !on {
+		t.Fatalf("from another site: %d, on %v", w.Code, on)
+	}
+}
+
+// A message on Premium links to its note, on the dashboard only.
+func TestMessagesLinkToTheirNote(t *testing.T) {
+	_, st, h := testSite(t)
+	u, _ := st.CreateAccount("joe@example.com", "long-enough", "")
+	st.CreateLine(u.AccountID, "joesbnb", "Joe's")
+	st.SetPlan(u.AccountID, store.Premium)
+	token, _, _ := st.NewSession(u.ID)
+	v, err := st.AddVoicemail("joesbnb", "", "", "audio/webm", 9000, strings.NewReader("sound"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.NoteVoicemail(v)
+	if !strings.Contains(get(h, "/dashboard/voicemail", token).Body.String(), "data-note-link") {
+		t.Fatal("no link on the dashboard")
+	}
+	if strings.Contains(get(h, "/app/voicemails", token).Body.String(), "/dashboard/notes") {
+		t.Fatal("the app links to the dashboard")
+	}
+	st.SetPlan(u.AccountID, store.Basic)
+	if strings.Contains(get(h, "/dashboard/voicemail", token).Body.String(), "data-note-link") {
+		t.Fatal("a link on Basic")
+	}
 }
 
 func TestVoicemailUploads(t *testing.T) {

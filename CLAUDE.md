@@ -39,6 +39,7 @@ B&B and may become a SaaS.
 - `PRODUCT.md` (who it is for, brand rules, Ken's design taste) and `DESIGN.md` (how it looks: type, colours, the landing components). Read both before any screen work.
 - `docs/vision.md`: the long-term goal (calls, then meeting room, whiteboard, notes; two plans; web app only). Read before planning features.
 - `docs/plan.md`: the build phases, 0 to 6. Work follows this order.
+- `docs/notes-plan.md`: the loop plan for Premium notes (transcript, summary, next actions), step by step.
 - `docs/research.md`: background, existing projects, competitors, Go component choice.
 - The first proof of concept (Python/Flask + coturn "callbox", and a Zadarma evaluation) lives only in git
   commit `5b8d116`, under `custom/` and `zadarma/` (`git show 5b8d116:custom/callbox/app.py`). Reference only;
@@ -48,9 +49,11 @@ B&B and may become a SaaS.
 
 - **One Go program** serves everything: pages, the phone app, `w.js`, the API, call setup (WebSockets), push sending
   and the built-in TURN relay (`pion/turn`). Database is one SQLite file (`modernc.org/sqlite`, pure Go, no cgo).
-- **The server never handles audio for web calls.** The voice menu and voicemail recording run in the visitor's
+- **The server never handles live audio for web calls.** The voice menu and voicemail recording run in the visitor's
   browser, and the call itself is direct WebRTC between visitor and phone app. The server only passes setup messages.
-  Don't add server-side audio for web calls; that is reserved for the later SIP steps.
+  Don't add live server-side audio for web calls; that is reserved for the later SIP steps. When Premium notes are on,
+  recordings are made in the owner's browser (the host's, in a meeting) and uploaded in pieces (`assets/js/recorder.js`, `web/recording.go`), kept
+  only until they're transcribed.
 - **Pages** are templ + shadcn-templ (components are copied into the project) + Tailwind v4 standalone (no Node).
   Plain JavaScript for dynamic bits; htmx only if it clearly helps. Reuse a shadcn-templ component before writing one.
 - Secrets (VAPID keys, etc.) go in `.env`, never in git; ship a `.env.example`.
@@ -59,12 +62,17 @@ B&B and may become a SaaS.
 ## How the code fits together
 
 - `main.go` opens the database and hands everything to `web.Server.Routes`.
-- `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, and a
-  same-site check on form posts, and hands pages the `pages.Viewer` (admin, new messages); `dashboard.go` has Home, Business, line creation, saving "What callers hear" and the call page;
+- `web/`: every route. `web.go` has login state (session cookie `mv_session`), sign up, log in, log out, the language
+  of the notes (`account.language`, `/dashboard/language`), and a same-site check on form posts, and hands pages the `pages.Viewer` (admin, new messages); `dashboard.go` has Home, Business, line creation, saving "What callers hear" and the call page;
   `app.go` the owner's app (`/app`, its call list, the Available switch, call history logging).
 - `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
   Passwords use bcrypt. The dev database is `data/minivoip.db` (gitignored).
+- `notes/`: Premium's notes from a saved recording: `worker.go` (one background worker, its queue the `note` table in
+  `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `local.go` + `whisper.py` (the demo without keys, `MINIVOIP_NOTES_LOCAL=1`: transcripts on this machine's graphics card, summaries through the Claude Code login), `claude.go` (summary and next actions; what
+  callers say is data, never instructions). Go tests use fakes of both; see `docs/architecture.md` "Premium notes". A voicemail queues its note in
+  `web/voicemail.go` (`store.NoteVoicemail`); a call's comes from the app's recorder, a meeting's from the host's browser (`assets/js/recorder.js`, `web/recording.go`). What callers are told when notes are on is `lines.Notice` (call window,
+  meeting room, "What callers hear").
 - `lines/`: the Line/Option types, menu actions (ring, play, link, voicemail), the spoken menu text and line-name
   rules. `choicePhrase` is mirrored in `assets/js/dashboard.js`.
 - `calls/hub.go`: the WebSocket at `/ws?line=&role=visitor|owner`. Only passes messages (call, ringing, ready,
@@ -83,16 +91,17 @@ B&B and may become a SaaS.
   "room" message on the call socket with who waits (the app's alert and Room tab), and phones a "room" push
   (`RoomKnock`). Linked from the dashboard and the app's Room tab.
 - Pages (`pages/*.templ`) and their scripts (`assets/js/`): `home` + `landing.js` (landing page),
-  `account` (sign up, log in), `dashboard` + `dashboard.js` (a side menu, tabs at the bottom on a phone: Home, What callers hear, Messages, Business; Home's
+  `account` (sign up, log in), `dashboard` + `dashboard.js` (a side menu, tabs at the bottom on a phone: Home, What callers hear, Messages, Notes, Business; Home's
   data is `pages.HomeTab` in `pages/dashboard_home.go`, its windows are native dialogs), `hear` + `menu.js` + `assets/css/hear.css` ("What callers hear", `/dashboard/menu`: the same
   form on the dashboard and in the app's tab, saved without leaving the page; recordings upload to `POST /dashboard/prompt`, `store/prompts.go`; `peaks.js` reads a recording's voice bars), `voicemail` + `voicemail.js`
-  (the dashboard's list), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
+  (the dashboard's list), `notes` + `notes.js` (the Notes tab, `/dashboard/notes`, Premium, `web/notes.go`; `Viewer.Premium` puts the tag on Basic's menu), `call` + `call.js` (visitor's call window `/call/{line}`) and `app` + `phone.js`
   (the owner's app `/app`, login required: Calls, Messages, What callers hear and Room tabs, the account from the round letter; a side menu and a detail
   pane on a computer; the incoming call screen).
 - The owner's app has its own plain CSS, `assets/css/app.css` (the dashboard's look, DESIGN.md "Owner app"); the
   visitor's call window has `assets/css/callscreen.css` (look A, white, DESIGN.md "Call window") and its own bare
   layout, `layouts.Plain`. The dashboard pages (`dashShell`) use `layouts.Lean`: Base without htmx and the component bundle, since their components need no script. The app never links to the dashboard;
   logging in from `/app` uses `AppLogin` (`/login?next=/app`) and stays in the app.
+- Notes for real: `node tests/e2e/notes-real.mjs` (a real call and voicemail with made-up French voices; needs notes on in `.env`).
 - Checking the app without the server: `node tests/e2e/app.mjs` renders it with sample calls
   (`TestAppPreview` in `pages/app_test.go`) and clicks through it headless with a fake call socket, at phone and
   computer width (screenshots `tests/e2e/shots/app-*.png`). Video, screens and the whiteboard in a call:
@@ -145,7 +154,7 @@ B&B and may become a SaaS.
   Whiteboard on Basic), the meeting room (`roomPage` 404s, `Rooms` gets `store.HasRoom`) and the dashboard's and
   app's room panels. Basic owners see a "Premium" tag there; visitors never see an upsell.
 - `android/`: the Android app (Kotlin, no Compose; see `android/README.md`): a web view on `/app` (the page finds it
-  as `window.MinivoipAndroid` in `phone.js`) plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
+  as `window.MinivoipAndroid` in `phone.js`), a service that keeps the microphone open when the screen locks during a call (`CallAlive`), plus a native ring (`CallService` gets the Firebase push, `Ring` shows a
   call notification with the ringtone and `RingActivity` over the lock screen; Answer opens `/app?answer=<call>`,
   Decline posts `/app/calls/{id}/decline`). Served to phones at `/download/minivoip.apk` from `data/android/`; its
   version is in `data/android/version`, and the app's account page shows the installed version (`MinivoipAndroid.version()`)

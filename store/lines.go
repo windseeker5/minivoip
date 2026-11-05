@@ -78,14 +78,17 @@ func (s *Store) line(where string, arg any) (lines.Line, error) {
 	var l lines.Line
 	var id int64
 	err := s.db.QueryRow(`SELECT id, name, business, owner_name, greeting, greeting_audio, voicemail_text, voicemail_audio, away_until, logo,
-		(SELECT plan FROM account WHERE account.id = line.account_id) = 'premium' FROM line WHERE `+where, arg).
-		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio, &l.VoicemailText, &l.VoicemailAudio, &l.AwayUntil, &l.Logo, &l.Premium)
+		(SELECT plan FROM account WHERE account.id = line.account_id) = 'premium',
+		(SELECT take_notes FROM account WHERE account.id = line.account_id),
+		(SELECT language FROM account WHERE account.id = line.account_id) FROM line WHERE `+where, arg).
+		Scan(&id, &l.Name, &l.Business, &l.Owner, &l.Greeting, &l.GreetingAudio, &l.VoicemailText, &l.VoicemailAudio, &l.AwayUntil, &l.Logo, &l.Premium, &l.Notes, &l.Language)
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, ErrNotFound
 	}
 	if err != nil {
 		return l, err
 	}
+	l.Notes = l.Notes && l.Premium
 	rows, err := s.db.Query("SELECT key, label, action, say, url, say_audio FROM menu_option WHERE line_id = ? ORDER BY position", id)
 	if err != nil {
 		return l, err

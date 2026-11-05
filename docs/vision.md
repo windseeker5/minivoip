@@ -32,7 +32,7 @@ Named Basic and Premium on 2026-10-24 (before: Voice and Meetings).
 | Plan | Price | What's in it |
 |---|---|---|
 | **Basic** | $2 a month (landing page, 2026-10-31; no payments yet) | "Call us" button, voice menu that answers common questions and sends callers to the right page, rings on every device, voicemail. Never video, whiteboard or AI. |
-| **Premium** | $10 a month (landing page, 2026-10-31) | Everything in Basic, plus video, screen sharing, whiteboard and a team meeting room (built). Next: call notes taken by AI with a summary in the app after each call (on the landing page as "Soon"). Maybe later: an AI front desk answering from the owner's FAQ (kept off the landing page: the pitch is a real person) |
+| **Premium** | $10 a month (landing page, 2026-10-31) | Everything in Basic, plus video, screen sharing, whiteboard and a team meeting room (built). Notes after each call, meeting and voicemail: a summary, what to do next and who said what, in the dashboard, up to 10 hours a month (built 2026-11-04, `notes-plan.md`). Maybe later: an AI front desk answering from the owner's FAQ (kept off the landing page: the pitch is a real person) |
 
 The pitch (2026-10-24): "minivoip puts a Call button on your website. Your voice menu answers the common
 questions, and when a visitor wants more, you talk to them and show them your screen, in one click. No phone line,
@@ -60,13 +60,14 @@ Why the prices differ:
   selling point ("only real people get through").
 - **Meeting rooms connect everyone to everyone** (2026-10-25): no server carries the video, so a room fits 4 people
   (each sends their video to the others). Bigger rooms will need a forwarding server (see "Not decided yet").
+- **Recorded only when notes are on** (2026-11-04): Basic calls are never recorded. On Premium, calls and meetings are
+  recorded while "Take notes" is on, callers are told first, and the audio is deleted once written down. Live audio
+  still never passes through the server. The wording is on the landing page's questions.
 - **Simple first.** Minimalist, easy to understand, intuitive. Today's screens are not; making them simple comes
   before adding features.
 
 ## Not decided yet
 
 - Prices for each plan.
-- Privacy wording. The landing page's "nothing is recorded" was a placeholder; recording and notes will change it
-  (likely "recorded only when you turn notes on").
 - How group rooms carry video (a forwarding server is needed from three people on).
 - Real prices. The AI front desk runs on Ken's own AI server, so its cost per call is still to be seen.

@@ -67,7 +67,9 @@ Stripe), used once, and **Swiss**'s line of code to paste (held to Vercel). Buil
 computer, at the top on a phone (the keyboard never covers it). Onest, the site's shadcn tokens. Fields are 40px,
 as tall as the ink button. Form fields follow the site's theme, not the computer's (`color-scheme` in
 `globals.css`), and a field the browser fills in (saved email, password) keeps its own white look: Ken saw Chrome
-draw them dark grey-blue on a dark computer with the site set to light.
+draw them dark grey-blue on a dark computer with the site set to light. Sign up ends with the language of the notes:
+two choices side by side (`languageChoice`, as tall as the fields, an ink outline on the one chosen), Français first
+and already chosen. The same choice is on "Language of your notes", from the account menu.
 
 ## Dashboard (redesigned 2026-11-01: proposition 2, "menu on the side")
 
@@ -77,10 +79,10 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
 #0b0b0c) with white cards (`card`: 16px radius, a 1px ring, `bg-card`).
 
 - **Frame** (`dashShell`): on a computer a white menu on the left (248px): the logo, Home, What callers hear, Messages
-  (orange count of new voicemails), Business, the open one shaded; at its foot a "Phone app" card and the account
-  button (letter, "Your account", email). Its menu (a native popover) holds the email, the phone app, Log out, and
+  (orange count of new voicemails), Notes (a "Premium" tag on Basic), Business, the open one shaded; at its foot a "Phone app" card and the account
+  button (letter, "Your account", email). Its menu (a native popover) holds the email, Change password, Language of your notes, the phone app, Log out, and
   "minivoip admin" for staff only: minivoip's own admin is never a tab. On a phone a top bar (logo, account) and
-  the four tabs fixed at the bottom, like an app. A "Questions?" line closes each page.
+  the five tabs fixed at the bottom, like an app. A "Questions?" line closes each page.
 - **Home** (`Dashboard`): the title, then a peach band (#fff4ec) with the next setup step and its button, ticked from
   real data (a menu of its own, a phone that gets notifications, a logo; gone when all are done); a card with the
   business's badge, name and status (green dot: calls ring you; amber: away, or messages until the phone is set up)
@@ -96,6 +98,17 @@ For owners with no tech skills: is my line on, what's my link, where do I put it
   (`--now`). **Copy** (`copyButton`) shows a check and "Copied"; screen readers hear it (`copyStatus`).
 - **On a phone** every button, tab and menu item is 44px tall (`tap`). **Keyboard focus, every page:** a 2px outline
   in the ink colour, 2px out (`:focus-visible` in `globals.css`), inside the menus (`.focus-inset`).
+
+## Notes (2026-11-04)
+
+`pages/notes.templ`, `/dashboard/notes`, dashboard only and for owners who aren't technical. **The tab:** one card with the
+"Take notes" switch (ink when on; it saves itself, `notes.js`), the month's hours over a thin ink bar, and the language
+with a Change link. Below it, hairline rows, newest first: an icon for the kind, Call / Meeting room / Voicemail, the
+date, and two lines at most of the summary or of how the note is doing, always in plain words ("Being written", "Notes
+aren't set up yet"). **One note,** in the account's language, on one page, in two sections: Highlights with Next actions, then "Full transcript" (who and when on the left,
+the words on the right; on a phone one above the other), each its own white card, then Hear the message and Delete. The
+summary carries `lang`, so screen readers read French as French. A page with a note being written looks again every 15
+seconds. **On Basic** the tab is one card with the Premium tag. A voicemail in Messages has "Read the note".
 
 ## What callers hear (2026-11-02)
 
@@ -147,6 +160,10 @@ voice in the middle, B answers first, C like a text conversation).
   only), Whiteboard, Hang up. While a camera, a screen or the whiteboard is on, the stage (below) takes the place of
   the voice wave, the owner's name and the timer move to a small header, and on a computer the window grows to
   almost the whole screen.
+- **Notes on (2026-11-04):** a quiet line with the recording's red dot (`noticeLine`, `.cw-notice`) on every step from
+  the start to the call and the message, in the account's language; the words are in `lines.Notice`. The same words are
+  said first, before the owner's welcome, and written out with it. A choice pressed before the end doesn't skip them.
+  Before the tone the shorter message version is said. A menu that only plays messages records nothing and says nothing.
 - **Keys:** the number keys pick a choice (not with Ctrl, Alt or Cmd); Escape hangs up.
 
 ## Call button on a business's website (chosen 2026-10-27)
@@ -236,6 +253,9 @@ fits the space like a slide) on a light grey board, five pens (ink, orange, blue
 close button. Opening or closing it does so for everyone. The whiteboard stays open on my side while I show my screen.
 
 ## Meeting room (2026-10-25)
+
+Notes on (2026-11-04): a quiet line with the recording's red dot at the door, while waiting and in the room
+(`roomNotice`), said out loud to a guest pressing Join. The host also reads "Recording for your notes", or why not.
 
 `/room/<line>` (`pages/room.templ`, `assets/css/room.css`, `assets/js/room.js`). The call window's world (look A:
 white, Funnel, ink, red only for Leave), not a new look.

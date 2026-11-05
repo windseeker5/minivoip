@@ -12,8 +12,9 @@ A small business (example: Joe's B&B) signs up on our website, gets a line, inst
 |---|---|---|
 | Language | **Go** for everything (website, dashboard, call setup) | Light on RAM, one file to deploy, handles thousands of waiting phones easily. And the owner wants to learn Go. |
 | Web pages and components | **templ** + **shadcn-templ** + Tailwind v4 | shadcn look, the most popular Go option (see [research.md](research.md#web-components-for-go)) |
-| Voice during a call | **Direct between visitor and phone**; our server isn't in the middle | A connected call keeps working even if the home server or its internet goes down. No call recording needed. |
-| Voice menu and voicemail (web callers) | Run **in the visitor's browser** | So the server never handles audio |
+| Voice during a call | **Direct between visitor and phone**; our server isn't in the middle | A connected call keeps working even if the home server or its internet goes down. |
+| Voice menu and voicemail (web callers) | Run **in the visitor's browser** | So the server never handles live audio |
+| Recordings for Premium notes | Made **in the owner's browser**, uploaded in pieces, deleted once transcribed | Still no live audio on the server, and a failed recording can't touch the call. Only when notes are on, and callers are told first. |
 | Database | **SQLite** (one file) | No database server to run |
 | Real phone lines | **Not in the first version**; planned for later | See "Growing later" |
 | Container | **Later.** Develop locally first with auto-reload. | See [plan.md](plan.md) |
@@ -175,6 +176,69 @@ sequenceDiagram
     A->J: voice, cameras, screens, whiteboard: direct (or via the relay)
 ```
 
+## Premium notes (2026-11-04)
+
+A saved recording becomes a transcript, a summary and next actions (plan: [notes-plan.md](notes-plan.md)). One
+background worker (`notes/worker.go`) does one note at a time; its queue is the `note` table, so a restart loses
+nothing. It tries 4 times, waiting 1, 5, then 30 minutes. A transcript that came back is kept, so another try only pays
+for the summary, and hours are counted only then.
+
+- **Two services, each behind a small interface** (`Transcriber`, `Summarizer`), both with plain `net/http`; Go tests
+  use fakes. Transcripts: ElevenLabs Scribe (`scribe_v2`, with who said what; it hears the language itself). About $0.22
+  an hour according to third-party price lists in November 2026; check their own page. Summaries: Claude (`claude-opus-5-5`, with
+  `fallbacks: "default"`: a request its safety checks decline runs on the model Anthropic picks). About $0.10 an hour of audio.
+- **Keys** in `.env` (`ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, see `.env.example`; the Taskfile loads it). Without
+  both, new notes are skipped and say so.
+- **The demo without keys** (`MINIVOIP_NOTES_LOCAL=1`, `notes/local.go`, `notes/whisper.py`; a key still wins over it). Transcripts:
+  faster-whisper on this machine's graphics card through `uv`, slower on the processor if the card can't; the audio stays here. It can't tell
+  voices apart, so a call's two channels still name who's who, but all of a meeting is one speaker. Summaries: the `claude` command on
+  Ken's Max login, with no tools, settings, memory or saved session, in an empty folder, with none of our secrets (`MINIVOIP_NOTES_CLAUDE` names
+  the program if `claude` is a wrapper). His plan isn't for serving customers, so this stays a demo: paying accounts need the keys. A used-up plan fails
+  the note like a service that's down. `node tests/e2e/notes-real.mjs` proves all of it with a real call and voicemail.
+- **Limits, checked before any money is spent:** 10 hours per account per month, 20 hours billed a day across all accounts
+  (`MINIVOIP_NOTES_DAY_HOURS`; a call counts both channels here). A browser can't play a recording down: its size also says
+  how long it can be, and what the service measures is charged afterwards, so one file overshoots at most once. A recording
+  can't grow faster than real time, an account has 3 on the go and 30 starts an hour at most, and all recordings together stop at 20 GB.
+- **Voicemails** (`store.NoteVoicemail`, called after the upload): Premium only. Under 2 seconds gets no note, so
+  silence costs nothing. A line's voicemails get 30 notes a day, and 1 hour of real audio a day and 5 a month, however
+  small the files; one message costs the owner's month 5 minutes at most. So a robot can't use up the owner's hours or everyone's
+  day. Past that the message says why it has no note. The message itself always arrives, and its audio stays.
+- **Calls** are recorded in the owner's app, never on the server's side of the call (`assets/js/recorder.js`, `web/recording.go`):
+  once answered, the owner's microphone on one sound channel and the caller's voice on the other, so the transcript says
+  who is who (Scribe bills each channel, so a call costs about twice a voicemail per hour). A piece goes up every 30
+  seconds, so a crash loses little. Only the line's logged-in owner can start one, only while that call is on (`Hub.Answered`),
+  and a call has one note. Past the month's hours, the day's ceiling or without keys, nothing is recorded and the note says why.
+  The note's turn comes when the app says the last piece is in, 15 minutes after the last piece while the
+  call is on (a phone's network can come back), or 2 minutes once the call has ended. Turning "Take notes" off or leaving Premium stops the
+  recording and drops what's waiting. If recording fails, the
+  call goes on. Mute silences the owner's channel too. Audio is deleted once transcribed or given up on.
+- **Meetings** are recorded in the host's browser only, from the first guest let in, with everyone mixed on one sound
+  channel, so people coming and going are simply in it (the transcript says "Person 1", "Person 2"). Only the line's
+  logged-in owner can start one, while they and a guest are in the room (`Rooms.Meeting`). With nobody left for a minute the
+  recording ends, so an empty room costs nothing. The note keeps the names guests typed at the door (`note.people`), which
+  are shown as plain text and given to Claude as data.
+- **Other browsers and locked phones** (`recorder.js`): it picks what the browser records (webm, Safari's mp4, ogg). A
+  browser that can't record at all leaves a note saying so. It counts what it may have missed: the page frozen for over 5
+  seconds, the phone cutting off the microphone, the sound engine stopped; each post says how many seconds, and the note
+  says "About 2 minutes wasn't recorded" (`note.missed_seconds`). Coming back to the page restarts the sound engine. The Android app (0.5)
+  keeps the microphone open with a foreground service while a call or meeting is on (`CallAlive`), which also keeps the
+  owner's voice in the call itself when the screen locks. **Only a real phone can show:** see "Real phones" in `notes-plan.md`.
+- **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing on every
+  step of the call window, out loud before the menu (even a recorded one) and before the tone, written at the meeting room's
+  door, in the room, and said to a guest pressing Join. In the account's language. A caller who presses a choice early
+  still hears it before the phone rings. It is told whether or not the keys are set: saying too much is the safe side. The server keeps
+  this honest too: a page that loaded before notes were on says it told nobody, and then nothing is recorded or written down.
+  There's no way to refuse but hanging up, or turning off "Take notes" as the owner. Not legal advice: the rules where
+  the business operates apply.
+- **The Notes tab** (`web/notes.go`, `pages/notes.templ`) speaks the account's language (`say`), and a note has two sections: the highlights with the next actions, then the full transcript, as spoken. It is for the account's logged-in owner on Premium, checked on the
+  server: someone else's note answers 404, and so does any note on Basic, whose tab shows only the Premium tag and how
+  many notes are saved. Delete works on any plan. The "Take notes" switch is per account.
+- **What people say is untrusted.** Claude gets no tools and only the one transcript, as JSON between tags (JSON writes
+  `<` as `\u003c`, so a caller's words can't close the tag); its instructions say it's data, and its answer must fit a
+  schema. The worst a caller can do is spoil the note of their own call. Transcripts never go in the logs, and the
+  clients follow no redirect, so a key can't travel.
+- **ElevenLabs keeps logs by default;** turning that off (`enable_logging=false`) is for its enterprise customers.
+
 ## Security rules (reviews of 2026-11-02)
 
 - **The call address stays short and public** (`/call/ken`): it's printed on the business's website anyway, so a random
@@ -299,6 +363,8 @@ Exact columns: [data-dictionary.md](data-dictionary.md). Built so far: `account`
 | `call_log` | Time, line, answered/missed/voicemail, length |
 | `promo_code` | Code, plan it gives (Basic or Premium), valid from/to, max uses, times used, revoked yes/no. A valid code makes a line free forever. Created and revoked by Ken on an admin page, where he also switches any account between Basic and Premium (`account.plan`). |
 | `session` | A login (cookie token, expiry) |
+| `note` | Premium's record of a call, room or voicemail: transcript, summary, next actions, how far along it is |
+| `note_usage` | How much audio each account's notes covered each day, for the limits |
 | *later:* `sip_login` | Username and password for a desk phone or SIP app (step 2) |
 | *later:* `phone_number` | A real number from the SIP provider, pointing to a line (step 3) |
 

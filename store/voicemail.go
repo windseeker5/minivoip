@@ -17,6 +17,7 @@ type Voicemail struct {
 	DurationMS  int64
 	ContentType string
 	Listened    bool
+	NoteID      int64  // its Premium note, if any
 	CreatedAt   string // UTC "YYYY-MM-DD HH:MM:SS"
 }
 
@@ -154,7 +155,8 @@ func (s *Store) AddVoicemail(lineName, option, callID, contentType string, durat
 // Voicemails lists an account's messages, newest first.
 func (s *Store) Voicemails(accountID int64) ([]Voicemail, error) {
 	rows, err := s.db.Query(`
-		SELECT v.id, v.call_id, v.option, v.duration_ms, v.content_type, v.listened, v.created_at
+		SELECT v.id, v.call_id, v.option, v.duration_ms, v.content_type, v.listened,
+			COALESCE((SELECT max(n.id) FROM note n WHERE n.voicemail_id = v.id), 0), v.created_at
 		FROM voicemail v JOIN line l ON l.id = v.line_id
 		WHERE l.account_id = ? ORDER BY v.created_at DESC, v.id DESC`, accountID)
 	if err != nil {
@@ -164,7 +166,7 @@ func (s *Store) Voicemails(accountID int64) ([]Voicemail, error) {
 	var list []Voicemail
 	for rows.Next() {
 		var v Voicemail
-		if err := rows.Scan(&v.ID, &v.CallID, &v.Option, &v.DurationMS, &v.ContentType, &v.Listened, &v.CreatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.CallID, &v.Option, &v.DurationMS, &v.ContentType, &v.Listened, &v.NoteID, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, v)
@@ -208,10 +210,13 @@ const (
 	callHistoryDays = 365
 )
 
-// Cleanup forgets expired logins, old voicemails with their audio, and old
-// call history. main runs it once a day.
+// Cleanup forgets expired logins, old voicemails with their audio, old call
+// history and old notes. main runs it once a day.
 func (s *Store) Cleanup() error {
 	if _, err := s.db.Exec("DELETE FROM session WHERE expires_at <= datetime('now')"); err != nil {
+		return err
+	}
+	if err := s.cleanupNotes(); err != nil {
 		return err
 	}
 	if _, err := s.db.Exec("DELETE FROM call_log WHERE started_at < datetime('now', ?)", fmt.Sprintf("-%d days", callHistoryDays)); err != nil {
@@ -249,13 +254,24 @@ func (s *Store) Cleanup() error {
 	return nil
 }
 
-// DeleteVoicemail removes a message and its audio file.
+// DeleteVoicemail removes a message, its audio file and its note.
 func (s *Store) DeleteVoicemail(accountID, id int64) error {
 	path, _, err := s.VoicemailFile(accountID, id)
 	if err != nil {
 		return err
 	}
-	if _, err := s.db.Exec("DELETE FROM voicemail WHERE id = ?", id); err != nil {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("DELETE FROM note WHERE voicemail_id = ?", id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM voicemail WHERE id = ?", id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 	os.Remove(path)

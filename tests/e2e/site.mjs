@@ -5,7 +5,8 @@
 // 2. Signs up, creates a line, builds a menu, records prompts (a caller hears
 //    them), then visits every link again.
 // 3. A real call: phone app online, a visitor calls, the phone answers, hang up;
-//    then voicemail (unanswered call and a voicemail choice), listen, delete.
+//    then voicemail (unanswered call and a voicemail choice), its note, listen, delete.
+//    The Notes tab: Basic's Premium tag, the list, one note, the switch, delete.
 //    A new account is Basic (voice only, no meeting room); then Premium:
 //    video through the relay. The meeting room: a guest waits, the app says so,
 //    the owner opens it, a third person, the whiteboard, leaving.
@@ -13,14 +14,15 @@
 //    up, revoke, switch an account between Basic and Premium.
 // 5. A stranger can't open the phone app; log out works. Security: no account
 //    without a promo code, the host lets each guest into the meeting room,
-//    Change password, a made-up recording type is refused.
+//    Change password, a made-up recording type is refused. The language of the
+//    notes: French at sign up unless English is picked, changed from the account menu.
 // It deletes its test account at the end. Screenshots: tests/e2e/shots/.
 //
 // BASE=https://voip.dresdell.com node tests/e2e/site.mjs  tests through Caddy.
 
 import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite"; // built into Node 22.5+
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { createServer } from "node:http";
@@ -60,6 +62,8 @@ const JOIN_CODE = `E2E-JOIN-${stamp.toUpperCase()}`;
   db.close();
 }
 const failures = [];
+// Whether the server's .env can write notes: both keys, or the demo's switch.
+const notesOn = (env) => /^MINIVOIP_NOTES_LOCAL=1$/m.test(env) || (/^ELEVENLABS_API_KEY=\S/m.test(env) && /^ANTHROPIC_API_KEY=\S/m.test(env));
 
 // A fake push service: the test subscribes it as one of the owner's phones,
 // keeps the notifications the server sends, and opens them with the phone's
@@ -239,6 +243,11 @@ try {
   const landingText = await visitorSite.textContent("body");
   check(landingText.includes("Let people call you from your website, in one click.") && landingText.includes("It filters. You answer. You show them."), "the landing page says what it does in one line");
   check(landingText.includes("$10") && !/free while in beta|free line/i.test(landingText), "Premium is $10 and Basic isn't sold as free");
+  check(/Notes after each call, meeting and voicemail/.test(landingText) && /up to 10 hours a month/.test(landingText) && !/\bSoon\b/.test(landingText), "notes are sold as built, in the dashboard, with their limit");
+  check(/Are calls recorded\?/.test(landingText), "the questions say plainly whether calls are recorded");
+  await visitorSite.locator("[data-premium-form]").scrollIntoViewIfNeeded();
+  await visitorSite.waitForTimeout(400);
+  await visitorSite.screenshot({ path: `${SHOTS}/landing-plans.png` });
   // "Get Premium": no payments yet, the email goes on the admin page's list.
   step = "get premium";
   await visitorSite.fill("#premium-email", PREMIUM_EMAIL);
@@ -287,6 +296,24 @@ try {
   await owner.screenshot({ path: `${SHOTS}/signup.png` });
   const noCode = await owner.request.post(BASE + "/signup", { form: { email: EMAIL, password: "e2e-password" }, maxRedirects: 0 });
   check(noCode.status() === 422 && (await noCode.text()).includes("Enter your promo code"), "no promo code, no account");
+  check(await owner.isChecked('input[name=language][value=fr]') && !await owner.isChecked('input[name=language][value=en]'), "sign up has French already selected");
+  // A refused form keeps the language chosen.
+  await owner.check('input[name=language][value=en]');
+  await owner.fill("#email", EMAIL);
+  await owner.fill("#password", "e2e-password");
+  await owner.fill("#promo", "NOT-A-REAL-CODE");
+  await owner.click("main button[type=submit]");
+  await owner.waitForSelector("text=promo code isn't valid");
+  check(await owner.isChecked('input[name=language][value=en]'), "a refused sign up keeps the language chosen");
+  await owner.check('input[name=language][value=fr]');
+  {
+    const phone = await newPage(390, 844);
+    await phone.goto(BASE + "/signup");
+    const wide = await phone.evaluate(() => document.documentElement.scrollWidth);
+    check(wide <= 390, `phone width: sign up doesn't scroll sideways (${wide}px)`);
+    await phone.screenshot({ path: `${SHOTS}/signup-phone.png`, fullPage: true });
+    await phone.context().close();
+  }
   await owner.fill("#email", EMAIL);
   await owner.fill("#password", "e2e-password");
   await owner.fill("#promo", JOIN_CODE);
@@ -451,7 +478,7 @@ try {
   await vmWords.context().close();
 
   const pagesIn = await crawl(owner, "/", "logged in");
-  for (const p of ["/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/business", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
+  for (const p of ["/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/notes", "/dashboard/business", "/app", `/call/${LINE}`]) check(pagesIn.has(p), `logged in: ${p} is reachable by links`);
   step = "dashboard";
   await owner.goto(BASE + "/dashboard");
   await owner.screenshot({ path: `${SHOTS}/dashboard.png`, fullPage: true });
@@ -492,7 +519,7 @@ try {
   check((await owner.request.get(BASE + `/room/${LINE}`)).status() === 404, "a Basic line has no meeting room page");
   const phoneSize = await newPage(390, 844);
   await phoneSize.context().addCookies(await owner.context().cookies());
-  for (const p of ["/", "/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/business", "/app", `/call/${LINE}`]) {
+  for (const p of ["/", "/dashboard", "/dashboard/menu", "/dashboard/voicemail", "/dashboard/notes", "/dashboard/business", "/app", `/call/${LINE}`]) {
     step = `phone width ${p}`;
     await phoneSize.goto(BASE + p);
     const wide = await phoneSize.evaluate(() => document.documentElement.scrollWidth);
@@ -501,7 +528,7 @@ try {
   await phoneSize.goto(BASE + "/dashboard");
   check(await phoneSize.isVisible("[data-setup-band] >> text=One step left: make your phone ring."), "on a phone the next setup step sits at the top");
   const tabs = await phoneSize.$$eval('nav[aria-label="Dashboard"]', (ns) => ns.filter((n) => n.offsetWidth).map((n) => { const r = n.getBoundingClientRect(); return [n.children.length, Math.round(r.bottom), getComputedStyle(n).position]; }));
-  check(JSON.stringify(tabs) === '[[4,844,"fixed"]]', `on a phone the four tabs sit at the bottom of the screen (${JSON.stringify(tabs)})`);
+  check(JSON.stringify(tabs) === '[[5,844,"fixed"]]', `on a phone the five tabs sit at the bottom of the screen (${JSON.stringify(tabs)})`);
   await phoneSize.click('[data-open="dlg-website"]');
   const sheet = await phoneSize.locator("#dlg-website").boundingBox();
   check(sheet && sheet.width === 390 && Math.round(sheet.y + sheet.height) === 844, `on a phone the windows rise from the bottom (${JSON.stringify(sheet)})`);
@@ -659,6 +686,16 @@ try {
   check(await owner.isVisible("[data-room-locked]") && (await owner.locator("[data-room-open]").count()) === 0, "a Basic app's Room tab says what Premium adds");
   await owner.click('[data-tab="calls"]');
 
+  // Basic sees the Notes tab with its Premium tag; the server refuses the rest.
+  step = "basic notes tab";
+  await owner.goto(BASE + "/dashboard");
+  check(await owner.isVisible('aside a[href="/dashboard/notes"] [data-premium-tag]'), "Basic's menu tags Notes as Premium");
+  await owner.click('aside a[href="/dashboard/notes"]');
+  await owner.waitForSelector("[data-notes-locked]");
+  check((await owner.locator("[data-notes-switch], [data-note-row]").count()) === 0, "Basic's Notes tab says what Premium adds, with no switch and no notes");
+  await owner.screenshot({ path: `${SHOTS}/notes-basic.png`, fullPage: true });
+  check((await owner.request.post(BASE + "/dashboard/notes/switch", { form: { on: "1" } })).status() === 404, "Basic can't work the switch");
+
   // From here the account is Premium (what the admin's "Move to Premium"
   // does; the admin part below clicks that button for another account).
   const planDB = new DatabaseSync(DB);
@@ -671,10 +708,11 @@ try {
   await owner.goto(BASE + "/app?relay=1");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await caller.goto(BASE + `/call/${LINE}?relay=1`);
+  check(/enregistré/.test(await caller.textContent("[data-notice]:visible")), "a Premium line's call page says notes are on, in French");
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
-  await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 15000 });
+  await owner.waitForSelector('[data-action="accept"]:visible', { timeout: 30000 });
   await owner.click('[data-action="accept"]');
   const relayed = await caller.waitForSelector("text=On the line with E2E Shop", { timeout: 20000 }).then(() => true, () => false);
   check(relayed, "a call connects through the relay (TURN)");
@@ -694,6 +732,16 @@ try {
     await caller.click('[data-action="hangup"]:visible');
     await owner.waitForSelector("[data-call-screen]", { state: "hidden", timeout: 10000 });
   }
+  // A Premium call: without keys it isn't recorded, and its note says why.
+  if (relayed) {
+    const notesFile = existsSync(".env") ? readFileSync(".env", "utf8") : "";
+    const keys = notesOn(notesFile);
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const calls = db.prepare(`SELECT n.status, n.reason, n.audio, n.call_id AS id FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'call'`).all(LINE);
+    db.close();
+    check(calls.length === 1 && calls[0].id, `an answered Premium call has one note (${calls.length})`);
+    if (!keys) check(calls[0]?.status === "skipped" && calls[0]?.reason === "not_set_up" && calls[0]?.audio === "", "without keys it isn't recorded, and says so");
+  }
   await owner.goto(BASE + "/app");
   await owner.waitForSelector('[data-phone][data-online="true"]', { timeout: 10000 });
   await caller.goto(BASE + `/call/${LINE}`);
@@ -712,7 +760,7 @@ try {
   await caller.click('[data-action="call"]:visible');
   await caller.waitForSelector('[data-key="1"]:visible');
   await caller.click('[data-key="1"]');
-  await owner.waitForSelector('[data-action="decline"]:visible', { timeout: 15000 });
+  await owner.waitForSelector('[data-action="decline"]:visible', { timeout: 30000 });
   const beforeDecline = pushes.length;
   await owner.click('[data-action="decline"]');
   await caller.waitForSelector('[data-action="send-message"]:enabled', { timeout: 20000 });
@@ -734,10 +782,29 @@ try {
   await caller.waitForSelector('[data-key="4"]:visible');
   await caller.click('[data-key="4"]');
   await caller.waitForSelector('[data-action="send-message"]:enabled', { timeout: 20000 });
-  await caller.waitForTimeout(1500);
+  await caller.waitForTimeout(2500);
   await caller.click('[data-action="send-message"]');
   await caller.waitForSelector("text=Message sent", { timeout: 10000 });
   check(true, "a 'take a voicemail' choice records, and Send my message sends it");
+
+  // Each message on this Premium line gets a note. With no keys on the server
+  // (.env) it says so; with them, this run spends a few cents on the real services.
+  step = "voicemail notes";
+  const voicemailNotes = () => {
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const rows = db.prepare(`SELECT n.status, n.reason, n.kind, n.language, n.voicemail_id AS message FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'voicemail' ORDER BY n.id`).all(LINE);
+    db.close();
+    return rows;
+  };
+  const envFile = existsSync(".env") ? readFileSync(".env", "utf8") : "";
+  const notesSetUp = notesOn(envFile);
+  const firstNotes = voicemailNotes();
+  check(firstNotes.length === 2 && firstNotes.every((n) => n.kind === "voicemail" && n.language === "fr" && n.message), `each voicemail on a Premium line queues a note, in the account's language (${firstNotes.length})`);
+  if (!notesSetUp) {
+    await caller.waitForTimeout(1000);
+    const settled = voicemailNotes();
+    check(settled.every((n) => n.status === "skipped" && n.reason === "not_set_up"), `without keys, a note says it isn't set up (${settled.map((n) => n.status + "/" + n.reason).join(", ")})`);
+  }
 
   step = "voicemail page";
   await owner.goto(BASE + "/dashboard");
@@ -760,6 +827,120 @@ try {
   await items.first().locator('button[aria-label="Delete this message"]').click();
   await owner.waitForFunction(() => document.querySelectorAll("[data-voicemail]").length === 1, null, { timeout: 5000 });
   check(true, "deleting a message removes it");
+  check(voicemailNotes().length === 1, "deleting a message deletes its note");
+
+  // The Notes tab, with notes written straight into the database: with no keys
+  // nothing else writes them. A real one goes through in step 10 of the plan.
+  step = "notes tab";
+  {
+    const db = new DatabaseSync(DB);
+    const { account, line } = db.prepare("SELECT account_id AS account, id AS line FROM line WHERE name = ?").get(LINE);
+    const add = (kind, status, reason, extra = {}) => db.prepare(`INSERT INTO note (account_id, line_id, kind, status, reason, language, seconds, transcript, summary, next_actions, done_at)
+      VALUES (?, ?, ?, ?, ?, 'fr', ?, ?, ?, ?, datetime('now'))`).run(account, line, kind, status, reason, extra.seconds ?? 0, extra.transcript ?? "", extra.summary ?? "", extra.actions ?? "").lastInsertRowid;
+    add("voicemail", "skipped", "month_limit");
+    add("call", "skipped", "not_set_up");
+    add("voicemail", "skipped", "silent");
+    add("room", "failed", "summarize", { seconds: 1810, transcript: JSON.stringify([{ speaker: "speaker_0", start: 3, text: "On commence?" }]) });
+    add("call", "working", "", { seconds: 200 });
+    var writtenNote = add("call", "done", "", {
+      seconds: 725,
+      transcript: JSON.stringify([
+        { speaker: "speaker_0", start: 2, text: "Bonjour, ici Marie Tremblay, je voudrais une chambre pour trois nuits à partir du 14 décembre." },
+        { speaker: "speaker_1", start: 9.5, text: "Bonjour Marie. Il me reste la chambre bleue, à 145 dollars la nuit. Vous seriez combien?" },
+        { speaker: "speaker_0", start: 16, text: `Deux adultes et un chien. <img src=x onerror="document.title='hacked'"> Est-ce que le chien est accepté?` },
+        { speaker: "speaker_1", start: 24, text: "Oui, sans problème. Je vous envoie la confirmation par courriel." },
+      ]),
+      summary: "Marie Tremblay veut réserver une chambre pour trois nuits à partir du 14 décembre, pour deux adultes et un chien.\n\nLa chambre bleue est libre à 145 $ la nuit, et le chien est accepté. Marie attend une confirmation par courriel.",
+      actions: JSON.stringify(["Réserver la chambre bleue du 14 au 17 décembre", "Envoyer la confirmation à Marie par courriel"]),
+    });
+    db.prepare("INSERT INTO note_usage (account_id, day, seconds) VALUES (?, date('now'), 9000) ON CONFLICT (account_id, day) DO UPDATE SET seconds = 9000").run(account);
+    db.close();
+    await owner.goto(BASE + "/dashboard");
+    check(!(await owner.isVisible('aside a[href="/dashboard/notes"] [data-premium-tag]')), "Premium's menu has no Premium tag on Notes");
+    await owner.click('aside a[href="/dashboard/notes"]');
+    await owner.waitForSelector("[data-notes]");
+    check(await owner.isChecked("#take-notes"), "Take notes is on by default");
+    check((await owner.textContent("[data-notes]")).includes("Prendre des notes"), "a French account's Notes tab is in French");
+    check(/2,5 heures sur 10 heures/.test(await owner.textContent("[data-notes-used]")), "the tab shows the hours used this month");
+    const lines = await owner.locator("[data-note-line]").allTextContents();
+    const clamp = await owner.locator("[data-note-line]").first().evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight));
+    check(clamp <= 2.1, `a long summary stops at two lines in the list (${clamp})`);
+    check(/^Marie Tremblay/.test(lines[0]), "the list is newest first, and shows the summary");
+    for (const words of ["En cours de rédaction", "Nous avons transcrit", "Rien n'a été dit", "pas encore configurées", "vos 10 heures"]) {
+      check(lines.some((l) => l.includes(words)), `a note says: ${words}`);
+    }
+    await owner.screenshot({ path: `${SHOTS}/notes.png`, fullPage: true });
+    const notesPhone = await newPage(390, 844);
+    await notesPhone.context().addCookies(await owner.context().cookies());
+    await notesPhone.goto(BASE + "/dashboard");
+    await notesPhone.click('nav[aria-label="Dashboard"]:visible a[href="/dashboard/notes"]');
+    await notesPhone.waitForSelector("[data-notes]");
+    check((await notesPhone.evaluate(() => document.documentElement.scrollWidth)) <= 390, "phone width: the Notes tab doesn't scroll sideways");
+    await notesPhone.screenshot({ path: `${SHOTS}/notes-phone.png`, fullPage: true });
+    await notesPhone.setViewportSize({ width: 320, height: 640 });
+    const tabHeights = await notesPhone.$$eval('nav[aria-label="Dashboard"] a', (a) => a.filter((x) => x.offsetWidth).map((x) => x.offsetHeight));
+    check((await notesPhone.evaluate(() => document.documentElement.scrollWidth)) <= 320 && new Set(tabHeights).size === 1, `a small phone: five tabs still fit, each on one line (${tabHeights.join(",")})`);
+    await notesPhone.screenshot({ path: `${SHOTS}/notes-phone-small.png` });
+    await notesPhone.setViewportSize({ width: 390, height: 844 });
+    await notesPhone.goto(`${BASE}/dashboard/notes/${writtenNote}`);
+    await notesPhone.waitForSelector("[data-note-summary]");
+    check((await notesPhone.evaluate(() => document.documentElement.scrollWidth)) <= 390, "phone width: a note doesn't scroll sideways");
+    await notesPhone.screenshot({ path: `${SHOTS}/note-phone.png`, fullPage: true });
+    await notesPhone.context().close();
+
+    // One note: what a caller said stays text.
+    await owner.click(`a[href="/dashboard/notes/${writtenNote}"]`);
+    await owner.waitForSelector("[data-note-summary]");
+    check((await owner.textContent("[data-note-summary]")).includes("Marie Tremblay veut"), "the page starts with the summary");
+    const sections = await owner.locator("[data-note] section").count();
+    const heads = await owner.locator("[data-note] section h2, [data-note] section h3").allTextContents();
+    check(sections === 2 && heads.join("|") === "Faits saillants|Prochaines actions|Transcription complète", `two sections: highlights with next actions, then the transcript (${heads.join(", ")})`);
+    check((await owner.locator("[data-note-actions] li").count()) === 2, "then the next actions");
+    const said = await owner.locator("[data-note-said]").allTextContents();
+    check(said.length === 4 && said[2].includes("<img src=x"), "then the full transcript, as plain text");
+    check((await owner.locator("[data-note-transcript] img").count()) === 0 && (await owner.title()) !== "hacked", "a caller's words can't become part of the page");
+    check(await owner.isVisible("[data-note-transcript] >> text=Personne 2"), "speakers have plain names");
+    await owner.screenshot({ path: `${SHOTS}/note.png`, fullPage: true });
+    const noteStranger = await newPage();
+    check((await noteStranger.request.get(`${BASE}/dashboard/notes/${writtenNote}`, { maxRedirects: 0 })).status() === 303, "a stranger is sent to log in");
+    await noteStranger.context().close();
+    await owner.goto(BASE + "/dashboard/notes");
+    await owner.click("[data-notes-language]");
+    await owner.waitForSelector("[data-language-choice]");
+    check(true, "the tab links to the language of the notes");
+
+    // The switch saves itself, and stays off until it's turned on.
+    await owner.goto(BASE + "/dashboard/notes");
+    await Promise.all([owner.waitForNavigation(), owner.click("#take-notes")]);
+    check(!(await owner.isChecked("#take-notes")), "turning off Take notes stays off");
+    check(!(await (await owner.request.get(`${BASE}/call/${LINE}`)).text()).includes("data-notice"), "with Take notes off, callers aren't told about notes");
+    const switchDB = new DatabaseSync(DB, { readOnly: true });
+    check(switchDB.prepare("SELECT take_notes FROM account WHERE id = ?").get(account).take_notes === 0, "and the server has it");
+    switchDB.close();
+    await Promise.all([owner.waitForNavigation(), owner.click("#take-notes")]);
+    check(await owner.isChecked("#take-notes"), "turning it back on stays on");
+    check((await (await owner.request.get(`${BASE}/call/${LINE}`)).text()).includes("data-notice"), "with it on, the call page tells them");
+    await owner.goto(BASE + "/dashboard/menu");
+    check(/callers first hear/.test(await owner.textContent("[data-notes-told]")), "What callers hear says callers are told first");
+
+    // The voicemail's own note, from Messages, and back.
+    await owner.goto(BASE + "/dashboard/voicemail");
+    await owner.click("[data-note-link]");
+    await owner.waitForSelector("[data-note]");
+    check(true, "a message links to its note");
+    await owner.click('a[href="/dashboard/voicemail"]:visible >> text=Écouter le message');
+    await owner.waitForSelector("[data-voicemail]");
+    check(true, "the note links back to the message");
+
+    // Delete: the note goes, the message stays.
+    await owner.goto(`${BASE}/dashboard/notes/${writtenNote}`);
+    await owner.click("main form[action$='/delete'] button[type=submit]");
+    await owner.waitForSelector("[data-notes]");
+    check((await owner.locator(`a[href="/dashboard/notes/${writtenNote}"]`).count()) === 0, "deleting a note removes it");
+    await owner.goto(BASE + "/dashboard/voicemail");
+    check((await owner.locator("[data-voicemail]").count()) === 1, "deleting a note leaves the messages alone");
+    check((await owner.request.get(`${BASE}/dashboard/notes/${writtenNote}`)).status() === 404, "a deleted note is gone");
+  }
 
   step = "away";
   await owner.goto(BASE + "/app");
@@ -885,9 +1066,16 @@ try {
   const guest = await newPage(390, 844);
   await guest.goto(BASE + `/room/${LINE}`);
   check(!(await guest.isVisible("text=You're the host")), "a guest isn't the host");
+  check(/Cette réunion sera enregistrée/.test(await guest.textContent("[data-notice]:visible")), "the meeting room's door says notes are on, in the account's language");
+  await guest.evaluate(() => {
+    const speak = speechSynthesis.speak.bind(speechSynthesis);
+    speechSynthesis.speak = (u) => { window.__said = u.text; speak(u); };
+  });
   await guest.fill("[data-name]", "Ana Roy");
   await guest.click('[data-action="join"]');
   await guest.waitForSelector("text=Waiting for", { timeout: 10000 });
+  check(/Cette réunion sera enregistrée/.test(await guest.evaluate(() => window.__said)), "and says it out loud when a guest presses Join");
+  check(/Cette réunion sera enregistrée/.test(await guest.textContent("[data-notice]:visible")), "and while they wait");
   await guest.screenshot({ path: `${SHOTS}/room-waiting.png` });
   await owner.waitForSelector("[data-room-alert]:visible", { timeout: 5000 });
   check(/Ana Roy is waiting/.test(await owner.textContent("[data-room-alert]")), "the app says who is waiting in the meeting room");
@@ -990,6 +1178,91 @@ try {
   await host.click('.rm-controls [data-action="leave"]');
   await host.close();
 
+  // Without keys, a meeting isn't recorded and its note says why.
+  step = "meeting note";
+  {
+    const envText = existsSync(".env") ? readFileSync(".env", "utf8") : "";
+    const hasKeys = notesOn(envText);
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const meetings = db.prepare(`SELECT n.status, n.reason, n.audio, n.people FROM note n JOIN line l ON l.id = n.line_id WHERE l.name = ? AND n.kind = 'room' AND n.call_id <> ''`).all(LINE);
+    db.close();
+    check(meetings.length >= 1 && meetings[0].people.includes("Ana Roy"), `a meeting has a note, with who came (${meetings[0]?.people})`);
+    if (!hasKeys) check(meetings.every((m) => m.status === "skipped" && m.reason === "not_set_up" && m.audio === ""), "without keys it isn't recorded, and says so");
+  }
+
+  // A real room, its real sound: the upload is caught here, so it works with no
+  // keys. The host stays muted, so all that's recorded is the guests: Ana speaks,
+  // leaves (quiet), then Bo comes in late and speaks.
+  step = "meeting recording";
+  {
+    const parts = [];
+    let started = 0, done = 0;
+    const host2 = await owner.context().newPage();
+    host2.on("pageerror", (e) => consoleErrors.push(`${step}: ${e}`));
+    await host2.route(/\/room\/[^/]+\/recording/, (r) => { started++; r.fulfill({ json: { record: true, url: "/e2e-recording" } }); });
+    await host2.route(/\/e2e-recording\//, (r) => {
+      const at = new URL(r.request().url()).pathname;
+      if (at.endsWith("/done")) done++;
+      else parts[Number(at.split("/").pop())] = r.request().postDataBuffer();
+      r.fulfill({ status: 204 });
+    });
+    await host2.goto(BASE + `/room/${LINE}`);
+    await host2.evaluate(() => { window.MinivoipRecorderSlice = 1500; });
+    await host2.click('.rm-toggle[data-action="pre-mute"]');
+    await host2.click('[data-show="lobby joining"] [data-action="join"]');
+    await host2.waitForSelector(".rm-in:visible", { timeout: 10000 });
+    await host2.waitForTimeout(800);
+    check(started === 0, "alone in the room, nothing is recorded");
+    const guestIn = async (name) => {
+      const p = await newPage(390, 844);
+      await p.goto(BASE + `/room/${LINE}`);
+      await p.fill("[data-name]", name);
+      await p.click('[data-action="join"]');
+      await host2.waitForSelector(`[data-door] >> text=${name} is waiting`, { timeout: 10000 });
+      await host2.click('[data-door] [data-action="admit"]');
+      await p.waitForSelector(".rm-in:visible", { timeout: 10000 });
+      await p.waitForFunction(() => window.minivoipRoomStats().then((s) => s.length && s[0].bytesIn > 500), null, { timeout: 15000 }).catch(() => {});
+      return p;
+    };
+    const ana2 = await guestIn("Ana Roy");
+    await host2.waitForFunction(() => document.querySelector("[data-rec-note]")?.classList.contains("is-on"), null, { timeout: 5000 });
+    check(started === 1 && /Recording for your notes/.test(await host2.textContent("[data-rec-note]")), "the first guest let in starts the recording, and the host sees it");
+    check((await ana2.locator("[data-rec-note]").count()) === 0 && /est enregistrée/.test(await ana2.textContent("[data-notice]:visible")), "a guest has no recorder, and reads that the meeting is recorded");
+    await host2.screenshot({ path: `${SHOTS}/room-recording.png` });
+    await ana2.waitForTimeout(5000);
+    await ana2.click('.rm-controls [data-action="leave"]');
+    await host2.waitForFunction(() => /just you/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+    await host2.waitForTimeout(6000);
+    check(started === 1 && done === 0, "a guest leaving doesn't end the recording right away");
+    const bo2 = await guestIn("Bo");
+    await bo2.waitForTimeout(5000);
+    check(started === 1, "someone coming in late joins the same recording");
+    await bo2.click('.rm-controls [data-action="leave"]');
+    await host2.waitForFunction(() => /just you/.test(document.querySelector("[data-people]").textContent), null, { timeout: 5000 });
+    await host2.click('.rm-controls [data-action="leave"]');
+    for (let i = 0; i < 50 && !done; i++) await host2.waitForTimeout(100);
+    check(done === 1 && parts.length >= 5 && parts.every(Boolean), `the host leaving ends it, and every piece came up (${parts.length})`);
+    const sound = await host2.evaluate(async (b64) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const audio = await new OfflineAudioContext(1, 48000, 48000).decodeAudioData(bytes.buffer);
+      const data = audio.getChannelData(0), levels = [];
+      for (let s = 0; s + 48000 <= data.length; s += 48000) {
+        let sum = 0;
+        for (let i = s; i < s + 48000; i++) sum += data[i] * data[i];
+        levels.push(Math.sqrt(sum / 48000));
+      }
+      return { channels: audio.numberOfChannels, levels };
+    }, Buffer.concat(parts).toString("base64"));
+    const loud = sound.levels.map((l) => l > 0.005);
+    const firstQuiet = loud.indexOf(false, loud.indexOf(true));
+    const backOn = loud.indexOf(true, firstQuiet);
+    const quietRun = backOn - firstQuiet;
+    check(sound.channels === 1 && loud.indexOf(true) !== -1, `everyone is mixed on one channel, and a guest is heard (${sound.levels.length} s)`);
+    check(firstQuiet !== -1 && quietRun >= 3 && backOn !== -1, `quiet once she left, then someone who came in late is heard too (${loud.map((x) => (x ? "#" : ".")).join("")})`);
+    for (const p of [ana2, bo2]) await p.context().close();
+    await host2.close();
+  }
+
   // Promo codes (admin) -----------------------------------------------------
   step = "admin only";
   await owner.goto(BASE + "/dashboard");
@@ -1025,8 +1298,16 @@ try {
   await friend.fill("#email", FRIEND);
   await friend.fill("#password", "e2e-password");
   await friend.fill("#promo", CODE.toLowerCase());
+  await friend.check('input[name=language][value=en]');
   await friend.click("main button[type=submit]");
   await friend.waitForSelector("[data-business]");
+  {
+    const db = new DatabaseSync(DB, { readOnly: true });
+    const lang = email => db.prepare("SELECT a.language FROM account a JOIN user u ON u.account_id = a.id WHERE u.email = ?").get(email)?.language;
+    check(lang(FRIEND) === "en", "a friend who picks English at sign up gets English");
+    check(lang(EMAIL) === "fr", "the owner, who kept French, has French");
+    db.close();
+  }
   await friend.fill("#business", `e2e ${stamp} friend`);
   await friend.click("form[data-new-line] button[type=submit]");
   await friend.waitForSelector("[data-add-choice]");
@@ -1241,6 +1522,40 @@ try {
     for (const v of [guesser, someoneElse, maker, ringer]) await v.ctx.close();
   }
 
+  // The language of the notes, from the account menu.
+  step = "language";
+  await owner.goto(BASE + "/dashboard");
+  await owner.click("[data-account-button]:visible");
+  await owner.click('#account-menu a[href="/dashboard/language"]');
+  await owner.waitForSelector("[data-language-choice]");
+  check(await owner.isChecked('input[name=language][value=fr]'), "the language page shows French, as chosen at sign up");
+  await owner.screenshot({ path: `${SHOTS}/language.png`, fullPage: true });
+  await owner.check('input[name=language][value=en]');
+  await owner.click("main form[action='/dashboard/language'] button[type=submit]");
+  await owner.waitForSelector("[data-language-saved]");
+  await owner.reload();
+  check(await owner.isChecked('input[name=language][value=en]'), "the language changes to English and stays");
+  await owner.click("main form[action='/dashboard/language'] button[type=submit]");
+  await owner.waitForSelector("[data-language-saved]");
+  const badLanguage = await owner.request.post(BASE + "/dashboard/language", { form: { language: "de" } });
+  check(badLanguage.status() === 422 && (await badLanguage.text()).includes("Choose French or English"), "a made-up language is refused");
+  {
+    const phone = await newPage(390, 844);
+    await phone.context().addCookies(await owner.context().cookies());
+    await phone.goto(BASE + "/dashboard");
+    await phone.click("[data-account-button]:visible");
+    await phone.screenshot({ path: `${SHOTS}/account-menu-phone.png` });
+    await phone.click('#account-menu a[href="/dashboard/language"]');
+    await phone.waitForSelector("[data-language-choice]");
+    const wide = await phone.evaluate(() => document.documentElement.scrollWidth);
+    check(wide <= 390, `phone width: the language page doesn't scroll sideways (${wide}px)`);
+    await phone.screenshot({ path: `${SHOTS}/language-phone.png`, fullPage: true });
+    await phone.context().close();
+  }
+  await owner.click('main input[name=language][value=fr]');
+  await owner.click("main form[action='/dashboard/language'] button[type=submit]");
+  await owner.waitForSelector("[data-language-saved]");
+
   // Change password, from the account menu: the other devices log out.
   step = "change password";
   const otherDevice = await newPage();
@@ -1316,6 +1631,7 @@ try {
   const files = db.prepare(`SELECT v.file FROM voicemail v JOIN line l ON l.id = v.line_id
     JOIN account a ON a.id = l.account_id WHERE a.name LIKE 'e2e-%@example.com'`).all();
   for (const f of files) rmSync(join(dirname(DB), "voicemail", f.file), { force: true });
+  for (const n of db.prepare("SELECT n.audio FROM note n JOIN account a ON a.id = n.account_id WHERE a.name LIKE 'e2e-%@example.com' AND n.audio LIKE 'notes/%'").all()) rmSync(join(dirname(DB), n.audio), { force: true });
   const prompts = db.prepare(`SELECT l.greeting_audio AS f FROM line l JOIN account a ON a.id = l.account_id
       WHERE a.name LIKE 'e2e-%@example.com'
     UNION SELECT l.voicemail_audio FROM line l JOIN account a ON a.id = l.account_id

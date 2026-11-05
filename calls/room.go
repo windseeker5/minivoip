@@ -47,6 +47,7 @@ type RoomMessage struct {
 	Type  string          `json:"type"`
 	ID    string          `json:"id,omitempty"`
 	Name  string          `json:"name,omitempty"`
+	Told  bool            `json:"told,omitempty"` // "join": this guest's page told them notes are on
 	To    string          `json:"to,omitempty"`
 	From  string          `json:"from,omitempty"`
 	Peer  *RoomPeer       `json:"peer,omitempty"`
@@ -60,6 +61,7 @@ type RoomPeer struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Owner bool   `json:"owner"`
+	Told  bool   `json:"told,omitempty"` // their page told them notes are on
 }
 
 type member struct {
@@ -105,6 +107,9 @@ type Rooms struct {
 	// not block. Nil skips them.
 	OnWaiting func(line string, names []string)
 	OnKnock   func(line, name string)
+	// OnJoined says a guest came into the room. It runs with the rooms locked,
+	// so it must not block. Nil skips it.
+	OnJoined func(line, name string)
 	// AllowKnock says whether this guest's knock may wake the owner's phone
 	// (limits, web/limits.go); when not, the guest still waits. It runs
 	// with the rooms locked. Nil allows every knock.
@@ -162,6 +167,28 @@ func (rs *Rooms) People(line string) int {
 		return len(r.in)
 	}
 	return 0
+}
+
+// Meeting lists the guests in a line's room while its owner is there with them;
+// on is false when no meeting is on, told when one of them wasn't told about notes.
+func (rs *Rooms) Meeting(line string) (guests []string, on, told bool) {
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+	r := rs.rooms[line]
+	if r == nil {
+		return nil, false, false
+	}
+	host := false
+	told = true
+	for _, m := range r.in {
+		if m.Owner {
+			host = true
+		} else {
+			guests = append(guests, m.Name)
+			told = told && m.Told
+		}
+	}
+	return guests, host && len(guests) > 0, told
 }
 
 func names(list []*member) []string {
@@ -223,6 +250,7 @@ func (rs *Rooms) handle(line string, me *member, m RoomMessage) {
 			return // joined already
 		}
 		me.Name = cleanName(m.Name)
+		me.Told = m.Told
 		// The login may have ended since this socket opened.
 		me.Owner = me.Owner && rs.IsOwner != nil && rs.IsOwner(me.req, line)
 		if !me.Owner {
@@ -318,6 +346,9 @@ func (rs *Rooms) admit(line string, r *room, me *member) {
 		if o != me {
 			o.send(RoomMessage{Type: "joined", Peer: &p})
 		}
+	}
+	if !me.Owner && rs.OnJoined != nil {
+		rs.OnJoined(line, me.Name)
 	}
 }
 

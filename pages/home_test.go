@@ -11,6 +11,26 @@ import (
 
 // The landing page must render without errors, with and without minivoip's
 // own line to call.
+// Notes are sold as built, in the dashboard, with their limit, and the page says
+// plainly that calls can be recorded.
+func TestHomeOnNotes(t *testing.T) {
+	var b strings.Builder
+	if err := Home(false, nil, "https://voip.example").Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	page := b.String()
+	for _, want := range []string{"Notes after each call, meeting and voicemail", "In your dashboard, up to 10 hours a month", "Are calls recorded?", "Callers are told first"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the landing page doesn't say %q", want)
+		}
+	}
+	for _, not := range []string{">Soon<", "in your app after each call", "when the call notes are ready", "othing is recorded"} {
+		if strings.Contains(page, not) {
+			t.Errorf("the landing page still says %q", not)
+		}
+	}
+}
+
 func TestHomeRenders(t *testing.T) {
 	if err := Home(false, nil, "https://voip.example").Render(context.Background(), io.Discard); err != nil {
 		t.Fatal(err)

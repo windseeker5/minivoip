@@ -14,6 +14,10 @@ type roomData struct {
 	Initials string `json:"initials"`       // the owner's, for their face on the stage
 	Logo     string `json:"logo,omitempty"` // the business's logo: the owner's face instead
 	URL      string `json:"url"`
+	// Said out loud to a guest pressing Join, when notes are on.
+	Notice     string `json:"notice,omitempty"`
+	NoticeLang string `json:"noticeLang,omitempty"`
+	Notes      bool   `json:"notes,omitempty"` // this is the host, with notes on: their browser records
 }
 
 templ iconLeave() {
@@ -28,12 +32,28 @@ templ iconCopy() {
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
 }
 
+// roomNotice tells everyone in or at the door of a room that notes are on.
+templ roomNotice(text, lang string) {
+	if text != "" {
+		<p class="rm-notice" lang={ lang } data-notice><i aria-hidden="true"></i>{ text }</p>
+	}
+}
+
+// roomSaid is what a guest hears on pressing Join. The host turned notes on.
+func roomSaid(n lines.Notice, isOwner bool) string {
+	if isOwner {
+		return ""
+	}
+	return n.Room
+}
+
 // Room is a line's meeting room: /room/<line> (DESIGN.md "Meeting room").
 // First a "get ready" screen (name, microphone, camera), then the room: the
 // stage (meet.js) and the controls. Guests wait until the owner lets them in.
 // room.js shows the parts whose data-show lists the state.
 templ Room(l lines.Line, isOwner bool, url string) {
 	{{ owner := ownerName(l) }}
+	{{ notice := l.Notice() }}
 	@layouts.Plain(l.Business + " · Meeting room") {
 		<link rel="stylesheet" href="/assets/css/fonts.css"/>
 		<link rel="stylesheet" href="/assets/css/room.css"/>
@@ -84,10 +104,12 @@ templ Room(l lines.Line, isOwner bool, url string) {
 							}
 						</button>
 						<p class="rm-note">Free, in your browser. It will ask to use your microphone; the camera only if you turn it on.</p>
+						@roomNotice(notice.Room, notice.Lang)
 					</div>
 					<div class="rm-step" data-show="waiting" hidden>
 						<p class="rm-waiting"><i aria-hidden="true"></i>Waiting for { owner } to let you in…</p>
 						<p class="rm-text">You'll come in as soon as they say yes. Keep this page open.</p>
+						@roomNotice(notice.Room, notice.Lang)
 						<button type="button" class="rm-btn is-plain" data-action="leave">Leave</button>
 					</div>
 					<div class="rm-step" data-show="full" hidden>
@@ -135,6 +157,10 @@ templ Room(l lines.Line, isOwner bool, url string) {
 				</div>
 				<div class="rm-stage" data-stage></div>
 				<p class="rm-meet-note" data-meet-note role="status" hidden></p>
+				@roomNotice(notice.RoomDuring, notice.Lang)
+				if isOwner {
+					<p class="rm-rec-note" data-rec-note role="status" hidden></p>
+				}
 				<nav class="rm-controls" aria-label="Meeting controls">
 					<button type="button" class="rm-round" data-action="mute" aria-pressed="false">
 						<span>
@@ -170,8 +196,11 @@ templ Room(l lines.Line, isOwner bool, url string) {
 			</section>
 			<div data-audio hidden></div>
 		</main>
-		@templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), Logo: logoURL(l), URL: url})
+		@templ.JSONScript("room", roomData{Line: l.Name, Business: l.Business, Owner: owner, IsOwner: isOwner, Initials: initials(owner), Logo: logoURL(l), URL: url, Notice: roomSaid(notice, isOwner), NoticeLang: notice.Lang, Notes: isOwner && notice.Room != ""})
 		<script src="/assets/js/meet.js" defer></script>
+		if isOwner {
+			<script src="/assets/js/recorder.js" defer></script>
+		}
 		<script src="/assets/js/room.js" defer></script>
 	}
 }

@@ -11,6 +11,9 @@ type Viewer struct {
 	// NewMessages counts the unheard voicemails for the Messages tab; it is
 	// only called when a dashboard page renders.
 	NewMessages func() int
+	// Premium says whether the account is on Premium, for the Notes tab's tag;
+	// also only called when a dashboard page renders.
+	Premium func() bool
 }
 
 // WithViewer tells the page templates who is logged in.
@@ -24,6 +27,11 @@ func viewer(ctx context.Context) Viewer {
 }
 
 func isAdmin(ctx context.Context) bool { return viewer(ctx).Admin }
+
+func onBasic(ctx context.Context) bool {
+	f := viewer(ctx).Premium
+	return f != nil && !f()
+}
 
 func newMessages(ctx context.Context) int {
 	if f := viewer(ctx).NewMessages; f != nil {

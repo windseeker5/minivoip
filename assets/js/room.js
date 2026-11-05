@@ -88,6 +88,7 @@
     $("[data-mic-help]").hidden = true;
     show("joining");
     status("Joining…");
+    tellGuest();
     var get = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
       ? navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       : Promise.reject(new Error("no microphone"));
@@ -101,10 +102,19 @@
     });
   }
 
+  // Notes on: a guest hears so at the door, before anything can be recorded.
+  function tellGuest() {
+    if (!room.notice || !window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(room.notice);
+    u.lang = room.noticeLang;
+    speechSynthesis.speak(u);
+  }
+
   function connect() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     var sock = ws = new WebSocket(proto + "//" + location.host + "/ws/room?line=" + encodeURIComponent(room.line));
-    sock.onopen = function () { sock.send(JSON.stringify({ type: "join", name: myName })); };
+    sock.onopen = function () { sock.send(JSON.stringify({ type: "join", name: myName, told: !!room.notice })); };
     sock.onmessage = function (e) {
       if (sock !== ws) return;
       var m = JSON.parse(e.data);
@@ -153,9 +163,47 @@
     preview();
     show("in");
     status("You're in the meeting room.");
+    // In the Android app, the microphone stays open if the screen locks now.
+    if (window.MinivoipAndroid && MinivoipAndroid.callStarted) MinivoipAndroid.callStarted();
     // I'm the newcomer: I offer a connection to each person already here.
     (m.peers || []).forEach(function (p) { peer(p, true); });
     meet.render();
+  }
+
+  // ------------------------------------------------- notes, in the host's browser
+
+  // Notes on: the host's browser records the meeting from the first guest let in,
+  // everyone mixed together. With nobody left for a minute, the meeting is over.
+  var notes = null, noteVoices = {}, aloneTimer = null;
+  var ALONE_MS = 60000;
+  function recNote(state) {
+    MinivoipRecorder.show($("[data-rec-note]"), state, "meeting");
+  }
+  function followGuests() {
+    if (!room.isOwner || !room.notes || !window.MinivoipRecorder || !mic) return;
+    if (!Object.keys(peers).length) {
+      if (notes && !aloneTimer) aloneTimer = setTimeout(stopNotes, ALONE_MS);
+      return;
+    }
+    clearTimeout(aloneTimer);
+    aloneTimer = null;
+    // Their page loaded before notes were on, so it didn't tell them.
+    if (Object.keys(peers).some(function (id) { return !peers[id].told; })) {
+      stopNotes();
+      recNote("not_told");
+      return;
+    }
+    if (!notes) {
+      var voices = { me: mic };
+      Object.keys(noteVoices).forEach(function (id) { voices[id] = noteVoices[id]; });
+      notes = MinivoipRecorder.start({ url: "/room/" + encodeURIComponent(room.line) + "/recording", voices: voices, mixed: true, mine: "me", onState: recNote });
+    }
+  }
+  function stopNotes() {
+    clearTimeout(aloneTimer);
+    aloneTimer = null;
+    if (notes) { notes.stop(); notes = null; }
+    if (window.MinivoipRecorder && room.notes && room.isOwner) recNote("");
   }
 
   function peer(p, offerer) {
@@ -168,8 +216,11 @@
     var link = meet.link(p.id, pc, { name: p.name, initials: p.owner ? room.initials : initials(p.name), logo: p.owner ? room.logo : "", fixedName: true, onAudio: function (stream) {
       audio.srcObject = stream;
       audio.play().catch(function () {});
+      noteVoices[p.id] = stream;
+      if (notes) notes.add(p.id, stream);
     } });
-    peers[p.id] = { pc: pc, link: link, audio: audio, name: p.name, owner: p.owner };
+    peers[p.id] = { pc: pc, link: link, audio: audio, name: p.name, owner: p.owner, told: p.told };
+    followGuests();
     pc.onicecandidate = function (e) {
       if (e.candidate) send(p.id, { type: "ice", candidate: e.candidate.toJSON() });
     };
@@ -188,6 +239,9 @@
     var x = peers[id];
     if (!x) return;
     delete peers[id];
+    delete noteVoices[id];
+    if (notes) notes.remove(id);
+    followGuests();
     // Whatever the stage does, the connection closes.
     try { if (meet) meet.drop(id); } catch (e) {}
     x.pc.close();
@@ -270,10 +324,13 @@
 
   // stop ends everything on this side.
   function stop() {
+    if (window.MinivoipAndroid && MinivoipAndroid.callStopped) MinivoipAndroid.callStopped();
+    stopNotes();
     var sock = ws;
     ws = null;
     if (sock) { sock.onclose = null; sock.close(); }
     Object.keys(peers).forEach(gone);
+    stopNotes(); // the guests' going must not start the minute
     if (meet) {
       muted = meet.muted;
       try { meet.end(); } catch (e) {}

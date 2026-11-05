@@ -143,6 +143,10 @@ func TestPlansMigration(t *testing.T) {
 	s.db.Exec("DROP TABLE prompt")
 	s.db.Exec("ALTER TABLE session DROP COLUMN hashed")
 	s.db.Exec("ALTER TABLE voicemail DROP COLUMN size")
+	s.db.Exec("ALTER TABLE account DROP COLUMN language")
+	s.db.Exec("ALTER TABLE account DROP COLUMN take_notes")
+	s.db.Exec("DROP TABLE note_usage")
+	s.db.Exec("DROP TABLE note")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)
@@ -153,6 +157,59 @@ func TestPlansMigration(t *testing.T) {
 	}
 	if b, _ := s.Billing(other.AccountID); b.Plan != Basic {
 		t.Errorf("other account: %q", b.Plan)
+	}
+}
+
+func TestLanguage(t *testing.T) {
+	s := open(t)
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	other, _ := s.CreateAccount("sam@example.com", "password1", "")
+	if l, err := s.Language(u.AccountID); err != nil || l != French {
+		t.Fatalf("a new account is French, got %q %v", l, err)
+	}
+	if err := s.SetLanguage(u.AccountID, English); err != nil {
+		t.Fatal(err)
+	}
+	if l, _ := s.Language(u.AccountID); l != English {
+		t.Fatalf("after the change: %q", l)
+	}
+	if l, _ := s.Language(other.AccountID); l != French {
+		t.Fatalf("someone else's account changed: %q", l)
+	}
+	if err := s.SetLanguage(u.AccountID, "de"); err == nil {
+		t.Fatal("unknown language accepted")
+	}
+	if l, _ := s.Language(u.AccountID); l != English {
+		t.Fatalf("a refused language changed it: %q", l)
+	}
+	if err := s.SetLanguage(999, English); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown account: %v", err)
+	}
+	if _, err := s.Language(999); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown account: %v", err)
+	}
+}
+
+// Accounts from before the language column are French.
+func TestLanguageMigration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := s.CreateAccount("joe@example.com", "password1", "")
+	s.db.Exec("PRAGMA user_version = 13")
+	s.db.Exec("ALTER TABLE account DROP COLUMN language")
+	s.db.Exec("ALTER TABLE account DROP COLUMN take_notes")
+	s.db.Exec("DROP TABLE note_usage")
+	s.db.Exec("DROP TABLE note")
+	s.Close()
+	if s, err = Open(path); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if l, err := s.Language(u.AccountID); err != nil || l != French {
+		t.Fatalf("an existing account: %q %v", l, err)
 	}
 }
 
@@ -182,6 +239,10 @@ func TestVoicemailGreetingMigration(t *testing.T) {
 	s.db.Exec("DROP TABLE prompt")
 	s.db.Exec("ALTER TABLE session DROP COLUMN hashed")
 	s.db.Exec("ALTER TABLE voicemail DROP COLUMN size")
+	s.db.Exec("ALTER TABLE account DROP COLUMN language")
+	s.db.Exec("ALTER TABLE account DROP COLUMN take_notes")
+	s.db.Exec("DROP TABLE note_usage")
+	s.db.Exec("DROP TABLE note")
 	s.Close()
 	if s, err = Open(path); err != nil {
 		t.Fatal(err)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"minivoip/assets"
 	"minivoip/calls"
+	"minivoip/notes"
 	"minivoip/push"
 	"minivoip/relay"
 	"minivoip/store"
@@ -73,6 +75,19 @@ func main() {
 		fmt.Fprintln(os.Stderr, "MINIVOIP_BIND is open to the network: set MINIVOIP_TRUSTED_PROXY to your proxy's address")
 		os.Exit(1)
 	}
+
+	// Premium's notes are written in the background, one at a time.
+	transcriber, summarizer := notes.FromEnv()
+	writer := notes.NewWorker(db, transcriber, summarizer)
+	if h, err := strconv.Atoi(os.Getenv("MINIVOIP_NOTES_DAY_HOURS")); err == nil && h > 0 {
+		writer.DaySeconds = int64(h) * 3600
+	}
+	if !writer.SetUp() {
+		fmt.Println("notes: not set up (ELEVENLABS_API_KEY and ANTHROPIC_API_KEY, or MINIVOIP_NOTES_LOCAL, see .env.example)")
+	}
+	site.OnNote = writer.Wake
+	site.RefuseNotes = writer.Refuse
+	go writer.Run(context.Background())
 
 	// Logins that ran out and plans that changed end their open sockets.
 	go func() {

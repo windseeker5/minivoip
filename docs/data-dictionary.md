@@ -1,6 +1,6 @@
 # Data dictionary
 
-Last update: 2026-11-02 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
+Last update: 2026-11-04 · One SQLite file: `data/minivoip.db` (or `MINIVOIP_DB`). Schema and migrations: `store/store.go`. Change this file in the same change as the schema.
 
 ## account
 One customer (a business). Created at sign up.
@@ -11,6 +11,8 @@ One customer (a business). Created at sign up.
 | `name` | text | For now the sign-up email; a business name later |
 | `promo_code` | text, nullable → `promo_code.code` | The code used at sign up, which is required since 2026-11-02. Set = free forever (while the code isn't revoked) |
 | `plan` | text: `basic` or `premium` | What the account gets. Basic: calls, voice menu, voicemail. Premium adds video, screen sharing, the whiteboard and the meeting room (`store.Plan`). From the promo code at sign up, else `basic`; admins switch it on `/admin/promo` |
+| `language` | text: `fr` or `en` | What the account's call notes are written in (`store.Language`). Chosen at sign up, French unless English is picked; changed at `/dashboard/language`, from the account menu. The site itself stays in English |
+| `take_notes` | integer (0 or 1) | The "Take notes" switch on the Notes tab, on by default. Off: no new notes (`store.ErrNotesOff`), a recording on the go stops, and what's waiting isn't written down |
 | `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
 
 ## user
@@ -169,6 +171,45 @@ Who owns each recorded message (files in `<data dir>/prompts/`): only that accou
 | `account_id` | integer → `account.id` (delete cascades) | |
 | `created_at` | text (UTC) | |
 
+## note
+Premium's written record of a call, a meeting room or a voicemail (`store/notes.go`; written by the `notes` package, one at a time). Kept a year, or until the owner deletes it. Only the account's owner reads it. `transcript` holds what strangers said, so it's always shown as plain text and never given to the summary as instructions.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | integer, key | |
+| `account_id` | integer → `account.id` (delete cascades) | |
+| `line_id` | integer → `line.id` (delete cascades) | |
+| `kind` | text: `voicemail`, `call` or `room` | What was recorded |
+| `status` | text: `waiting`, `working`, `done`, `failed` or `skipped` | `waiting` includes a note between two tries. A server that stops leaves `working`, put back at the next start |
+| `reason` | text | Why it `failed` or was `skipped`: `not_set_up` (a key is missing), `not_premium`, `no_recorder` (this browser can't record), `switched_off`, `busy` (too many recordings on the disk), `not_told` (a caller's or guest's page loaded before notes were on), `month_limit`, `day_limit` (everyone's day, or a line's 30 voicemail notes in a day), `silent` (nothing said), `no_audio`, `transcribe`, `summarize`. A `summarize` failure still has its transcript |
+| `language` | text: `fr` or `en` | What the summary and next actions are written in: the account's at the time. The transcript keeps the words as spoken |
+| `audio` | text | The recording, a path under the data folder (`voicemail/…`, or `notes/…` for a call); empty once transcribed or given up on. A call's or a room's file is deleted then; a voicemail's stays, it's the owner's message |
+| `audio_type` | text | Its content type |
+| `seconds` | integer | The recording's length: first as told, then as the service measured it |
+| `transcript` | text (JSON list of `{speaker, start, text}`) | Who said what, word for word |
+| `summary` | text | One page at most (cut at 20,000 characters) |
+| `next_actions` | text (JSON list of text) | What the owner has to do (at most 30) |
+| `tries` | integer | Tries so far, 4 at most; a stop in the middle counts, so it can't spend money without end |
+| `next_try` | text (UTC) | When its turn comes. A call being recorded keeps pushing it 2 minutes ahead, so it waits for the last piece |
+| `created_at` | text (UTC `YYYY-MM-DD HH:MM:SS`) | |
+| `done_at` | text (UTC), nullable | When it was finished or given up on |
+| `call_id` | text | The call it records (`call_log.call_id`), or a meeting's own `room-…` id; empty otherwise. A call has one note |
+| `people` | text (JSON list of text) | A meeting's guests, as they named themselves at the door (at most 30); plain text, untrusted |
+| `missed_seconds` | integer | How much of a call's or meeting's recording its browser reckons it didn't catch: a locked phone, a page in the background. The note says so from 5 seconds up |
+| `parts`, `audio_size` | integer | How many pieces of a call's recording arrived, and how many bytes |
+| `voicemail_id` | integer, nullable → `voicemail.id` (delete sets null) | A voicemail's message. Deleting the message deletes the note (`DeleteVoicemail`); a message that expires after 90 days leaves its note |
+
+## note_usage
+How much audio each account's notes covered each day (UTC). Apart from `note`, so deleting a note doesn't give its hours back. `seconds` sets the month's limit (`store.NoteMonthSeconds`, 10 hours per account), `billed` the day's ceiling across all accounts (`MINIVOIP_NOTES_DAY_HOURS`, default 20), `voicemail` the voicemails' own budgets (1 hour a day, 5 a month). Counted only once a transcript comes back. Kept 62 days.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `account_id` | integer → `account.id` (delete cascades) | |
+| `day` | text (UTC `YYYY-MM-DD`) | Key, with `account_id` |
+| `seconds` | integer | What the owner's month pays: a call counts once, a voicemail 5 minutes at most |
+| `billed` | integer | What the service charged: both channels of a call, the whole of a voicemail |
+| `voicemail` | integer | How much of `billed` was voicemails |
+
 ## Version history
 | Version (`PRAGMA user_version`) | Date | Change |
 |---|---|---|
@@ -185,3 +226,11 @@ Who owns each recorded message (files in `<data dir>/prompts/`): only that accou
 | 11 | 2026-11-02 | `line.voicemail_text`, `line.voicemail_audio` (the voicemail greeting; a `voicemail` choice's own message becomes it) |
 | 12 | 2026-11-02 | `prompt` (who owns each recording), `session.hashed` (tokens stored as a hash, old ones converted at start) |
 | 13 | 2026-11-03 | `voicemail.size` (old messages filled in at start) |
+| 14 | 2026-11-04 | `account.language` (`fr` or `en`; existing accounts get French) |
+| 15 | 2026-11-04 | `note`, `note_usage` (Premium notes and the hours they used) |
+| 16 | 2026-11-04 | `note.voicemail_id` |
+| 17 | 2026-11-04 | `account.take_notes` (the "Take notes" switch, on) |
+| 18 | 2026-11-04 | `note.call_id`, `note.parts`, `note.audio_size` (a call's recording, in pieces) |
+| 19 | 2026-11-04 | `note.people` (who came to a meeting) |
+| 20 | 2026-11-04 | `note.missed_seconds` (what a recording didn't catch) |
+| 21 | 2026-11-04 | `note_usage.billed`, `note_usage.voicemail` |

@@ -5,14 +5,16 @@ import (
 	"minivoip/components/input"
 	"minivoip/components/label"
 	"minivoip/layouts"
+	"minivoip/store"
 )
 
 // AccountForm is what the sign up and log in forms show back after an error.
 type AccountForm struct {
-	Email string
-	Promo string
-	Next  string
-	Error string
+	Email    string
+	Promo    string
+	Language store.Language // sign up; French until someone picks English
+	Next     string
+	Error    string
 }
 
 // accountShell frames sign up, log in and the first-line step: a card on a
@@ -66,6 +68,25 @@ templ formField(id, text string) {
 	</div>
 }
 
+// languageChoice is the two languages of an account's notes, side by side.
+templ languageChoice(legend string, current store.Language) {
+	<fieldset class="flex flex-col gap-2" data-language-choice>
+		<legend class="mb-2 text-sm leading-none font-medium">{ legend }</legend>
+		<div class="grid grid-cols-2 gap-2">
+			@languageOption(store.French, "Français", "fr", current != store.English)
+			@languageOption(store.English, "English", "en", current == store.English)
+		</div>
+		{ children... }
+	</fieldset>
+}
+
+templ languageOption(value store.Language, text, lang string, checked bool) {
+	<label class="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-input bg-background text-sm select-none has-checked:border-foreground has-checked:font-medium has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-foreground max-md:h-11">
+		<input type="radio" name="language" value={ string(value) } checked?={ checked } class="size-4 accent-foreground"/>
+		<span lang={ lang }>{ text }</span>
+	</label>
+}
+
 templ Signup(f AccountForm) {
 	@accountShell("Get your line") {
 		@stepLabel("Step 1 of 2: your account")
@@ -82,6 +103,9 @@ templ Signup(f AccountForm) {
 			}
 			@formField("promo", "Promo code") {
 				@input.Input(input.Props{Class: fieldClass, ID: "promo", Name: "promo", Value: f.Promo, Required: true, Attributes: templ.Attributes{"autocomplete": "off"}})
+			}
+			@languageChoice("Language of your notes", f.Language) {
+				<p class="text-xs text-muted-foreground">For the call notes in Premium. You can change it later.</p>
 			}
 			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg, Class: "mt-2 h-10 w-full"}) {
 				Create my account

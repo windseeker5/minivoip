@@ -147,15 +147,20 @@ func readClaudeAnswer(answer []byte) (Summary, error) {
 			text.WriteString(block.Text)
 		}
 	}
+	return parseNote("claude", text.String())
+}
+
+// parseNote reads the note out of a service's answer, in noteSchema's shape.
+func parseNote(service, text string) (Summary, error) {
 	var note struct {
 		Summary     string   `json:"summary"`
 		NextActions []string `json:"next_actions"`
 	}
-	if err := json.Unmarshal([]byte(text.String()), &note); err != nil {
-		return Summary{}, fmt.Errorf("claude: note: %w", err)
+	if err := json.Unmarshal([]byte(text), &note); err != nil {
+		return Summary{}, fmt.Errorf("%s: note: %w", service, err)
 	}
 	if strings.TrimSpace(note.Summary) == "" {
-		return Summary{}, fmt.Errorf("claude: an empty summary")
+		return Summary{}, fmt.Errorf("%s: an empty summary", service)
 	}
 	return Summary{Text: strings.TrimSpace(note.Summary), NextActions: note.NextActions}, nil
 }

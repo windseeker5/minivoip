@@ -50,10 +50,12 @@ type scribeAnswer struct {
 	Words        []scribeWord `json:"words"`
 	// With separate channels, one transcript per channel, if the service doesn't
 	// put them together as asked.
-	Transcripts []struct {
-		Channel *int         `json:"channel_index"`
-		Words   []scribeWord `json:"words"`
-	} `json:"transcripts"`
+	Transcripts []scribeChannel `json:"transcripts"`
+}
+
+type scribeChannel struct {
+	Channel *int         `json:"channel_index"`
+	Words   []scribeWord `json:"words"`
 }
 
 func (c *Scribe) Transcribe(ctx context.Context, file, contentType string, channels []string) (Transcript, error) {

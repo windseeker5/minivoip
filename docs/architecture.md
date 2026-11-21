@@ -189,6 +189,15 @@ for the summary, and hours are counted only then.
   `fallbacks: "default"`: a request its safety checks decline runs on the model Anthropic picks). About $0.10 an hour of audio.
 - **Keys** in `.env` (`ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, see `.env.example`; the Taskfile loads it). Without
   both, new notes are skipped and say so.
+- **One OpenRouter key instead** (`OPENROUTER_API_KEY`, `notes/openrouter.go`, 2026-11-21: Ken's only key). Each service's own key
+  still wins; OpenRouter covers what's missing, before the demo. Transcripts: ElevenLabs Scribe through OpenRouter
+  (`elevenlabs/scribe-v2`, about $0.22 an hour), sent as base64 JSON, so there's no 25 MB limit. OpenRouter doesn't pass on
+  Scribe's channel option, so a call's two channels are cut apart with `ffmpeg` (mono Opus, 32 kbit/s) and each is
+  written down on its own, billed the same; without `ffmpeg` the whole call goes once and Scribe tells voices apart.
+  Meetings and voicemails get speaker labels (`diarize`). Summaries: `anthropic/claude-sonnet-5.5` with the same prompt
+  and schema (`require_parameters`, so only providers that keep to the schema). Both ask `data_collection: deny`: no
+  provider that keeps or learns from what callers said. A real call and voicemail cost about a cent
+  (`notes-real.mjs`, 2026-11-21). The container needs `ffmpeg`.
 - **The demo without keys** (`MINIVOIP_NOTES_LOCAL=1`, `notes/local.go`, `notes/whisper.py`; a key still wins over it). Transcripts:
   faster-whisper on this machine's graphics card through `uv`, slower on the processor if the card can't; the audio stays here. It can't tell
   voices apart, so a call's two channels still name who's who, but all of a meeting is one speaker. Summaries: the `claude` command on

@@ -135,11 +135,10 @@ Done 2026-10-21: no answer (30 s or Decline) or a voicemail choice → the brows
 - After 30 s with no answer, the visitor's browser records a message and uploads it.
 - Push "New voicemail" to the owner; play it in the phone app and dashboard.
 
-## Phase 6: container and home server
-- Dockerfile (build stage with Go + templ + Tailwind, then a tiny final image with one binary).
-- `data/` folder as a volume (database + audio).
-- HTTPS through Caddy or the existing proxy; open the ports listed in [architecture.md](architecture.md#firewall--ports-home-server-once-deployed).
-- `task build` produces the production binary.
+## Phase 6: container and home server (done 2026-11-21)
+- `Dockerfile`: a build stage with Go, templ and Tailwind, then a small Alpine image with the one binary and ffmpeg.
+- It runs on Ken's server from his shared `~/Documents/DEV/docker-compose.yml` (service `minivoip`), with `data/` mounted,
+  behind the existing Caddy. A nightly backup in `~/minivoip-backups`. See [architecture.md](architecture.md#running-for-real-2026-11-21).
 
 ## Later (not planned in detail)
 - Long-term direction (meeting room, whiteboard, notes, two plans): [vision.md](vision.md). Same app pages

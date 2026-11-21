@@ -413,6 +413,29 @@ flowchart LR
 | [`livekit/sip`](https://github.com/livekit/sip) | 3 more parts: LiveKit server, Redis, SIP service | Apache-2.0, Go, handles SIP providers well. Built for provider lines, not desk-phone registration. |
 | Asterisk or FreeSWITCH | 1 big extra container | Does everything, but it's a whole phone system with its own config language. The fallback only. |
 
+## Running for real (2026-11-21)
+
+The real minivoip (voip.dresdell.com, Ken's line, testers' accounts) runs in a container on Ken's server; `task dev`
+is only for trying changes.
+
+- **The container:** `Dockerfile` (CSS, the component bundle and templ's code are made fresh in the build; Alpine, one
+  binary, `ffmpeg` for notes, user 1000 so it owns `data/` like Ken does). Service `minivoip` in Ken's shared
+  `~/Documents/DEV/docker-compose.yml`, next to minicrm. **Host network**, like Caddy: it listens on `127.0.0.1:8090`
+  (Caddy's upstream, unchanged), so Caddy is the only proxy and `MINIVOIP_TRUSTED_PROXY` isn't needed; the relay takes
+  3478 and 49160-49200 as before. `.env` is its env file; `MINIVOIP_NOTES_LOCAL=0` there (notes use OpenRouter).
+  `restart: unless-stopped` and a health check, so it comes back after a reboot (Docker must start at boot:
+  `sudo systemctl enable docker`).
+- **Its data:** this folder's `data/`, mounted at `/app/data`, as before.
+- **Update it** (only after shipping, from `main`): `cd ~/Documents/DEV && docker compose up -d --build minivoip`. The
+  build copies the working folder, so never from a feature branch.
+- **Backups:** `scripts/backup.sh`, by cron at 3:30: the database copied safely while it runs (`sqlite3 .backup`) plus
+  recordings, logos, voicemails and the Firebase files, one file a day in `~/minivoip-backups`, kept 14 days. The
+  script says how to restore.
+- **`task dev` beside it:** app on 8091 (still opened at http://localhost:7331), its own data in `data-dev/` (a copy
+  made by `scripts/dev-data.sh`; the tests read it too), the Android download and Firebase files read from `data/`,
+  and its own relay on this machine only (`MINIVOIP_TURN_HOST=127.0.0.1`, `MINIVOIP_RELAY_PORT=3479`,
+  `MINIVOIP_RELAY_PORTS=49210-49250`), so it never takes the real one's ports. Real phones only reach the container.
+
 ## Firewall / ports (home server, once deployed)
 | Port | For what | When |
 |---|---|---|

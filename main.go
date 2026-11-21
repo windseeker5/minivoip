@@ -228,11 +228,30 @@ func startRelay(db *store.Store) web.RelayInfo {
 		fmt.Fprintln(os.Stderr, "relay: no public address for", host, "- calls use direct connections only")
 		return web.RelayInfo{}
 	}
-	if _, err := relay.Start(relay.Config{PublicIP: ip, Port: 3478, MinPort: 49160, MaxPort: 49200, Realm: host, Secret: secret}); err != nil {
+	port, low, high := relayPorts()
+	if _, err := relay.Start(relay.Config{PublicIP: ip, Port: int(port), MinPort: low, MaxPort: high, Realm: host, Secret: secret}); err != nil {
 		fmt.Fprintln(os.Stderr, "relay:", err, "- calls use direct connections only")
 		return web.RelayInfo{}
 	}
-	return web.RelayInfo{Secret: secret, Host: host, Port: 3478}
+	return web.RelayInfo{Secret: secret, Host: host, Port: int(port)}
+}
+
+// relayPorts are the relay's port and voice ports: 3478 and 49160-49200, the ones
+// the router forwards. `task dev` moves them (MINIVOIP_RELAY_PORT,
+// MINIVOIP_RELAY_PORTS=low-high) so it runs beside the real one in its container.
+func relayPorts() (port, low, high uint16) {
+	port, low, high = 3478, 49160, 49200
+	if p, err := strconv.ParseUint(os.Getenv("MINIVOIP_RELAY_PORT"), 10, 16); err == nil && p > 0 {
+		port = uint16(p)
+	}
+	if a, b, ok := strings.Cut(os.Getenv("MINIVOIP_RELAY_PORTS"), "-"); ok {
+		l, err1 := strconv.ParseUint(a, 10, 16)
+		h, err2 := strconv.ParseUint(b, 10, 16)
+		if err1 == nil && err2 == nil && l > 0 && l <= h {
+			low, high = uint16(l), uint16(h)
+		}
+	}
+	return port, low, high
 }
 
 // callLine is the line the landing page's "Call us now" button calls:

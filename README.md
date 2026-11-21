@@ -22,12 +22,15 @@ Go, [templ](https://templ.guide), [shadcn-templ](https://github.com/axadrn/shadc
 Needs Go, `templ`, `task`, `shadcn-templ` and the Tailwind standalone CLI ([docs/plan.md](docs/plan.md), Phase 0).
 
 ```bash
-task dev        # auto-reload; open http://localhost:7331
+task dev        # auto-reload; open http://localhost:7331 (its own data-dev/; scripts/dev-data.sh copies the real data)
 go test ./...   # unit tests
 node tests/e2e/site.mjs   # whole-site browser test against the running app
 ```
 
 The microphone needs HTTPS on a real phone; on `localhost` it works as is.
+
+The real one runs in a container on Ken's server (`Dockerfile`, service `minivoip` in `~/Documents/DEV/docker-compose.yml`,
+nightly `scripts/backup.sh`): see [docs/architecture.md](docs/architecture.md#running-for-real-2026-11-21).
 
 ## Docs
 

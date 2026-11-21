@@ -316,7 +316,7 @@ route in `Routes()`, and a test."* If a change doesn't fit this shape, ask why b
 `task dev` (you run it in your own terminal) starts three watchers at once (see `Taskfile.yml`):
 
 1. **templ**: when you save a `.templ` or `.go` file, it rebuilds and restarts the app (`go run`), then refreshes
-   the browser. Open http://localhost:7331 (that address is the refreshing proxy; the real app is on 8090).
+   the browser. Open http://localhost:7331 (that address is the refreshing proxy; the dev app is on 8091, since the real one runs in its container on 8090).
 2. **tailwind**: rebuilds `output.css` when classes change.
 3. **scripts-watch**: rebuilds the components' JavaScript bundle.
 
@@ -487,9 +487,9 @@ today (checked 2026-10-21).
 - **Transactions:** `defer tx.Rollback()` right after `Begin`, `tx.Commit()` at the end. If anything returns
   early, the rollback cleans up. ✅ (`store/lines.go`)
 - **WAL mode + busy timeout** so reads and writes don't block each other. ✅ (set in `store.Open`)
-- **Backups.** ⚠️ Not set up. The SQLite file *is* the business. Before real customers: a nightly
-  `sqlite3 data/minivoip.db "VACUUM INTO 'backup.db'"`, or **Litestream**, which streams changes to cheap storage
-  continuously. Put this on the Phase 6 list.
+- **Backups.** ✅ Nightly since 2026-11-21: `scripts/backup.sh` (cron, 3:30) copies the database with
+  `sqlite3 .backup` while it runs, plus the audio, into `~/minivoip-backups` (14 days). They stay on the same
+  computer; a copy elsewhere (or **Litestream**, which streams changes to cheap storage) would survive a dead disk.
 
 ### Security
 

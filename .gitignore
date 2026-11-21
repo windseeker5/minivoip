@@ -7,6 +7,7 @@ tmp/
 # Secrets and runtime data (database, audio)
 .env
 data/
+data-dev/
 
 # Headless browser checks
 node_modules/

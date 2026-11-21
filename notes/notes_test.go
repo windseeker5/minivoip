@@ -175,8 +175,9 @@ func TestNotesWithoutKeysSayNotSetUp(t *testing.T) {
 	}
 	t.Setenv("ELEVENLABS_API_KEY", "")
 	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENROUTER_API_KEY", "")
 	if tr, su := FromEnv(); tr != nil || su != nil {
-		t.Fatalf("no keys, yet: %v %v", tr, su)
+		t.Fatalf("no keys, yet: %T %T", tr, su) // types only: a key never reaches the log
 	}
 	t.Setenv("ELEVENLABS_API_KEY", "x")
 	t.Setenv("ANTHROPIC_API_KEY", "y")
@@ -1004,6 +1005,7 @@ func TestLocalNeedsItsSwitch(t *testing.T) {
 	t.Setenv("PATH", bin)
 	t.Setenv("ELEVENLABS_API_KEY", "")
 	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENROUTER_API_KEY", "")
 	t.Setenv("MINIVOIP_NOTES_LOCAL", "")
 	if a, b := FromEnv(); a != nil || b != nil {
 		t.Errorf("without the switch: %T %T", a, b)

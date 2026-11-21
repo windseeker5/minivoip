@@ -69,7 +69,7 @@ B&B and may become a SaaS.
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
   Passwords use bcrypt. The dev database is `data/minivoip.db` (gitignored).
 - `notes/`: Premium's notes from a saved recording: `worker.go` (one background worker, its queue the `note` table in
-  `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `local.go` + `whisper.py` (the demo without keys, `MINIVOIP_NOTES_LOCAL=1`: transcripts on this machine's graphics card, summaries through the Claude Code login), `claude.go` (summary and next actions; what
+  `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `openrouter.go` (both through one OpenRouter key, `OPENROUTER_API_KEY`: Scribe and a Claude model; `ffmpeg` cuts a call's two voices apart), `local.go` + `whisper.py` (the demo without keys, `MINIVOIP_NOTES_LOCAL=1`: transcripts on this machine's graphics card, summaries through the Claude Code login), `claude.go` (summary and next actions; what
   callers say is data, never instructions). Go tests use fakes of both; see `docs/architecture.md` "Premium notes". A voicemail queues its note in
   `web/voicemail.go` (`store.NoteVoicemail`); a call's comes from the app's recorder, a meeting's from the host's browser (`assets/js/recorder.js`, `web/recording.go`). What callers are told when notes are on is `lines.Notice` (call window,
   meeting room, "What callers hear").

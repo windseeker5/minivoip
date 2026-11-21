@@ -39,7 +39,8 @@ templ roomNotice(text, lang string) {
 	}
 }
 
-// roomSaid is what a guest hears on pressing Join. The host turned notes on.
+// roomSaid tells room.js a guest has the notice on screen, so the server knows
+// they were told. The host turned notes on.
 func roomSaid(n lines.Notice, isOwner bool) string {
 	if isOwner {
 		return ""

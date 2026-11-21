@@ -4,7 +4,7 @@
 // Chromium with a fake call socket: the menu written out, a "play" answer, a
 // page to open, ringing, "Leave a message now", recording, start over, send,
 // a failed send and its retry, no answer, microphone blocked, phone, computer
-// and a phone zoomed to 200%. Lines taking notes: told in writing and out loud
+// and a phone zoomed to 200%. Lines taking notes: told in writing, never out loud,
 // on every path, before anything is recorded, in the account's language. Nothing reaches a real phone. The real calls
 // are in site.mjs.
 // Run from the repo root: node tests/e2e/call.mjs
@@ -335,9 +335,7 @@ for (const [name, w, h] of [["phone", 390, 844], ["small", 320, 568], ["desk", 1
   await page.click('[data-action="call"]:visible');
   await waitState(page, "menu");
   await page.waitForTimeout(400);
-  const first = (await said(page))[0];
-  check(first && first.text.includes(FR_CALL) && first.lang === "fr-CA", `${name}: the first thing a caller hears is the notice, in a French voice`);
-  check((await page.textContent("[data-words]")).includes(FR_CALL), `${name}: and it's written out as it's said`);
+  check(!(await said(page)).some((u) => u.text.includes(FR_CALL)), `${name}: no voice says it`);
   check((await shown().textContent()).includes(FR_CALL), `${name}: the menu keeps the line in sight`);
   check(await overflow(page) <= 0 && !(await clipped(page)).length, `${name}: the menu still fits (${await clipped(page)})`);
   await settle(page);
@@ -345,15 +343,12 @@ for (const [name, w, h] of [["phone", 390, 844], ["small", 320, 568], ["desk", 1
   await ctx.close();
 }
 {
-  // A choice pressed during the notice doesn't skip it: it's said before the call.
+  // Pressing a choice goes straight to the call; the line stays in sight.
   const { page, sock, ctx } = await open(390, 844, "/call/notes");
   await page.click('[data-action="call"]:visible');
   await waitState(page, "menu");
   await page.click('[data-key="1"]');
   await page.waitForTimeout(200);
-  const heard = await said(page);
-  check(heard.filter((u) => u.text.includes(FR_CALL)).length === 2, `pressing during the notice says it again in full (${heard.length} parts)`);
-  check(await state(page) === "menu" && !sock.sent.some((m) => m.type === "call"), "and the phone doesn't ring until it's said");
   await waitState(page, "ringing");
   check((await page.locator("[data-notice]:visible").textContent()).includes(FR_CALL), "ringing keeps the line in sight");
   await settle(page);
@@ -372,57 +367,35 @@ for (const [name, w, h] of [["phone", 390, 844], ["small", 320, 568], ["desk", 1
   await ctx.close();
 }
 {
-  // Heard all the way through: not said twice.
-  const { page, ctx } = await open(390, 844, "/call/notes");
-  await page.click('[data-action="call"]:visible');
-  await waitState(page, "menu");
-  await page.waitForTimeout(FR_CALL.length * 30 + 3500);
-  await page.click('[data-key="1"]');
-  await waitState(page, "ringing");
-  check((await said(page)).filter((u) => u.text.includes(FR_CALL)).length === 1, "heard to the end, it isn't said again before the call");
-  await ctx.close();
-}
-{
-  // The voicemail path: said before the owner's words, and the tone comes after.
+  // The voicemail path: written, not said, and the tone comes after the owner's words.
   const { page, ctx } = await open(390, 844, "/call/notes");
   await page.click('[data-action="call"]:visible');
   await waitState(page, "menu");
   await page.click('[data-key="4"]');
   await waitState(page, "voicemail");
-  check((await page.textContent("[data-vm-words]")).startsWith(FR_MESSAGE), "the voicemail step writes the notice first");
-  check((await page.locator("[data-notice]:visible").textContent()).includes(FR_MESSAGE), "and keeps the line in sight");
+  check((await page.locator("[data-notice]:visible").textContent()).includes(FR_MESSAGE), "the voicemail step keeps the line in sight");
   await settle(page);
   await page.screenshot({ path: `${SHOTS}/call-notes-voicemail.png` });
   check(await page.getAttribute('[data-action="send-message"]', "disabled") !== null, "nothing is recording yet");
   await waitState(page, "recording");
-  const parts = (await said(page)).map((u) => u.text);
-  const told = parts.findIndex((t) => t.startsWith(FR_MESSAGE));
-  check(told !== -1 && told === parts.length - 2, `the notice is said just before the owner's words, then the tone (${parts.length} parts)`);
+  check(!(await said(page)).some((u) => u.text.includes(FR_MESSAGE)), "no voice says it before the tone");
   check((await page.locator("[data-notice]:visible").textContent()).includes(FR_MESSAGE), "recording keeps the line in sight");
   await ctx.close();
 }
 {
-  // The owner's own recorded welcome: the notice comes before it.
+  // The owner's own recorded welcome comes first, with no voice before it.
   const { page, ctx } = await open(390, 844, "/call/notes-rec");
   const asked = [];
   page.on("request", (r) => { if (r.url().includes("/prompt/")) asked.push(r.url()); });
   await page.click('[data-action="call"]:visible');
   await waitState(page, "menu");
   await page.waitForTimeout(300);
-  const before = await said(page);
-  check(before.length === 1 && before[0].text.includes(FR_CALL) && asked.length === 0, "with a recorded welcome, the notice plays first");
-  await page.waitForTimeout(FR_CALL.length * 30 + 3500);
-  check(asked.length > 0, "and the owner's recording comes after it");
+  check(asked.length > 0 && !(await said(page)).some((u) => u.text.includes(FR_CALL)), "a recorded welcome plays right away");
   await ctx.close();
 }
 {
   const { page, ctx } = await open(390, 844, "/call/notes-en");
   check((await page.locator("[data-notice]:visible").textContent()).includes("Your conversation or message will be recorded") && (await page.locator("[data-notice]:visible").getAttribute("lang")) === "en-US", "an English account says it in English");
-  await page.click('[data-action="call"]:visible');
-  await waitState(page, "menu");
-  await page.waitForTimeout(300);
-  const first = (await said(page))[0];
-  check(first.text.startsWith("Your conversation") && first.lang === "en-US", "in an English voice");
   await ctx.close();
 }
 {

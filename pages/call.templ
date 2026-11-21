@@ -25,10 +25,11 @@ type callData struct {
 	OwnerInitials string       `json:"ownerInitials"`  // the owner's face on the stage until their camera is on
 	Premium       bool         `json:"premium,omitempty"` // video, screens and the whiteboard; on Basic they're ignored
 	Logo          string       `json:"logo,omitempty"` // the business's logo, their face instead of the initials
-	Notice        *callNotice  `json:"notice,omitempty"` // said out loud before anything is recorded, when notes are on
+	Notice        *callNotice  `json:"notice,omitempty"` // on screen before anything is recorded, when notes are on
 }
 
-// callNotice is what the browser's voice says when a line takes notes.
+// callNotice is the line's notes notice; its being there tells the server the
+// caller had it on screen.
 type callNotice struct {
 	Lang    string `json:"lang"`
 	Call    string `json:"call"`

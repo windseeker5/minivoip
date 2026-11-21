@@ -12,7 +12,8 @@
 // grows while a camera, a screen or the whiteboard is on).
 // Any link of the site with data-minivoip-call opens it too (our landing
 // page's "Call us now"), and the corner button steps aside while one of
-// those is on screen. Everything sits in a shadow root, so the website's
+// those is on screen; data-corner="off" on the script keeps it out of the
+// corner for good, for a site with its own link. Everything sits in a shadow root, so the website's
 // styles and ours never mix. Look: DESIGN.md "Call button".
 (function () {
   var me = document.currentScript;
@@ -36,7 +37,7 @@
     ".x{display:grid;place-items:center;flex:none;width:24px;height:24px;padding:0;border:0;border-radius:50%;background:none;color:#66666c;cursor:pointer;font:inherit}" +
     ".x:hover{background:#f4f4f5}.x svg{width:15px;height:15px}.close svg{width:18px;height:18px}" +
     ".btn{display:flex;align-items:center;gap:12px;height:60px;padding:0 22px 0 8px;border:0;border-radius:999px;background:#0c0c0d;color:#fff;" +
-    "font-family:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;box-shadow:0 18px 40px -16px rgba(0,0,0,.55);transition:transform .2s cubic-bezier(.16,1,.3,1),opacity .2s ease-out,visibility .2s}" +
+    "font-family:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.18),0 18px 40px -16px rgba(0,0,0,.55);transition:transform .2s cubic-bezier(.16,1,.3,1),opacity .2s ease-out,visibility .2s}" +
     ".btn:hover{transform:translateY(-1px)}.btn:active{transform:scale(.98)}" +
     ".bubble{transition:opacity .2s ease-out,visibility .2s}.aside>.btn,.aside>.bubble{opacity:0;visibility:hidden}" +
     ".btn:focus-visible,.x:focus-visible,.close:focus-visible{outline:2px solid #0c0c0d;outline-offset:3px}" +
@@ -45,9 +46,7 @@
     ".dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;box-sizing:border-box;border-radius:50%;background:#1f9d55;border:2.5px solid #0c0c0d;animation:pulse 1.8s ease-out infinite}" +
     "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(31,157,85,.55)}70%{box-shadow:0 0 0 9px rgba(31,157,85,0)}100%{box-shadow:0 0 0 0 rgba(31,157,85,0)}}" +
     ".btn svg{width:20px;height:20px;flex:none}" +
-    ".away .btn{background:#fff;color:#0c0c0d;box-shadow:0 0 0 1px rgba(12,12,13,.12),0 18px 40px -18px rgba(0,0,0,.35)}" +
-    ".away .face{background:#f1efe9;color:#66666c}.away .face img{filter:grayscale(1);opacity:.7}" +
-    ".away .dot{background:#c9c9ce;border-color:#fff;animation:none}" +
+    ".away .dot{background:#c9c9ce;animation:none}" +
     ".away .bubble{color:#4a4a50}" +
     ".here .if-away,.away .if-here{display:none}" +
     // The call window: a modal dialog, so the page behind is dimmed, blurred and out of reach.
@@ -191,6 +190,7 @@
 
   // The site's own call links on screen: the corner button steps aside.
   function watchLinks() {
+    if (me.dataset.corner === "off") { box.classList.add("aside"); return; }
     var links = document.querySelectorAll("[data-minivoip-call]"), seen = [];
     if (!links.length || !window.IntersectionObserver) return;
     var io = new IntersectionObserver(function (list) {

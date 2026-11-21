@@ -197,8 +197,8 @@ func TestCallSaysNotesAreOn(t *testing.T) {
 	// The owner sees it too, under What callers hear.
 	l = sampleCallLine()
 	l.Notes, l.Language = true, "fr"
-	if hear := render(t, MenuEditor("marie@example.com", l)); !strings.Contains(hear, "data-notes-told") || !strings.Contains(hear, `data-notice="Votre conversation`) {
-		t.Error("What callers hear doesn't say callers are told first")
+	if hear := render(t, MenuEditor("marie@example.com", l)); !strings.Contains(hear, "data-notes-told") || !strings.Contains(hear, "Votre conversation") {
+		t.Error("What callers hear doesn't say what callers read")
 	}
 }
 
@@ -216,7 +216,7 @@ func TestRoomSaysNotesAreOn(t *testing.T) {
 	}
 	host := render(t, Room(l, true, "https://x/room/auberge"))
 	if !strings.Contains(host, "Cette réunion sera enregistrée") || strings.Contains(host, `"notice":`) {
-		t.Error("the host reads it, and isn't told out loud")
+		t.Error("the host reads it, and has no told flag of their own")
 	}
 	// The room's words don't depend on the menu.
 	l.Options = nil

@@ -31,7 +31,7 @@ import { createDecipheriv, createECDH, hkdfSync, randomBytes } from "node:crypto
 
 const BASE = process.env.BASE || "http://localhost:7331";
 const SHOTS = "tests/e2e/shots";
-const DB = process.env.MINIVOIP_DB || "data/minivoip.db";
+const DB = process.env.MINIVOIP_DB || "data-dev/minivoip.db";
 mkdirSync(SHOTS, { recursive: true });
 
 // playwright-core from the npx cache, and the cached headless Chromium.

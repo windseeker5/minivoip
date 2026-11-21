@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 
 const BASE = process.env.BASE || "http://localhost:7331";
 const SHOTS = "tests/e2e/shots";
-const DB = process.env.MINIVOIP_DB || "data/minivoip.db";
+const DB = process.env.MINIVOIP_DB || "data-dev/minivoip.db";
 mkdirSync(SHOTS, { recursive: true });
 
 const npx = join(homedir(), ".npm/_npx");

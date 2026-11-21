@@ -4,17 +4,11 @@ version: "3"
 dotenv: [".env"]
 
 vars:
-  # The app port: an explicit 'task dev PORT=8091' wins, otherwise the next
-  # free port from 8090 up. The templ proxy and the app share the result,
-  # so hot reload never points at a foreign app.
-  FREE_PORT:
-    sh: port=8090; while nc -z localhost $port >/dev/null 2>&1; do port=$((port+1)); done; echo $port
-  PORT: '{{.PORT | default .FREE_PORT}}'
-  # The templ proxy port the same way, from 7331 up, so several apps run
-  # side by side ('task dev PROXY_PORT=7340' wins).
-  FREE_PROXY_PORT:
-    sh: port=7331; while nc -z localhost $port >/dev/null 2>&1; do port=$((port+1)); done; echo $port
-  PROXY_PORT: '{{.PROXY_PORT | default .FREE_PROXY_PORT}}'
+  # The real minivoip runs in its container on 8090 (voip.dresdell.com), so
+  # `task dev` takes 8091; you still open http://localhost:7331.
+  # 'task dev PORT=8092 PROXY_PORT=7332' moves them.
+  PORT: '{{.PORT | default "8091"}}'
+  PROXY_PORT: '{{.PROXY_PORT | default "7331"}}'
 
 tasks:
   templ:
@@ -23,6 +17,13 @@ tasks:
       - go tool templ generate --watch --proxy="http://localhost:{{.PORT}}" --proxyport={{.PROXY_PORT}} --cmd="go run ./main.go" --open-browser=false
     env:
       PORT: "{{.PORT}}"
+      # Its own data (a copy of the real one, see scripts/dev-data.sh) and its own
+      # relay, on this machine only, so it never touches the container's.
+      MINIVOIP_DB: data-dev/minivoip.db
+      MINIVOIP_FIREBASE_DIR: data/firebase
+      MINIVOIP_TURN_HOST: 127.0.0.1
+      MINIVOIP_RELAY_PORT: "3479"
+      MINIVOIP_RELAY_PORTS: 49210-49250
 
   tailwind:
     desc: Watch Tailwind CSS changes

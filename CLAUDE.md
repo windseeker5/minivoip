@@ -5,7 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Rules that come first
 
 1. **Never start, stop or restart the Go server.** Ken runs `task dev` himself. Don't run it in the background
-   either, and don't run `templ generate` or `task build` while it runs (see AGENTS.md).
+   either, and don't run `templ generate` or `task build` while it runs (see AGENTS.md). The real minivoip runs in
+   its container (`docker compose up -d --build minivoip` from `~/Documents/DEV`); rebuild it only after shipping, from
+   `main`, when Ken says to deploy or ship.
 2. **Test your own work, every time, before saying it's done. Never ask Ken to do manual or routine testing.**
    Use every tool it takes:
    - `go vet ./...` and `go test ./...`;
@@ -57,7 +59,9 @@ B&B and may become a SaaS.
 - **Pages** are templ + shadcn-templ (components are copied into the project) + Tailwind v4 standalone (no Node).
   Plain JavaScript for dynamic bits; htmx only if it clearly helps. Reuse a shadcn-templ component before writing one.
 - Secrets (VAPID keys, etc.) go in `.env`, never in git; ship a `.env.example`.
-- Container comes last (phase 6). Develop locally first.
+- The real minivoip runs in a container on Ken's server (phase 6, 2026-11-21): `Dockerfile`, service `minivoip` in
+  `~/Documents/DEV/docker-compose.yml`, `data/` mounted, nightly `scripts/backup.sh`. `task dev` is the playground,
+  with its own `data-dev/`. See `docs/architecture.md` "Running for real".
 
 ## How the code fits together
 
@@ -67,7 +71,7 @@ B&B and may become a SaaS.
   `app.go` the owner's app (`/app`, its call list, the Available switch, call history logging).
 - `store/`: SQLite (`modernc.org/sqlite`, pure Go). Schema as numbered migrations in `store/store.go` (tracked with
   `PRAGMA user_version`; add a migration, never edit a shipped one) and documented in `docs/data-dictionary.md`.
-  Passwords use bcrypt. The dev database is `data/minivoip.db` (gitignored).
+  Passwords use bcrypt. The real database is `data/minivoip.db` (the container's), the dev one `data-dev/minivoip.db` (both gitignored).
 - `notes/`: Premium's notes from a saved recording: `worker.go` (one background worker, its queue the `note` table in
   `store/notes.go`, retries, the limits), `scribe.go` (ElevenLabs transcripts), `openrouter.go` (both through one OpenRouter key, `OPENROUTER_API_KEY`: Scribe and a Claude model; `ffmpeg` cuts a call's two voices apart), `local.go` + `whisper.py` (the demo without keys, `MINIVOIP_NOTES_LOCAL=1`: transcripts on this machine's graphics card, summaries through the Claude Code login), `claude.go` (summary and next actions; what
   callers say is data, never instructions). Go tests use fakes of both; see `docs/architecture.md` "Premium notes". A voicemail queues its note in
@@ -167,8 +171,9 @@ B&B and may become a SaaS.
   route and bytes received (the e2e test checks both). A phone needs HTTPS for the microphone.
 - The app listens on 127.0.0.1 only (`MINIVOIP_BIND` for a container, which then must set `MINIVOIP_TRUSTED_PROXY`).
 - The relay login reaches browsers only over the sockets (`accepted`, `welcome`) or for a logged-in owner (`/api/ice`).
-- Test address: https://voip.dresdell.com points at the dev app (127.0.0.1:8090) through Caddy
-  (`~/Documents/DEV/caddy/Caddyfile`, last block). Only up while `task dev` runs.
+- https://voip.dresdell.com is the real one: Caddy (`~/Documents/DEV/caddy/Caddyfile`, last block) to the container on
+  127.0.0.1:8090. `task dev` runs on 8091 behind http://localhost:7331, with `data-dev/` and its own relay on
+  127.0.0.1:3479 (Taskfile), so tests never touch real accounts. `scripts/dev-data.sh` refreshes `data-dev/` from `data/`.
 
 ## Commands
 
@@ -176,9 +181,10 @@ The Go tools live in `~/go/bin` (on PATH via `~/.zshrc`). The project was scaffo
 `shadcn-templ init --template templ`; `Taskfile.yml` holds the tasks.
 
 - `task dev` (**Ken runs this himself; never start, stop or restart it**, see AGENTS.md): runs the templ, Tailwind and component-bundle watchers. Open http://localhost:7331 (auto-refreshing
-  proxy in front of the real app on 8090). Microphone and push work on localhost without HTTPS.
-  - The Taskfile looks for the next free port with `nc`, which isn't installed here, so it always picks 8090/7331.
-    If those are busy, run `task dev PORT=8091 PROXY_PORT=7332`.
+  proxy in front of the dev app on 8091; the container has 8090). Microphone and push work on localhost without HTTPS.
+  Other ports: `task dev PORT=8092 PROXY_PORT=7332`.
+- Deploy (after "ship it", from `main`): `cd ~/Documents/DEV && docker compose up -d --build minivoip`; its log:
+  `docker logs minivoip`.
 - `shadcn-templ add <component …>`: copy in more components (into `components/`; they are our code to edit).
 - `task build`: CSS, JS bundle, `templ generate`, then `bin/app`. Don't run it (or `templ generate`) while `task dev` is running; see AGENTS.md.
 - `go test ./...`: tests (`store/` accounts, promo codes, lines; `calls/` call setup and meeting rooms; `pages/` page renders).

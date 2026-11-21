@@ -223,10 +223,8 @@ for the summary, and hours are counted only then.
   says "About 2 minutes wasn't recorded" (`note.missed_seconds`). Coming back to the page restarts the sound engine. The Android app (0.5)
   keeps the microphone open with a foreground service while a call or meeting is on (`CallAlive`), which also keeps the
   owner's voice in the call itself when the screen locks. **Only a real phone can show:** see "Real phones" in `notes-plan.md`.
-- **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing on every
-  step of the call window, out loud before the menu (even a recorded one) and before the tone, written at the meeting room's
-  door, in the room, and said to a guest pressing Join. In the account's language. A caller who presses a choice early
-  still hears it before the phone rings. It is told whether or not the keys are set: saying too much is the safe side. The server keeps
+- **Callers are told first** (`lines.Notice`), when `Line.Notes` is on: Premium and "Take notes". In writing only (Ken's choice, 2026-11-05: no computer voice): on every
+  step of the call window, at the meeting room's door and in the room. In the account's language. It is told whether or not the keys are set: saying too much is the safe side. The server keeps
   this honest too: a page that loaded before notes were on says it told nobody, and then nothing is recorded or written down.
   There's no way to refuse but hanging up, or turning off "Take notes" as the owner. Not legal advice: the rules where
   the business operates apply.

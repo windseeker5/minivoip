@@ -162,8 +162,7 @@ voice in the middle, B answers first, C like a text conversation).
   the voice wave, the owner's name and the timer move to a small header, and on a computer the window grows to
   almost the whole screen.
 - **Notes on (2026-11-04):** a quiet line with the recording's red dot (`noticeLine`, `.cw-notice`) on every step from
-  the start to the call and the message, in the account's language; the words are in `lines.Notice`. The same words are
-  said first, before the owner's welcome, and written out with it. A choice pressed before the end doesn't skip them.
+  the start to the call and the message, in the account's language; the words are in `lines.Notice`. Never said out loud (Ken's choice, 2026-11-05).
   Before the tone the shorter message version is said. A menu that only plays messages records nothing and says nothing.
 - **Keys:** the number keys pick a choice (not with Ctrl, Alt or Cmd); Escape hangs up.
 
@@ -176,10 +175,11 @@ styles and ours never mix; system fonts (the site's page doesn't load ours).
 - **Here** (Available switch on, a choice that rings, and a phone that can ring: an open app or one with push): ink
   pill, the business's logo filling a circle (else initials on white) with a green dot that pulses, a phone icon, "Talk to us
   now". A small white note above: "<Owner> is here. Talk to us now."
-- **Away:** white pill with a hairline ring, the logo greyed with a grey dot, a message icon, "Leave us a message";
+- **Away:** the same ink pill and logo (Ken's choice, 2026-11-05), with a grey dot that doesn't pulse, a message icon, "Leave us a message" (a faint light ring keeps the pill visible on dark sites);
   the note says "We're away. Our menu answers, or leave a message." The menu still plays (hours, links, answers):
   a ringing choice says "Away now: leave a message" and goes to voicemail.
 - The note has an ×, remembered for the visit; it's hidden on phones. The status is read again every minute.
+- **`data-corner="off"` on the script:** no corner button, for a site with its own `data-minivoip-call` link (OMT, in its contact section).
 - **Click on another site (security review, 2026-11-02):** on a computer, the call page opens in its own 480px browser
   window, so the microphone permission is minivoip's and not that website's, and the website can't reach it.
 - **Click on our own landing page:** the call page opens in a 400px window in the middle of the page (Ken, 2026-10-29), a
@@ -256,7 +256,7 @@ close button. Opening or closing it does so for everyone. The whiteboard stays o
 ## Meeting room (2026-10-25)
 
 Notes on (2026-11-04): a quiet line with the recording's red dot at the door, while waiting and in the room
-(`roomNotice`), said out loud to a guest pressing Join. The host also reads "Recording for your notes", or why not.
+(`roomNotice`), never said out loud. The host also reads "Recording for your notes", or why not.
 
 `/room/<line>` (`pages/room.templ`, `assets/css/room.css`, `assets/js/room.js`). The call window's world (look A:
 white, Funnel, ink, red only for Leave), not a new look.

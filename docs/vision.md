@@ -61,7 +61,7 @@ Why the prices differ:
 - **Meeting rooms connect everyone to everyone** (2026-10-25): no server carries the video, so a room fits 4 people
   (each sends their video to the others). Bigger rooms will need a forwarding server (see "Not decided yet").
 - **Recorded only when notes are on** (2026-11-04): Basic calls are never recorded. On Premium, calls and meetings are
-  recorded while "Take notes" is on, callers are told first, and the audio is deleted once written down. Live audio
+  recorded while "Take notes" is on, callers are told first in writing, and the audio is deleted once written down. Live audio
   still never passes through the server. The wording is on the landing page's questions.
 - **Simple first.** Minimalist, easy to understand, intuitive. Today's screens are not; making them simple comes
   before adding features.

@@ -61,7 +61,7 @@ func choiceNames(l lines.Line) string {
 // and in the phone app (inApp), run by menu.js, in assets/css/hear.css.
 templ hearForm(l lines.Line, inApp bool) {
 	{{ notice := l.Notice() }}
-	<form class="hr" method="post" action="/dashboard/menu" data-menu-form data-notice={ notice.Call } data-notice-lang={ notice.Lang }>
+	<form class="hr" method="post" action="/dashboard/menu" data-menu-form>
 		<header class="hr-top">
 			<div>
 				<h1>What callers hear</h1>
@@ -73,7 +73,7 @@ templ hearForm(l lines.Line, inApp bool) {
 			</button>
 		</header>
 		if notice.Call != "" {
-			<p class="hr-note" data-notes-told>Notes are on, so callers first hear: <span lang={ notice.Lang }>{ notice.Call }</span></p>
+			<p class="hr-note" data-notes-told>Notes are on, so callers read: <span lang={ notice.Lang }>{ notice.Call }</span></p>
 		}
 		<p class="hr-note" data-preview-text></p>
 		@voiceCard("welcome", "1", "Welcome", "Callers hear this first.", "greeting_audio", l.GreetingAudio) {

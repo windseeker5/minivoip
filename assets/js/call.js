@@ -13,7 +13,6 @@
   var seq = 0;        // bumps on every new call or hang-up, so old callbacks stop
   var ws, pc, mic, callId, choice, stopRing, timerIv, countIv, ac, recorder, vmToken, stopMeter, unsent, meet, link;
   var MAX_MESSAGE_MS = 120000;
-  var told = true;    // the caller has heard the whole notice, when notes are on
   var waveBars = $$("[data-wave] i"), liveBars = $$("[data-live] i"), recBars = $$("[data-rec-wave] i");
 
   // Showing a screen needs a computer (and a Premium line: Basic has no button).
@@ -260,13 +259,6 @@
     var text = [line.greeting, line.menu].filter(Boolean).join(" ");
     var parts = line.greetingAudio ? [{ text: text, audio: line.greetingAudio }]
       : [{ text: line.greeting }, { text: line.menu }].filter(function (x) { return x.text; });
-    // Notes on: the caller hears so first, even before the owner's own recording.
-    told = !line.notice;
-    if (line.notice) {
-      parts.unshift({ text: line.notice.call, lang: line.notice.lang });
-      parts[0].done = function () { told = true; };
-      text = line.notice.call + " " + text;
-    }
     var lit = writeOut($("[data-words]"), text, lightChoice);
     play(s, parts, function (p) { if (s === seq) { lit(p); lightWave(p); } }).then(function () {
       if (s === seq && phase === "menu") menuStatus("Pick a choice");
@@ -319,9 +311,7 @@
   function ring(s, o) {
     menuStatus("Please hold…");
     var hold = o.say || "Please hold.";
-    // A choice pressed during the notice doesn't skip it.
-    var parts = told ? [] : [{ text: line.notice.call, lang: line.notice.lang }];
-    parts.push({ text: hold, audio: o.sayAudio });
+    var parts = [{ text: hold, audio: o.sayAudio }];
     var lit = writeOut($("[data-words]"), parts.map(function (x) { return x.text; }).join(" "));
     var spoken = play(s, parts, function (p) { if (s === seq) { lit(p); lightWave(p); } });
     // Asked from the key press itself: some browsers only show the microphone prompt during a tap.
@@ -424,13 +414,9 @@
     $("[data-rec-bar]").style.width = "0";
     recBars.forEach(function (b) { b.classList.remove("on"); });
     buttons(false);
-    // Notes on: said before the owner's words, so it's heard before the tone.
-    var parts = line.notice ? [{ text: line.notice.message, lang: line.notice.lang }] : [];
-    parts.push({ text: prompt, audio: line.voicemailAudio });
-    var words = parts.map(function (x) { return x.text; }).join(" ");
-    status(words);
-    var lit = writeOut($("[data-vm-words]"), words);
-    play(s, parts, function (p) { if (s === seq) lit(p); }).then(function () {
+    status(prompt);
+    var lit = writeOut($("[data-vm-words]"), prompt);
+    play(s, [{ text: prompt, audio: line.voicemailAudio }], function (p) { if (s === seq) lit(p); }).then(function () {
       if (s === seq) record(s);
     });
   }

@@ -1002,7 +1002,7 @@ try {
     check(await owner.isChecked("#take-notes"), "turning it back on stays on");
     check((await (await owner.request.get(`${BASE}/call/${LINE}`)).text()).includes("data-notice"), "with it on, the call page tells them");
     await owner.goto(BASE + "/dashboard/menu");
-    check(/callers first hear/.test(await owner.textContent("[data-notes-told]")), "What callers hear says callers are told first");
+    check(/callers read/.test(await owner.textContent("[data-notes-told]")), "What callers hear says callers read it on screen");
 
     // The voicemail's own note, from Messages, and back.
     await owner.goto(BASE + "/dashboard/voicemail");
@@ -1054,7 +1054,7 @@ try {
     res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>E2E Shop</title>
       <style>body{margin:0;font:16px Georgia,serif;background:#f7f4ee;color:#23302a}h1{font-size:56px;margin:120px 72px 0}button{all:unset}</style></head>
       <body><h1>E2E Shop, a business website</h1><p style="margin:16px 72px">Its own styles must not touch the button.</p>
-      <p style="margin:1600px 72px 400px"><a id="own-link" href="${BASE}/call/${LINE}" data-minivoip-call>Call us</a></p>${snippet}</body></html>`);
+      <p style="margin:1600px 72px 400px"><a id="own-link" href="${BASE}/call/${LINE}" data-minivoip-call>Call us</a></p>${req.url.includes("corner=off") ? snippet.replace(" async>", ' data-corner="off" async>') : snippet}</body></html>`);
   });
   await new Promise((r) => bizSite.listen(0, "127.0.0.1", r));
   const BIZ = `http://127.0.0.1:${bizSite.address().port}/`;
@@ -1064,10 +1064,23 @@ try {
   check(await until(async () => (await btnState(biz)) === "true") && (await biz.locator(".btn").textContent()).includes("Talk to us now"),
     'the button on the website says "Talk to us now" while the owner is available');
   await biz.screenshot({ path: `${SHOTS}/button-here.png` });
+  const noCorner = await newPage(1280, 860);
+  await noCorner.goto(BIZ + "?corner=off");
+  check(await until(async () => (await btnState(noCorner)) === "true") && await noCorner.locator("[data-minivoip] .btn").isHidden(), 'data-corner="off" keeps the button out of the corner');
+  await noCorner.locator("#own-link").scrollIntoViewIfNeeded();
+  await noCorner.mouse.wheel(0, -1700);
+  await noCorner.waitForTimeout(400);
+  check(await noCorner.locator("[data-minivoip] .btn").isHidden(), "even when the site's own link is off screen");
+  const noCornerWindow = noCorner.context().waitForEvent("page", { timeout: 5000 });
+  await noCorner.locator("#own-link").click();
+  const noCornerCall = await noCornerWindow;
+  check(noCornerCall.url().includes(`/call/${LINE}`), "and the site's own link still opens the call window");
+  await noCorner.context().close();
   await setAvail(owner, "off");
   await biz.reload();
   check(await until(async () => (await btnState(biz)) === "false") && (await biz.locator(".btn").textContent()).includes("Leave us a message"),
     'the button says "Leave us a message" while the owner is off');
+  check(await biz.locator(".btn").evaluate((b) => getComputedStyle(b).backgroundColor) === "rgb(12, 12, 13)", "and it stays the dark pill");
   await biz.screenshot({ path: `${SHOTS}/button-away.png` });
   const awayPage = await newPage(390, 760);
   await awayPage.goto(BASE + `/call/${LINE}`);
@@ -1155,7 +1168,7 @@ try {
   await guest.fill("[data-name]", "Ana Roy");
   await guest.click('[data-action="join"]');
   await guest.waitForSelector("text=Waiting for", { timeout: 10000 });
-  check(/Cette réunion sera enregistrée/.test(await guest.evaluate(() => window.__said)), "and says it out loud when a guest presses Join");
+  check(!(await guest.evaluate(() => window.__said)), "and no voice says it when a guest presses Join");
   check(/Cette réunion sera enregistrée/.test(await guest.textContent("[data-notice]:visible")), "and while they wait");
   await guest.screenshot({ path: `${SHOTS}/room-waiting.png` });
   await owner.waitForSelector("[data-room-alert]:visible", { timeout: 5000 });

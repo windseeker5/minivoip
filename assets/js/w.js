@@ -40,6 +40,8 @@
     "font-family:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.18),0 18px 40px -16px rgba(0,0,0,.55);transition:transform .2s cubic-bezier(.16,1,.3,1),opacity .2s ease-out,visibility .2s}" +
     ".btn:hover{transform:translateY(-1px)}.btn:active{transform:scale(.98)}" +
     ".bubble{transition:opacity .2s ease-out,visibility .2s}.aside>.btn,.aside>.bubble{opacity:0;visibility:hidden}" +
+    // Stepped aside, the empty corner box lets clicks through to the page (the call window is outside it).
+    ".aside{pointer-events:none}" +
     ".btn:focus-visible,.x:focus-visible,.close:focus-visible{outline:2px solid #0c0c0d;outline-offset:3px}" +
     ".face{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:#fff;color:#0c0c0d;font-size:15px;font-weight:600}" +
     ".face img{width:100%;height:100%;object-fit:cover;border-radius:50%}" +
